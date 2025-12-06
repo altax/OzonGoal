@@ -1,5 +1,5 @@
 entrypoint = "README.md"
-modules = ["web", "nodejs-22"]
+modules = ["nodejs-20", "web"]
 
 [nix]
 channel = "stable-25_05"
@@ -12,10 +12,6 @@ run = ["npm", "run", "server:prod"]
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 41143
-externalPort = 3002
 
 [[ports]]
 localPort = 41175
@@ -32,6 +28,10 @@ externalPort = 3001
 [[ports]]
 localPort = 44845
 externalPort = 3000
+
+[[ports]]
+localPort = 46115
+externalPort = 3002
 
 [env]
 PORT = "5000"
@@ -61,6 +61,6 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN npx -y expo start --web --port 5000"
+args = "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN ./node_modules/.bin/expo start --web --port 5000"
 waitForPort = 5000
 
