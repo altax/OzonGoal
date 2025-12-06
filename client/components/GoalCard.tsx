@@ -49,7 +49,7 @@ const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
   health: "activity",
   car: "truck",
   phone: "smartphone",
-  laptop: "laptop",
+  laptop: "hard-drive",
   watch: "watch",
 };
 

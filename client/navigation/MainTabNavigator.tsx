@@ -41,7 +41,7 @@ export default function MainTabNavigator() {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <BalanceHeader balance={24580} lastShiftIncome={3200} />
+        <BalanceHeader balance={24580} />
         <SegmentedTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </View>
       <View style={[styles.content, { backgroundColor: theme.backgroundContent }]}>
