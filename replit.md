@@ -55,11 +55,12 @@ client/
 - Opaque header on Settings screen
 - Custom BalanceHeader component shared across first 3 tabs
 
-### Design System
-- **Colors:** Blue accent (#2196F3), Green for income (#4CAF50)
-- **Typography:** System fonts with defined hierarchy
-- **Spacing:** Consistent spacing scale (xs to 5xl)
-- **Border Radius:** Rounded corners throughout
+### Design System (Dribbble-Quality)
+- **Colors:** Blue accent (#3B82F6), pastel accents (#E0E7FF, #C7D2FE), root background (#F8FAFC)
+- **Typography:** System fonts with hierarchy (32sp h1, 24sp h3, 16sp body, 14sp small)
+- **Spacing:** Scale from xs(4dp) to 5xl(48dp), 24dp between cards
+- **Shadows:** Soft shadows using #F1F5F9 at 10-15% opacity
+- **Border Radius:** 12-16dp for cards, smooth rounded corners
 
 ## Development
 
@@ -74,7 +75,11 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
-- Pure white design (#FFFFFF) applied everywhere - all backgrounds, secondary colors, tertiary colors are white
+- **Design Overhaul (Dec 2025):** Dribbble-quality aesthetic applied
+  - Soft shadows (#F1F5F9, 10-15% opacity)
+  - Blue accent system (#3B82F6 primary, pastel variants)
+  - Increased card spacing to 24dp
+  - Airy backgrounds (#F8FAFC root, #FFFFFF cards)
 - Created 4-tab navigation structure
 - Implemented empty states for Goals and Shifts screens
 - Added Statistics screen with placeholder charts
