@@ -2,7 +2,8 @@ import { View, Pressable, StyleSheet, LayoutChangeEvent } from "react-native";
 import { useState } from "react";
 import Animated, {
   useAnimatedStyle,
-  withSpring,
+  withTiming,
+  Easing,
 } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -40,14 +41,16 @@ export function SegmentedTabs({ activeTab, onTabChange }: SegmentedTabsProps) {
   const activeIndex = tabs.findIndex((t) => t.key === activeTab);
   const activeLayout = tabLayouts[activeTab];
 
+  const timingConfig = { duration: 250, easing: Easing.out(Easing.cubic) };
+
   const indicatorStyle = useAnimatedStyle(() => {
     if (!activeLayout) {
       return { opacity: 0 };
     }
     return {
       opacity: 1,
-      left: activeLayout.x,
-      width: activeLayout.width,
+      transform: [{ translateX: withTiming(activeLayout.x, timingConfig) }],
+      width: withTiming(activeLayout.width, timingConfig),
     };
   }, [activeLayout]);
 
