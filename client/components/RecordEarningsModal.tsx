@@ -21,7 +21,7 @@ interface Shift {
   id: string;
   operationType: string;
   shiftType: string;
-  scheduledDate: string;
+  scheduledDate: Date | string;
   status: string;
 }
 

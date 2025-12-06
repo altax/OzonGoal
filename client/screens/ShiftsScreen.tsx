@@ -7,6 +7,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { AddShiftModal } from "@/components/AddShiftModal";
 import { RecordEarningsModal } from "@/components/RecordEarningsModal";
+import { ShiftDetailsModal } from "@/components/ShiftDetailsModal";
 import { useShifts } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
@@ -48,15 +49,19 @@ type ShiftType = {
   id: string;
   operationType: string;
   shiftType: string;
-  scheduledDate: string;
+  scheduledDate: Date;
+  scheduledStart: Date;
+  scheduledEnd: Date;
   status: string;
+  earnings: string | null;
 };
 
 export default function ShiftsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-  const [selectedShift, setSelectedShift] = useState<ShiftType | null>(null);
+  const [selectedShiftForEarnings, setSelectedShiftForEarnings] = useState<ShiftType | null>(null);
+  const [selectedShiftForDetails, setSelectedShiftForDetails] = useState<ShiftType | null>(null);
   const { data: shifts, isLoading } = useShifts();
 
   const hasShifts = shifts && shifts.length > 0;
@@ -79,11 +84,19 @@ export default function ShiftsScreen() {
           </View>
         ) : hasShifts ? (
           shifts.map((shift) => {
-            const canRecordEarnings = shift.status === "in_progress" || shift.status === "scheduled";
+            const canRecordEarnings = shift.status === "in_progress";
+            const isCompleted = shift.status === "completed";
+            const shiftData = shift as ShiftType;
             return (
-              <View
+              <Pressable
                 key={shift.id}
-                style={[styles.shiftCard, { backgroundColor: theme.backgroundContent, borderColor: theme.border }]}
+                style={({ pressed }) => [
+                  styles.shiftCard,
+                  { backgroundColor: theme.backgroundContent, borderColor: theme.border },
+                  isCompleted && pressed && { opacity: 0.8 },
+                ]}
+                onPress={isCompleted ? () => setSelectedShiftForDetails(shiftData) : undefined}
+                disabled={!isCompleted}
               >
                 <View style={styles.shiftHeader}>
                   <View style={[styles.shiftTypeIcon, { backgroundColor: theme.accentLight }]}>
@@ -114,7 +127,7 @@ export default function ShiftsScreen() {
                       { backgroundColor: theme.success },
                       pressed && { opacity: 0.8 },
                     ]}
-                    onPress={() => setSelectedShift(shift as ShiftType)}
+                    onPress={() => setSelectedShiftForEarnings(shiftData)}
                   >
                     <Feather name="dollar-sign" size={16} color="#FFFFFF" />
                     <ThemedText style={styles.recordEarningsText}>
@@ -122,14 +135,17 @@ export default function ShiftsScreen() {
                     </ThemedText>
                   </Pressable>
                 )}
-                {shift.status === "completed" && shift.earnedAmount && (
+                {isCompleted && shift.earnings && (
                   <View style={[styles.earnedBadge, { backgroundColor: theme.successLight }]}>
-                    <ThemedText style={[styles.earnedText, { color: theme.success }]}>
-                      Заработано: {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnedAmount))} ₽
-                    </ThemedText>
+                    <View style={styles.earnedRow}>
+                      <ThemedText style={[styles.earnedText, { color: theme.success }]}>
+                        Заработано: {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnings))} ₽
+                      </ThemedText>
+                      <Feather name="chevron-right" size={16} color={theme.success} />
+                    </View>
                   </View>
                 )}
-              </View>
+              </Pressable>
             );
           })
         ) : (
@@ -188,9 +204,15 @@ export default function ShiftsScreen() {
       />
 
       <RecordEarningsModal
-        visible={!!selectedShift}
-        shift={selectedShift}
-        onClose={() => setSelectedShift(null)}
+        visible={!!selectedShiftForEarnings}
+        shift={selectedShiftForEarnings}
+        onClose={() => setSelectedShiftForEarnings(null)}
+      />
+
+      <ShiftDetailsModal
+        visible={!!selectedShiftForDetails}
+        shift={selectedShiftForDetails}
+        onClose={() => setSelectedShiftForDetails(null)}
       />
     </View>
   );
@@ -298,7 +320,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.sm,
+  },
+  earnedRow: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
   earnedText: {
     fontWeight: "500",

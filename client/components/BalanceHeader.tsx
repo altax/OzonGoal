@@ -1,5 +1,6 @@
 import { View, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
+import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
@@ -37,7 +38,7 @@ interface BalanceHeaderProps {
 }
 
 export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceHeaderProps) {
-  const { theme } = useTheme();
+  const { theme, isDark, toggleTheme } = useTheme();
 
   const renderTabInfo = () => {
     if (!tabInfo) return null;
@@ -90,20 +91,36 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
         <ThemedText type="caption" style={[styles.dateText, { color: theme.textSecondary }]}>
           {getCurrentFullDate()}
         </ThemedText>
-        <Pressable
-          style={({ pressed }) => [
-            styles.avatar,
-            { opacity: pressed ? 0.7 : 1 },
-            Shadows.cardLight,
-          ]}
-          onPress={() => {}}
-        >
-          <Image
-            source={{ uri: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" }}
-            style={styles.avatarImage}
-            contentFit="cover"
-          />
-        </Pressable>
+        <View style={styles.topRowRight}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.themeToggle,
+              { backgroundColor: theme.backgroundSecondary },
+              pressed && { opacity: 0.7 },
+            ]}
+            onPress={toggleTheme}
+          >
+            <Feather
+              name={isDark ? "sun" : "moon"}
+              size={18}
+              color={theme.accent}
+            />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.avatar,
+              { opacity: pressed ? 0.7 : 1 },
+              Shadows.cardLight,
+            ]}
+            onPress={() => {}}
+          >
+            <Image
+              source={{ uri: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" }}
+              style={styles.avatarImage}
+              contentFit="cover"
+            />
+          </Pressable>
+        </View>
       </View>
 
       <Pressable 
@@ -136,9 +153,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing["2xl"],
   },
+  topRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
   dateText: {
     fontSize: 13,
     fontWeight: "500",
+  },
+  themeToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatar: {
     width: 48,
