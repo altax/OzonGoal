@@ -1,13 +1,13 @@
-import { View, Pressable, StyleSheet } from "react-native";
+import { View, Pressable, StyleSheet, LayoutChangeEvent } from "react-native";
+import { useState } from "react";
 import Animated, {
   useAnimatedStyle,
-  useSharedValue,
   withSpring,
 } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 
 export type TabKey = "goals" | "shifts" | "statistics" | "settings";
 
@@ -19,7 +19,7 @@ interface Tab {
 const tabs: Tab[] = [
   { key: "goals", label: "Цели" },
   { key: "shifts", label: "Смены" },
-  { key: "statistics", label: "Статистика" },
+  { key: "statistics", label: "Обзор" },
   { key: "settings", label: "Профиль" },
 ];
 
@@ -28,74 +28,68 @@ interface SegmentedTabsProps {
   onTabChange: (tab: TabKey) => void;
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-function TabItem({
-  tab,
-  isActive,
-  onPress,
-}: {
-  tab: Tab;
-  isActive: boolean;
-  onPress: () => void;
-}) {
-  const { theme } = useTheme();
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.95, { damping: 20, stiffness: 300 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 20, stiffness: 300 });
-  };
-
-  return (
-    <AnimatedPressable
-      style={[
-        styles.tabItem,
-        {
-          backgroundColor: isActive ? theme.tabActiveBackground : "transparent",
-        },
-        isActive && Shadows.cardLight,
-        animatedStyle,
-      ]}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
-    >
-      <ThemedText
-        style={[
-          styles.tabLabel,
-          { color: isActive ? theme.tabActiveText : theme.tabInactiveText },
-          isActive && styles.tabLabelActive,
-        ]}
-      >
-        {tab.label}
-      </ThemedText>
-    </AnimatedPressable>
-  );
+interface TabLayout {
+  x: number;
+  width: number;
 }
 
 export function SegmentedTabs({ activeTab, onTabChange }: SegmentedTabsProps) {
   const { theme } = useTheme();
+  const [tabLayouts, setTabLayouts] = useState<Record<TabKey, TabLayout>>({} as Record<TabKey, TabLayout>);
+
+  const activeIndex = tabs.findIndex((t) => t.key === activeTab);
+  const activeLayout = tabLayouts[activeTab];
+
+  const indicatorStyle = useAnimatedStyle(() => {
+    if (!activeLayout) {
+      return { opacity: 0 };
+    }
+    return {
+      opacity: 1,
+      transform: [{ translateX: withSpring(activeLayout.x, { damping: 20, stiffness: 200 }) }],
+      width: withSpring(activeLayout.width, { damping: 20, stiffness: 200 }),
+    };
+  }, [activeLayout]);
+
+  const handleTabLayout = (key: TabKey, event: LayoutChangeEvent) => {
+    const { x, width } = event.nativeEvent.layout;
+    setTabLayouts((prev) => ({
+      ...prev,
+      [key]: { x, width },
+    }));
+  };
 
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.container, { backgroundColor: theme.backgroundSecondary }]}>
-        {tabs.map((tab) => (
-          <TabItem
-            key={tab.key}
-            tab={tab}
-            isActive={activeTab === tab.key}
-            onPress={() => onTabChange(tab.key)}
-          />
-        ))}
+      <View style={styles.container}>
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <Pressable
+              key={tab.key}
+              style={styles.tabItem}
+              onPress={() => onTabChange(tab.key)}
+              onLayout={(e) => handleTabLayout(tab.key, e)}
+            >
+              <ThemedText
+                style={[
+                  styles.tabLabel,
+                  { color: isActive ? theme.accent : theme.textSecondary },
+                  isActive && styles.tabLabelActive,
+                ]}
+              >
+                {tab.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+        <Animated.View
+          style={[
+            styles.indicator,
+            { backgroundColor: theme.accent },
+            indicatorStyle,
+          ]}
+        />
       </View>
     </View>
   );
@@ -107,25 +101,28 @@ const styles = StyleSheet.create({
   },
   container: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
-    borderRadius: BorderRadius.xs,
-    padding: 3,
-    gap: 2,
+    position: "relative",
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: 6,
+    paddingHorizontal: Spacing.xs,
   },
   tabLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
   },
   tabLabelActive: {
     fontWeight: "600",
+  },
+  indicator: {
+    position: "absolute",
+    bottom: 0,
+    height: 2,
+    borderRadius: 1,
   },
 });
