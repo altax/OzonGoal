@@ -10,6 +10,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -71,6 +72,21 @@ function isTomorrow(date: Date): boolean {
 }
 
 export function AddShiftModal({ visible, onClose }: AddShiftModalProps) {
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <ThemeProvider>
+        <AddShiftModalContent onClose={onClose} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function AddShiftModalContent({ onClose }: { onClose: () => void }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const createShift = useCreateShift();
@@ -112,65 +128,105 @@ export function AddShiftModal({ visible, onClose }: AddShiftModalProps) {
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-    >
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.closeButton,
-              { backgroundColor: theme.backgroundSecondary },
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={handleClose}
-          >
-            <Feather name="x" size={20} color={theme.text} />
-          </Pressable>
-          <ThemedText type="h4" style={styles.headerTitle}>
-            Новая смена
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.closeButton,
+            { backgroundColor: theme.backgroundSecondary },
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={handleClose}
+        >
+          <Feather name="x" size={20} color={theme.text} />
+        </Pressable>
+        <ThemedText type="h4" style={styles.headerTitle}>
+          Новая смена
+        </ThemedText>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            ТИП ОПЕРАЦИИ
           </ThemedText>
-          <View style={styles.headerSpacer} />
+          <View style={styles.optionsRow}>
+            {operationTypes.map((option) => {
+              const isSelected = operationType === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={({ pressed }) => [
+                    styles.optionButton,
+                    {
+                      backgroundColor: isSelected
+                        ? theme.accent
+                        : theme.backgroundDefault,
+                      borderColor: isSelected ? theme.accent : theme.border,
+                    },
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => {
+                    setOperationType(option.value);
+                    setError("");
+                  }}
+                >
+                  <Feather
+                    name={option.icon}
+                    size={20}
+                    color={isSelected ? "#FFFFFF" : theme.accent}
+                  />
+                  <ThemedText
+                    type="body"
+                    style={[
+                      styles.optionLabel,
+                      { color: isSelected ? "#FFFFFF" : theme.text },
+                    ]}
+                  >
+                    {option.label}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              ТИП ОПЕРАЦИИ
-            </ThemedText>
-            <View style={styles.optionsRow}>
-              {operationTypes.map((option) => {
-                const isSelected = operationType === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    style={({ pressed }) => [
-                      styles.optionButton,
-                      {
-                        backgroundColor: isSelected
-                          ? theme.accent
-                          : theme.backgroundDefault,
-                        borderColor: isSelected ? theme.accent : theme.border,
-                      },
-                      pressed && { opacity: 0.8 },
-                    ]}
-                    onPress={() => {
-                      setOperationType(option.value);
-                      setError("");
-                    }}
-                  >
-                    <Feather
-                      name={option.icon}
-                      size={20}
-                      color={isSelected ? "#FFFFFF" : theme.accent}
-                    />
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            ВРЕМЯ СМЕНЫ
+          </ThemedText>
+          <View style={styles.optionsRow}>
+            {shiftTypes.map((option) => {
+              const isSelected = shiftType === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={({ pressed }) => [
+                    styles.optionButton,
+                    {
+                      backgroundColor: isSelected
+                        ? theme.accent
+                        : theme.backgroundDefault,
+                      borderColor: isSelected ? theme.accent : theme.border,
+                    },
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => {
+                    setShiftType(option.value);
+                    setError("");
+                  }}
+                >
+                  <Feather
+                    name={option.icon}
+                    size={20}
+                    color={isSelected ? "#FFFFFF" : theme.accent}
+                  />
+                  <View style={styles.optionTextContainer}>
                     <ThemedText
                       type="body"
                       style={[
@@ -180,185 +236,138 @@ export function AddShiftModal({ visible, onClose }: AddShiftModalProps) {
                     >
                       {option.label}
                     </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              ВРЕМЯ СМЕНЫ
-            </ThemedText>
-            <View style={styles.optionsRow}>
-              {shiftTypes.map((option) => {
-                const isSelected = shiftType === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    style={({ pressed }) => [
-                      styles.optionButton,
-                      {
-                        backgroundColor: isSelected
-                          ? theme.accent
-                          : theme.backgroundDefault,
-                        borderColor: isSelected ? theme.accent : theme.border,
-                      },
-                      pressed && { opacity: 0.8 },
-                    ]}
-                    onPress={() => {
-                      setShiftType(option.value);
-                      setError("");
-                    }}
-                  >
-                    <Feather
-                      name={option.icon}
-                      size={20}
-                      color={isSelected ? "#FFFFFF" : theme.accent}
-                    />
-                    <View style={styles.optionTextContainer}>
-                      <ThemedText
-                        type="body"
-                        style={[
-                          styles.optionLabel,
-                          { color: isSelected ? "#FFFFFF" : theme.text },
-                        ]}
-                      >
-                        {option.label}
-                      </ThemedText>
-                      <ThemedText
-                        type="caption"
-                        style={[
-                          styles.optionTime,
-                          { color: isSelected ? "rgba(255,255,255,0.8)" : theme.textSecondary },
-                        ]}
-                      >
-                        {option.time}
-                      </ThemedText>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              ДАТА
-            </ThemedText>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.dateScroll}
-              contentContainerStyle={styles.dateScrollContent}
-            >
-              {nextDays.map((date, index) => {
-                const isSelected = date.toDateString() === selectedDate.toDateString();
-                const today = isToday(date);
-                const tomorrow = isTomorrow(date);
-                
-                return (
-                  <Pressable
-                    key={index}
-                    style={({ pressed }) => [
-                      styles.dateOption,
-                      {
-                        backgroundColor: isSelected
-                          ? theme.accent
-                          : theme.backgroundDefault,
-                        borderColor: isSelected ? theme.accent : theme.border,
-                      },
-                      pressed && { opacity: 0.8 },
-                    ]}
-                    onPress={() => {
-                      setSelectedDate(date);
-                      setError("");
-                    }}
-                  >
                     <ThemedText
                       type="caption"
                       style={[
-                        styles.dateDayName,
+                        styles.optionTime,
                         { color: isSelected ? "rgba(255,255,255,0.8)" : theme.textSecondary },
                       ]}
                     >
-                      {today ? "Сегодня" : tomorrow ? "Завтра" : formatDateShort(date).split(",")[0]}
+                      {option.time}
                     </ThemedText>
-                    <ThemedText
-                      type="h4"
-                      style={[
-                        styles.dateDay,
-                        { color: isSelected ? "#FFFFFF" : theme.text },
-                      ]}
-                    >
-                      {date.getDate()}
-                    </ThemedText>
-                    <ThemedText
-                      type="caption"
-                      style={[
-                        styles.dateMonth,
-                        { color: isSelected ? "rgba(255,255,255,0.8)" : theme.textSecondary },
-                      ]}
-                    >
-                      {formatDateFull(date).split(" ")[1].substring(0, 3)}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
-
-          {error ? (
-            <View style={[styles.errorContainer, { backgroundColor: theme.errorLight }]}>
-              <Feather name="alert-circle" size={16} color={theme.error} />
-              <ThemedText type="small" style={[styles.errorText, { color: theme.error }]}>
-                {error}
-              </ThemedText>
-            </View>
-          ) : null}
-        </ScrollView>
-
-        <View
-          style={[
-            styles.footer,
-            {
-              backgroundColor: theme.backgroundRoot,
-              paddingBottom: insets.bottom + Spacing.lg,
-            },
-          ]}
-        >
-          <Pressable
-            style={({ pressed }) => [
-              styles.submitButton,
-              { backgroundColor: theme.accent },
-              Shadows.fab,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-              createShift.isPending && { opacity: 0.7 },
-            ]}
-            onPress={handleSubmit}
-            disabled={createShift.isPending}
-          >
-            {createShift.isPending ? (
-              <ThemedText style={[styles.submitButtonText, { color: theme.buttonText }]}>
-                Создание...
-              </ThemedText>
-            ) : (
-              <>
-                <Feather
-                  name="check"
-                  size={18}
-                  color={theme.buttonText}
-                  style={styles.submitButtonIcon}
-                />
-                <ThemedText style={[styles.submitButtonText, { color: theme.buttonText }]}>
-                  Запланировать смену
-                </ThemedText>
-              </>
-            )}
-          </Pressable>
         </View>
+
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            ДАТА
+          </ThemedText>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.dateScroll}
+            contentContainerStyle={styles.dateScrollContent}
+          >
+            {nextDays.map((date, index) => {
+              const isSelected = date.toDateString() === selectedDate.toDateString();
+              const today = isToday(date);
+              const tomorrow = isTomorrow(date);
+              
+              return (
+                <Pressable
+                  key={index}
+                  style={({ pressed }) => [
+                    styles.dateOption,
+                    {
+                      backgroundColor: isSelected
+                        ? theme.accent
+                        : theme.backgroundDefault,
+                      borderColor: isSelected ? theme.accent : theme.border,
+                    },
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => {
+                    setSelectedDate(date);
+                    setError("");
+                  }}
+                >
+                  <ThemedText
+                    type="caption"
+                    style={[
+                      styles.dateDayName,
+                      { color: isSelected ? "rgba(255,255,255,0.8)" : theme.textSecondary },
+                    ]}
+                  >
+                    {today ? "Сегодня" : tomorrow ? "Завтра" : formatDateShort(date).split(",")[0]}
+                  </ThemedText>
+                  <ThemedText
+                    type="h4"
+                    style={[
+                      styles.dateDay,
+                      { color: isSelected ? "#FFFFFF" : theme.text },
+                    ]}
+                  >
+                    {date.getDate()}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={[
+                      styles.dateMonth,
+                      { color: isSelected ? "rgba(255,255,255,0.8)" : theme.textSecondary },
+                    ]}
+                  >
+                    {formatDateFull(date).split(" ")[1].substring(0, 3)}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {error ? (
+          <View style={[styles.errorContainer, { backgroundColor: theme.errorLight }]}>
+            <Feather name="alert-circle" size={16} color={theme.error} />
+            <ThemedText type="small" style={[styles.errorText, { color: theme.error }]}>
+              {error}
+            </ThemedText>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.backgroundRoot,
+            paddingBottom: insets.bottom + Spacing.lg,
+          },
+        ]}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            styles.submitButton,
+            { backgroundColor: theme.accent },
+            Shadows.fab,
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            createShift.isPending && { opacity: 0.7 },
+          ]}
+          onPress={handleSubmit}
+          disabled={createShift.isPending}
+        >
+          {createShift.isPending ? (
+            <ThemedText style={[styles.submitButtonText, { color: theme.buttonText }]}>
+              Создание...
+            </ThemedText>
+          ) : (
+            <>
+              <Feather
+                name="check"
+                size={18}
+                color={theme.buttonText}
+                style={styles.submitButtonIcon}
+              />
+              <ThemedText style={[styles.submitButtonText, { color: theme.buttonText }]}>
+                Запланировать смену
+              </ThemedText>
+            </>
+          )}
+        </Pressable>
       </View>
-    </Modal>
+    </View>
   );
 }
 

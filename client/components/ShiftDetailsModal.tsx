@@ -9,6 +9,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -54,13 +55,7 @@ function getStatusLabel(status: string): string {
 }
 
 export function ShiftDetailsModal({ visible, shift, onClose }: ShiftDetailsModalProps) {
-  const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
-
   if (!shift) return null;
-
-  const operationLabel = shift.operationType === "returns" ? "Возвраты" : "Приёмка";
-  const shiftTypeLabel = shift.shiftType === "day" ? "Дневная смена" : "Ночная смена";
 
   return (
     <Modal
@@ -69,94 +64,108 @@ export function ShiftDetailsModal({ visible, shift, onClose }: ShiftDetailsModal
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.closeButton,
-              { backgroundColor: theme.backgroundSecondary },
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={onClose}
-          >
-            <Feather name="x" size={20} color={theme.text} />
-          </Pressable>
-          <ThemedText type="h4" style={styles.headerTitle}>
-            Детали смены
-          </ThemedText>
-          <View style={styles.headerSpacer} />
+      <ThemeProvider>
+        <ShiftDetailsModalContent shift={shift} onClose={onClose} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function ShiftDetailsModalContent({ shift, onClose }: { shift: Shift; onClose: () => void }) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const operationLabel = shift.operationType === "returns" ? "Возвраты" : "Приёмка";
+  const shiftTypeLabel = shift.shiftType === "day" ? "Дневная смена" : "Ночная смена";
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.closeButton,
+            { backgroundColor: theme.backgroundSecondary },
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={onClose}
+        >
+          <Feather name="x" size={20} color={theme.text} />
+        </Pressable>
+        <ThemedText type="h4" style={styles.headerTitle}>
+          Детали смены
+        </ThemedText>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + Spacing["2xl"] }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.iconContainer, { backgroundColor: theme.accentLight }]}>
+          <Feather
+            name={shift.shiftType === "day" ? "sun" : "moon"}
+            size={32}
+            color={theme.accent}
+          />
         </View>
 
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + Spacing["2xl"] }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={[styles.iconContainer, { backgroundColor: theme.accentLight }]}>
-            <Feather
-              name={shift.shiftType === "day" ? "sun" : "moon"}
-              size={32}
-              color={theme.accent}
-            />
+        <ThemedText type="h3" style={styles.title}>
+          {operationLabel}
+        </ThemedText>
+        <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+          {shiftTypeLabel}
+        </ThemedText>
+
+        <View style={styles.detailsContainer}>
+          <View style={[styles.detailRow, { borderColor: theme.border }]}>
+            <View style={styles.detailLabel}>
+              <Feather name="calendar" size={18} color={theme.textSecondary} />
+              <ThemedText style={{ color: theme.textSecondary }}>Дата</ThemedText>
+            </View>
+            <ThemedText style={styles.detailValue}>
+              {formatDate(shift.scheduledDate)}
+            </ThemedText>
           </View>
 
-          <ThemedText type="h3" style={styles.title}>
-            {operationLabel}
-          </ThemedText>
-          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-            {shiftTypeLabel}
-          </ThemedText>
+          <View style={[styles.detailRow, { borderColor: theme.border }]}>
+            <View style={styles.detailLabel}>
+              <Feather name="clock" size={18} color={theme.textSecondary} />
+              <ThemedText style={{ color: theme.textSecondary }}>Время</ThemedText>
+            </View>
+            <ThemedText style={styles.detailValue}>
+              {formatTime(shift.scheduledStart)} - {formatTime(shift.scheduledEnd)}
+            </ThemedText>
+          </View>
 
-          <View style={styles.detailsContainer}>
-            <View style={[styles.detailRow, { borderColor: theme.border }]}>
-              <View style={styles.detailLabel}>
-                <Feather name="calendar" size={18} color={theme.textSecondary} />
-                <ThemedText style={{ color: theme.textSecondary }}>Дата</ThemedText>
-              </View>
-              <ThemedText style={styles.detailValue}>
-                {formatDate(shift.scheduledDate)}
+          <View style={[styles.detailRow, { borderColor: theme.border }]}>
+            <View style={styles.detailLabel}>
+              <Feather name="info" size={18} color={theme.textSecondary} />
+              <ThemedText style={{ color: theme.textSecondary }}>Статус</ThemedText>
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor: theme.successLight }]}>
+              <ThemedText style={[styles.statusText, { color: theme.success }]}>
+                {getStatusLabel(shift.status)}
               </ThemedText>
             </View>
+          </View>
 
-            <View style={[styles.detailRow, { borderColor: theme.border }]}>
-              <View style={styles.detailLabel}>
-                <Feather name="clock" size={18} color={theme.textSecondary} />
-                <ThemedText style={{ color: theme.textSecondary }}>Время</ThemedText>
-              </View>
-              <ThemedText style={styles.detailValue}>
-                {formatTime(shift.scheduledStart)} - {formatTime(shift.scheduledEnd)}
-              </ThemedText>
-            </View>
-
-            <View style={[styles.detailRow, { borderColor: theme.border }]}>
-              <View style={styles.detailLabel}>
-                <Feather name="info" size={18} color={theme.textSecondary} />
-                <ThemedText style={{ color: theme.textSecondary }}>Статус</ThemedText>
-              </View>
-              <View style={[styles.statusBadge, { backgroundColor: theme.successLight }]}>
-                <ThemedText style={[styles.statusText, { color: theme.success }]}>
-                  {getStatusLabel(shift.status)}
+          {shift.status === "completed" && shift.earnings && (
+            <View style={[styles.earningsContainer, { backgroundColor: theme.successLight }]}>
+              <Feather name="dollar-sign" size={24} color={theme.success} />
+              <View style={styles.earningsInfo}>
+                <ThemedText style={[styles.earningsLabel, { color: theme.success }]}>
+                  Заработок
+                </ThemedText>
+                <ThemedText style={[styles.earningsAmount, { color: theme.success }]}>
+                  {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnings))} ₽
                 </ThemedText>
               </View>
             </View>
-
-            {shift.status === "completed" && shift.earnings && (
-              <View style={[styles.earningsContainer, { backgroundColor: theme.successLight }]}>
-                <Feather name="dollar-sign" size={24} color={theme.success} />
-                <View style={styles.earningsInfo}>
-                  <ThemedText style={[styles.earningsLabel, { color: theme.success }]}>
-                    Заработок
-                  </ThemedText>
-                  <ThemedText style={[styles.earningsAmount, { color: theme.success }]}>
-                    {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnings))} ₽
-                  </ThemedText>
-                </View>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </View>
-    </Modal>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 

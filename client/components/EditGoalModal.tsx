@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -13,6 +13,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -48,27 +49,41 @@ const iconOptions: { key: string; icon: keyof typeof Feather.glyphMap; label: st
   { key: "star", icon: "star", label: "Мечта" },
 ];
 
+function formatAmountStatic(text: string): string {
+  const cleaned = text.replace(/[^\d]/g, "");
+  if (!cleaned) return "";
+  const number = parseInt(cleaned, 10);
+  return new Intl.NumberFormat("ru-RU").format(number);
+}
+
 export function EditGoalModal({ visible, goal, onClose }: EditGoalModalProps) {
+  if (!goal) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <ThemeProvider>
+        <EditGoalModalContent goal={goal} onClose={onClose} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => void }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const updateGoal = useUpdateGoal();
   const deleteGoal = useDeleteGoal();
 
-  const [name, setName] = useState("");
-  const [targetAmount, setTargetAmount] = useState("");
-  const [currentAmount, setCurrentAmount] = useState("");
-  const [selectedIcon, setSelectedIcon] = useState("target");
+  const [name, setName] = useState(goal.name);
+  const [targetAmount, setTargetAmount] = useState(formatAmountStatic(goal.targetAmount));
+  const [currentAmount, setCurrentAmount] = useState(formatAmountStatic(goal.currentAmount));
+  const [selectedIcon, setSelectedIcon] = useState(goal.iconKey || "target");
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (goal) {
-      setName(goal.name);
-      setTargetAmount(formatAmount(goal.targetAmount));
-      setCurrentAmount(formatAmount(goal.currentAmount));
-      setSelectedIcon(goal.iconKey || "target");
-      setError("");
-    }
-  }, [goal]);
 
   const handleClose = () => {
     setError("");
@@ -76,8 +91,6 @@ export function EditGoalModal({ visible, goal, onClose }: EditGoalModalProps) {
   };
 
   const handleSubmit = async () => {
-    if (!goal) return;
-
     if (!name.trim()) {
       setError("Введите название цели");
       return;
@@ -106,8 +119,6 @@ export function EditGoalModal({ visible, goal, onClose }: EditGoalModalProps) {
   };
 
   const handleDelete = () => {
-    if (!goal) return;
-
     Alert.alert(
       "Удалить цель?",
       `Вы уверены, что хотите удалить цель "${goal.name}"?`,
@@ -130,8 +141,6 @@ export function EditGoalModal({ visible, goal, onClose }: EditGoalModalProps) {
   };
 
   const handleMarkComplete = async () => {
-    if (!goal) return;
-
     try {
       await updateGoal.mutateAsync({
         id: goal.id,
@@ -155,235 +164,226 @@ export function EditGoalModal({ visible, goal, onClose }: EditGoalModalProps) {
     setError("");
   };
 
-  if (!goal) return null;
-
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-      >
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.closeButton,
-              { backgroundColor: theme.backgroundSecondary },
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={handleClose}
-          >
-            <Feather name="x" size={20} color={theme.text} />
-          </Pressable>
-          <ThemedText type="h4" style={styles.headerTitle}>
-            Редактировать
-          </ThemedText>
-          <Pressable
-            style={({ pressed }) => [
-              styles.deleteButton,
-              { backgroundColor: theme.errorLight },
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={handleDelete}
-          >
-            <Feather name="trash-2" size={18} color={theme.error} />
-          </Pressable>
-        </View>
-
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              НАЗВАНИЕ ЦЕЛИ
-            </ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.backgroundDefault,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="Например: Отпуск в Турции"
-              placeholderTextColor={theme.textSecondary}
-              value={name}
-              onChangeText={(text) => {
-                setName(text);
-                setError("");
-              }}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              ЦЕЛЕВАЯ СУММА (₽)
-            </ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.backgroundDefault,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="100 000"
-              placeholderTextColor={theme.textSecondary}
-              value={targetAmount}
-              onChangeText={handleAmountChange(setTargetAmount)}
-              keyboardType="numeric"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              НАКОПЛЕНО (₽)
-            </ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.backgroundDefault,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="0"
-              placeholderTextColor={theme.textSecondary}
-              value={currentAmount}
-              onChangeText={handleAmountChange(setCurrentAmount)}
-              keyboardType="numeric"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              ИКОНКА
-            </ThemedText>
-            <View style={styles.iconGrid}>
-              {iconOptions.map((option) => {
-                const isSelected = selectedIcon === option.key;
-                return (
-                  <Pressable
-                    key={option.key}
-                    style={({ pressed }) => [
-                      styles.iconOption,
-                      {
-                        backgroundColor: isSelected
-                          ? theme.accent
-                          : theme.backgroundDefault,
-                        borderColor: isSelected ? theme.accent : theme.border,
-                      },
-                      pressed && { opacity: 0.8 },
-                    ]}
-                    onPress={() => setSelectedIcon(option.key)}
-                  >
-                    <Feather
-                      name={option.icon}
-                      size={24}
-                      color={isSelected ? "#FFFFFF" : theme.accent}
-                    />
-                    <ThemedText
-                      type="caption"
-                      style={[
-                        styles.iconLabel,
-                        { color: isSelected ? "#FFFFFF" : theme.textSecondary },
-                      ]}
-                    >
-                      {option.label}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.statusButton,
-              { 
-                backgroundColor: goal.status === "completed" ? theme.accentLight : theme.successLight,
-                borderColor: goal.status === "completed" ? theme.accent : theme.success,
-              },
-              pressed && { opacity: 0.8 },
-            ]}
-            onPress={handleMarkComplete}
-          >
-            <Feather
-              name={goal.status === "completed" ? "rotate-ccw" : "check-circle"}
-              size={18}
-              color={goal.status === "completed" ? theme.accent : theme.success}
-            />
-            <ThemedText
-              style={[
-                styles.statusButtonText,
-                { color: goal.status === "completed" ? theme.accent : theme.success },
-              ]}
-            >
-              {goal.status === "completed" ? "Вернуть в активные" : "Отметить как завершённую"}
-            </ThemedText>
-          </Pressable>
-
-          {error ? (
-            <View style={[styles.errorContainer, { backgroundColor: theme.errorLight }]}>
-              <Feather name="alert-circle" size={16} color={theme.error} />
-              <ThemedText type="small" style={[styles.errorText, { color: theme.error }]}>
-                {error}
-              </ThemedText>
-            </View>
-          ) : null}
-        </ScrollView>
-
-        <View
-          style={[
-            styles.footer,
-            {
-              backgroundColor: theme.backgroundRoot,
-              paddingBottom: insets.bottom + Spacing.lg,
-            },
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.closeButton,
+            { backgroundColor: theme.backgroundSecondary },
+            pressed && { opacity: 0.7 },
           ]}
+          onPress={handleClose}
         >
-          <Pressable
-            style={({ pressed }) => [
-              styles.submitButton,
-              { backgroundColor: theme.accent },
-              Shadows.fab,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-              updateGoal.isPending && { opacity: 0.7 },
+          <Feather name="x" size={20} color={theme.text} />
+        </Pressable>
+        <ThemedText type="h4" style={styles.headerTitle}>
+          Редактировать
+        </ThemedText>
+        <Pressable
+          style={({ pressed }) => [
+            styles.deleteButton,
+            { backgroundColor: theme.errorLight },
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={handleDelete}
+        >
+          <Feather name="trash-2" size={18} color={theme.error} />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            НАЗВАНИЕ ЦЕЛИ
+          </ThemedText>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.backgroundDefault,
+                color: theme.text,
+                borderColor: theme.border,
+              },
             ]}
-            onPress={handleSubmit}
-            disabled={updateGoal.isPending}
-          >
-            {updateGoal.isPending ? (
-              <ThemedText style={[styles.submitButtonText, { color: theme.buttonText }]}>
-                Сохранение...
-              </ThemedText>
-            ) : (
-              <>
-                <Feather
-                  name="check"
-                  size={18}
-                  color={theme.buttonText}
-                  style={styles.submitButtonIcon}
-                />
-                <ThemedText style={[styles.submitButtonText, { color: theme.buttonText }]}>
-                  Сохранить изменения
-                </ThemedText>
-              </>
-            )}
-          </Pressable>
+            placeholder="Например: Отпуск в Турции"
+            placeholderTextColor={theme.textSecondary}
+            value={name}
+            onChangeText={(text) => {
+              setName(text);
+              setError("");
+            }}
+          />
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            ЦЕЛЕВАЯ СУММА (₽)
+          </ThemedText>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.backgroundDefault,
+                color: theme.text,
+                borderColor: theme.border,
+              },
+            ]}
+            placeholder="100 000"
+            placeholderTextColor={theme.textSecondary}
+            value={targetAmount}
+            onChangeText={handleAmountChange(setTargetAmount)}
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            НАКОПЛЕНО (₽)
+          </ThemedText>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.backgroundDefault,
+                color: theme.text,
+                borderColor: theme.border,
+              },
+            ]}
+            placeholder="0"
+            placeholderTextColor={theme.textSecondary}
+            value={currentAmount}
+            onChangeText={handleAmountChange(setCurrentAmount)}
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            ИКОНКА
+          </ThemedText>
+          <View style={styles.iconGrid}>
+            {iconOptions.map((option) => {
+              const isSelected = selectedIcon === option.key;
+              return (
+                <Pressable
+                  key={option.key}
+                  style={({ pressed }) => [
+                    styles.iconOption,
+                    {
+                      backgroundColor: isSelected
+                        ? theme.accent
+                        : theme.backgroundDefault,
+                      borderColor: isSelected ? theme.accent : theme.border,
+                    },
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => setSelectedIcon(option.key)}
+                >
+                  <Feather
+                    name={option.icon}
+                    size={24}
+                    color={isSelected ? "#FFFFFF" : theme.accent}
+                  />
+                  <ThemedText
+                    type="caption"
+                    style={[
+                      styles.iconLabel,
+                      { color: isSelected ? "#FFFFFF" : theme.textSecondary },
+                    ]}
+                  >
+                    {option.label}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.statusButton,
+            { 
+              backgroundColor: goal.status === "completed" ? theme.accentLight : theme.successLight,
+              borderColor: goal.status === "completed" ? theme.accent : theme.success,
+            },
+            pressed && { opacity: 0.8 },
+          ]}
+          onPress={handleMarkComplete}
+        >
+          <Feather
+            name={goal.status === "completed" ? "rotate-ccw" : "check-circle"}
+            size={18}
+            color={goal.status === "completed" ? theme.accent : theme.success}
+          />
+          <ThemedText
+            style={[
+              styles.statusButtonText,
+              { color: goal.status === "completed" ? theme.accent : theme.success },
+            ]}
+          >
+            {goal.status === "completed" ? "Вернуть в активные" : "Отметить как завершённую"}
+          </ThemedText>
+        </Pressable>
+
+        {error ? (
+          <View style={[styles.errorContainer, { backgroundColor: theme.errorLight }]}>
+            <Feather name="alert-circle" size={16} color={theme.error} />
+            <ThemedText type="small" style={[styles.errorText, { color: theme.error }]}>
+              {error}
+            </ThemedText>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.backgroundRoot,
+            paddingBottom: insets.bottom + Spacing.lg,
+          },
+        ]}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            styles.submitButton,
+            { backgroundColor: theme.accent },
+            Shadows.fab,
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            updateGoal.isPending && { opacity: 0.7 },
+          ]}
+          onPress={handleSubmit}
+          disabled={updateGoal.isPending}
+        >
+          {updateGoal.isPending ? (
+            <ThemedText style={[styles.submitButtonText, { color: theme.buttonText }]}>
+              Сохранение...
+            </ThemedText>
+          ) : (
+            <>
+              <Feather
+                name="check"
+                size={18}
+                color={theme.buttonText}
+                style={styles.submitButtonIcon}
+              />
+              <ThemedText style={[styles.submitButtonText, { color: theme.buttonText }]}>
+                Сохранить изменения
+              </ThemedText>
+            </>
+          )}
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

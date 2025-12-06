@@ -12,6 +12,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -32,6 +33,23 @@ interface RecordEarningsModalProps {
 }
 
 export function RecordEarningsModal({ visible, shift, onClose }: RecordEarningsModalProps) {
+  if (!shift) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <ThemeProvider>
+        <RecordEarningsModalContent shift={shift} onClose={onClose} visible={visible} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift; onClose: () => void; visible: boolean }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const recordEarnings = useRecordEarnings();
@@ -81,8 +99,6 @@ export function RecordEarningsModal({ visible, shift, onClose }: RecordEarningsM
   const remaining = earnedAmount - totalAllocated;
 
   const handleSubmit = async () => {
-    if (!shift) return;
-
     if (earnedAmount <= 0) {
       setError("Введите сумму заработка");
       return;
@@ -113,7 +129,6 @@ export function RecordEarningsModal({ visible, shift, onClose }: RecordEarningsM
   };
 
   const formatShiftInfo = () => {
-    if (!shift) return "";
     const date = new Date(shift.scheduledDate);
     const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
     const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
@@ -125,182 +140,173 @@ export function RecordEarningsModal({ visible, shift, onClose }: RecordEarningsM
     return `${operation} • ${dayName}, ${day} ${month} • ${time}`;
   };
 
-  if (!shift) return null;
-
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.closeButton,
+            { backgroundColor: theme.backgroundSecondary },
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={onClose}
+        >
+          <Feather name="x" size={20} color={theme.text} />
+        </Pressable>
+        <ThemedText type="h4" style={styles.headerTitle}>
+          Записать заработок
+        </ThemedText>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.closeButton,
-              { backgroundColor: theme.backgroundSecondary },
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={onClose}
-          >
-            <Feather name="x" size={20} color={theme.text} />
-          </Pressable>
-          <ThemedText type="h4" style={styles.headerTitle}>
-            Записать заработок
+        <View style={[styles.shiftInfo, { backgroundColor: theme.accentLight }]}>
+          <Feather 
+            name={shift.shiftType === "day" ? "sun" : "moon"} 
+            size={18} 
+            color={theme.accent} 
+          />
+          <ThemedText style={[styles.shiftInfoText, { color: theme.accent }]}>
+            {formatShiftInfo()}
           </ThemedText>
-          <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={[styles.shiftInfo, { backgroundColor: theme.accentLight }]}>
-            <Feather 
-              name={shift.shiftType === "day" ? "sun" : "moon"} 
-              size={18} 
-              color={theme.accent} 
-            />
-            <ThemedText style={[styles.shiftInfoText, { color: theme.accent }]}>
-              {formatShiftInfo()}
-            </ThemedText>
-          </View>
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            СУММА ЗАРАБОТКА (₽)
+          </ThemedText>
+          <TextInput
+            style={[
+              styles.input,
+              styles.largeInput,
+              {
+                backgroundColor: theme.backgroundDefault,
+                color: theme.text,
+                borderColor: theme.border,
+              },
+            ]}
+            placeholder="0"
+            placeholderTextColor={theme.textSecondary}
+            value={amount}
+            onChangeText={handleAmountChange}
+            keyboardType="numeric"
+            autoFocus
+          />
+        </View>
 
+        {activeGoals.length > 0 && earnedAmount > 0 && (
           <View style={styles.inputGroup}>
             <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              СУММА ЗАРАБОТКА (₽)
+              РАСПРЕДЕЛИТЬ ПО ЦЕЛЯМ
             </ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                styles.largeInput,
-                {
-                  backgroundColor: theme.backgroundDefault,
-                  color: theme.text,
-                  borderColor: theme.border,
-                },
-              ]}
-              placeholder="0"
-              placeholderTextColor={theme.textSecondary}
-              value={amount}
-              onChangeText={handleAmountChange}
-              keyboardType="numeric"
-              autoFocus
-            />
-          </View>
 
-          {activeGoals.length > 0 && earnedAmount > 0 && (
-            <View style={styles.inputGroup}>
-              <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-                РАСПРЕДЕЛИТЬ ПО ЦЕЛЯМ
+            <View style={[styles.summaryRow, { backgroundColor: theme.backgroundDefault }]}>
+              <ThemedText style={{ color: theme.textSecondary }}>
+                Нераспределено:
               </ThemedText>
+              <ThemedText 
+                style={{ 
+                  color: remaining >= 0 ? theme.success : theme.error,
+                  fontWeight: "600",
+                }}
+              >
+                {new Intl.NumberFormat("ru-RU").format(remaining)} ₽
+              </ThemedText>
+            </View>
 
-              <View style={[styles.summaryRow, { backgroundColor: theme.backgroundDefault }]}>
-                <ThemedText style={{ color: theme.textSecondary }}>
-                  Нераспределено:
-                </ThemedText>
-                <ThemedText 
-                  style={{ 
-                    color: remaining >= 0 ? theme.success : theme.error,
-                    fontWeight: "600",
-                  }}
-                >
-                  {new Intl.NumberFormat("ru-RU").format(remaining)} ₽
-                </ThemedText>
-              </View>
+            {activeGoals.map((goal) => {
+              const currentAmount = parseFloat(goal.currentAmount) || 0;
+              const targetAmount = parseFloat(goal.targetAmount) || 0;
+              const goalRemaining = targetAmount - currentAmount;
+              const progress = targetAmount > 0 ? Math.round((currentAmount / targetAmount) * 100) : 0;
 
-              {activeGoals.map((goal) => {
-                const currentAmount = parseFloat(goal.currentAmount) || 0;
-                const targetAmount = parseFloat(goal.targetAmount) || 0;
-                const remaining = targetAmount - currentAmount;
-                const progress = targetAmount > 0 ? Math.round((currentAmount / targetAmount) * 100) : 0;
-
-                return (
-                  <View key={goal.id} style={[styles.goalAllocation, { borderColor: theme.border }]}>
-                    <View style={styles.goalHeader}>
-                      <ThemedText style={styles.goalName}>{goal.name}</ThemedText>
-                      <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                        {progress}% • осталось {new Intl.NumberFormat("ru-RU").format(remaining)} ₽
-                      </ThemedText>
-                    </View>
-                    <TextInput
-                      style={[
-                        styles.allocationInput,
-                        {
-                          backgroundColor: theme.backgroundDefault,
-                          color: theme.text,
-                          borderColor: theme.border,
-                        },
-                      ]}
-                      placeholder="0"
-                      placeholderTextColor={theme.textSecondary}
-                      value={allocations[goal.id] || ""}
-                      onChangeText={(text) => handleAllocationChange(goal.id, text)}
-                      keyboardType="numeric"
-                    />
+              return (
+                <View key={goal.id} style={[styles.goalAllocation, { borderColor: theme.border }]}>
+                  <View style={styles.goalHeader}>
+                    <ThemedText style={styles.goalName}>{goal.name}</ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {progress}% • осталось {new Intl.NumberFormat("ru-RU").format(goalRemaining)} ₽
+                    </ThemedText>
                   </View>
-                );
-              })}
-            </View>
-          )}
+                  <TextInput
+                    style={[
+                      styles.allocationInput,
+                      {
+                        backgroundColor: theme.backgroundDefault,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                    placeholder="0"
+                    placeholderTextColor={theme.textSecondary}
+                    value={allocations[goal.id] || ""}
+                    onChangeText={(text) => handleAllocationChange(goal.id, text)}
+                    keyboardType="numeric"
+                  />
+                </View>
+              );
+            })}
+          </View>
+        )}
 
-          {error ? (
-            <View style={[styles.errorContainer, { backgroundColor: theme.errorLight }]}>
-              <Feather name="alert-circle" size={16} color={theme.error} />
-              <ThemedText type="small" style={[styles.errorText, { color: theme.error }]}>
-                {error}
-              </ThemedText>
-            </View>
-          ) : null}
-        </ScrollView>
+        {error ? (
+          <View style={[styles.errorContainer, { backgroundColor: theme.errorLight }]}>
+            <Feather name="alert-circle" size={16} color={theme.error} />
+            <ThemedText type="small" style={[styles.errorText, { color: theme.error }]}>
+              {error}
+            </ThemedText>
+          </View>
+        ) : null}
+      </ScrollView>
 
-        <View
-          style={[
-            styles.footer,
-            {
-              backgroundColor: theme.backgroundRoot,
-              paddingBottom: insets.bottom + Spacing.lg,
-            },
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.backgroundRoot,
+            paddingBottom: insets.bottom + Spacing.lg,
+          },
+        ]}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            styles.submitButton,
+            { backgroundColor: theme.success },
+            Shadows.fab,
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            recordEarnings.isPending && { opacity: 0.7 },
           ]}
+          onPress={handleSubmit}
+          disabled={recordEarnings.isPending}
         >
-          <Pressable
-            style={({ pressed }) => [
-              styles.submitButton,
-              { backgroundColor: theme.success },
-              Shadows.fab,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-              recordEarnings.isPending && { opacity: 0.7 },
-            ]}
-            onPress={handleSubmit}
-            disabled={recordEarnings.isPending}
-          >
-            {recordEarnings.isPending ? (
+          {recordEarnings.isPending ? (
+            <ThemedText style={[styles.submitButtonText, { color: "#FFFFFF" }]}>
+              Сохранение...
+            </ThemedText>
+          ) : (
+            <>
+              <Feather
+                name="check"
+                size={18}
+                color="#FFFFFF"
+                style={styles.submitButtonIcon}
+              />
               <ThemedText style={[styles.submitButtonText, { color: "#FFFFFF" }]}>
-                Сохранение...
+                Записать заработок
               </ThemedText>
-            ) : (
-              <>
-                <Feather
-                  name="check"
-                  size={18}
-                  color="#FFFFFF"
-                  style={styles.submitButtonIcon}
-                />
-                <ThemedText style={[styles.submitButtonText, { color: "#FFFFFF" }]}>
-                  Записать заработок
-                </ThemedText>
-              </>
-            )}
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+            </>
+          )}
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

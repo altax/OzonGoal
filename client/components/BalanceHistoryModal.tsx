@@ -9,6 +9,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -42,6 +43,21 @@ function formatBalance(amount: number): string {
 }
 
 export function BalanceHistoryModal({ visible, onClose }: BalanceHistoryModalProps) {
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <ThemeProvider>
+        <BalanceHistoryModalContent onClose={onClose} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function BalanceHistoryModalContent({ onClose }: { onClose: () => void }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { data: history, isLoading } = useBalanceHistory();
@@ -96,56 +112,49 @@ export function BalanceHistoryModal({ visible, onClose }: BalanceHistoryModalPro
   );
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.closeButton,
-              { backgroundColor: theme.backgroundSecondary },
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={onClose}
-          >
-            <Feather name="x" size={20} color={theme.text} />
-          </Pressable>
-          <ThemedText type="h4" style={styles.headerTitle}>
-            История баланса
-          </ThemedText>
-          <View style={styles.placeholder} />
-        </View>
-
-        <View style={[styles.balanceCard, { backgroundColor: theme.accent }]}>
-          <ThemedText style={styles.balanceLabel}>Текущий баланс</ThemedText>
-          <ThemedText style={styles.balanceValue}>
-            {formatBalance(user?.balance || 0)} ₽
-          </ThemedText>
-        </View>
-
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ThemedText style={{ color: theme.textSecondary }}>
-              Загрузка...
-            </ThemedText>
-          </View>
-        ) : (
-          <FlatList
-            data={history || []}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={renderEmpty}
-            ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
-          />
-        )}
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.closeButton,
+            { backgroundColor: theme.backgroundSecondary },
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={onClose}
+        >
+          <Feather name="x" size={20} color={theme.text} />
+        </Pressable>
+        <ThemedText type="h4" style={styles.headerTitle}>
+          История баланса
+        </ThemedText>
+        <View style={styles.placeholder} />
       </View>
-    </Modal>
+
+      <View style={[styles.balanceCard, { backgroundColor: theme.accent }]}>
+        <ThemedText style={styles.balanceLabel}>Текущий баланс</ThemedText>
+        <ThemedText style={styles.balanceValue}>
+          {formatBalance(parseFloat(user?.balance as string) || 0)} ₽
+        </ThemedText>
+      </View>
+
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ThemedText style={{ color: theme.textSecondary }}>
+            Загрузка...
+          </ThemedText>
+        </View>
+      ) : (
+        <FlatList
+          data={history || []}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={renderEmpty}
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
+        />
+      )}
+    </View>
   );
 }
 
