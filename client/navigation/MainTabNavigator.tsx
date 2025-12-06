@@ -40,7 +40,7 @@ export default function MainTabNavigator() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-      <View style={[styles.header, { paddingTop: insets.top + Spacing["2xl"] }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <BalanceHeader balance={24580} lastShiftIncome={3200} />
         <SegmentedTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </View>
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    marginTop: Spacing["2xl"],
+    marginTop: Spacing.lg,
     borderTopLeftRadius: BorderRadius["2xl"],
     borderTopRightRadius: BorderRadius["2xl"],
   },
