@@ -97,8 +97,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge }: GoalC
     <AnimatedPressable
       style={[
         styles.container,
-        { backgroundColor: theme.backgroundDefault },
-        !isDark && Shadows.card,
+        { backgroundColor: theme.backgroundContent, borderColor: theme.border },
         animatedStyle,
         isCompleted && { opacity: 0.7 },
       ]}
@@ -195,8 +194,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: Spacing.xl,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing["2xl"],
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    marginBottom: Spacing.lg,
     position: "relative",
   },
   primaryBadge: {

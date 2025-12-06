@@ -57,7 +57,9 @@ export default function GoalsScreen() {
   }));
 
   const handleTabLayout = (e: LayoutChangeEvent) => {
-    const width = e.nativeEvent.layout.width / 2;
+    const totalWidth = e.nativeEvent.layout.width;
+    const padding = 3;
+    const width = (totalWidth - padding * 2) / 2;
     setTabWidth(width);
   };
 
@@ -84,7 +86,7 @@ export default function GoalsScreen() {
             <Animated.View 
               style={[
                 styles.filterIndicator, 
-                { backgroundColor: theme.backgroundContent, width: tabWidth || "50%" },
+                { backgroundColor: theme.backgroundContent, width: tabWidth > 0 ? tabWidth : "48%" },
                 animatedIndicatorStyle,
               ]} 
             />
@@ -219,7 +221,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 3,
     bottom: 3,
-    left: 0,
+    left: 3,
     borderRadius: BorderRadius.xs - 2,
   },
   filterButton: {

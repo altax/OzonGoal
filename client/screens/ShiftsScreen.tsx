@@ -1,7 +1,13 @@
-import { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { useState, useMemo } from "react";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
@@ -13,10 +19,27 @@ import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const BUTTON_AREA_HEIGHT = 72;
 
-function formatShiftDate(date: Date): string {
+type ShiftFilter = "scheduled" | "completed";
+
+function getSmartDateLabel(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const shiftDate = new Date(date);
+  const shiftDay = new Date(shiftDate.getFullYear(), shiftDate.getMonth(), shiftDate.getDate());
+  
+  if (shiftDay.getTime() === today.getTime()) {
+    return "Сегодня";
+  }
+  if (shiftDay.getTime() === tomorrow.getTime()) {
+    return "Завтра";
+  }
+  
   const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
   const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
-  return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`;
+  return `${days[shiftDate.getDay()]}, ${shiftDate.getDate()} ${months[shiftDate.getMonth()]}`;
 }
 
 function formatShiftTime(shiftType: string): string {
@@ -62,19 +85,178 @@ export default function ShiftsScreen() {
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [selectedShiftForEarnings, setSelectedShiftForEarnings] = useState<ShiftType | null>(null);
   const [selectedShiftForDetails, setSelectedShiftForDetails] = useState<ShiftType | null>(null);
+  const [filter, setFilter] = useState<ShiftFilter>("scheduled");
   const { data: shifts, isLoading } = useShifts();
+  
+  const [tabWidth, setTabWidth] = useState(0);
+  const indicatorPosition = useSharedValue(0);
+  
+  const handleFilterChange = (newFilter: ShiftFilter) => {
+    indicatorPosition.value = withTiming(newFilter === "scheduled" ? 0 : 1, {
+      duration: 200,
+      easing: Easing.bezier(0.4, 0, 0.2, 1),
+    });
+    setFilter(newFilter);
+  };
+  
+  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorPosition.value * tabWidth }],
+  }));
 
-  const hasShifts = shifts && shifts.length > 0;
+  const handleTabLayout = (e: LayoutChangeEvent) => {
+    const totalWidth = e.nativeEvent.layout.width;
+    const padding = 3;
+    const width = (totalWidth - padding * 2) / 2;
+    setTabWidth(width);
+  };
+
+  const { currentShift, scheduledShifts, completedShifts } = useMemo(() => {
+    if (!shifts) return { currentShift: null, scheduledShifts: [], completedShifts: [] };
+    
+    const current = shifts.find(s => s.status === "in_progress") || null;
+    const scheduled = shifts.filter(s => s.status === "scheduled").sort((a, b) => 
+      new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
+    );
+    const completed = shifts.filter(s => s.status === "completed" || s.status === "canceled").sort((a, b) => 
+      new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
+    );
+    
+    return { currentShift: current, scheduledShifts: scheduled, completedShifts: completed };
+  }, [shifts]);
+
+  const displayShifts = filter === "scheduled" ? scheduledShifts : completedShifts;
+  const hasShiftsInCurrentTab = filter === "scheduled" 
+    ? (displayShifts.length > 0 || currentShift !== null)
+    : displayShifts.length > 0;
+  const hasAnyShifts = shifts && shifts.length > 0;
+
+  const renderShiftCard = (shift: any, isCurrentShift: boolean = false) => {
+    const isCompleted = shift.status === "completed";
+    const canRecordEarnings = isCompleted && !shift.earnings;
+    const shiftData = shift as ShiftType;
+    
+    return (
+      <Pressable
+        key={shift.id}
+        style={({ pressed }) => [
+          styles.shiftCard,
+          { backgroundColor: theme.backgroundContent, borderColor: isCurrentShift ? theme.warning : theme.border },
+          isCurrentShift && { borderWidth: 2 },
+          pressed && { opacity: 0.8 },
+        ]}
+        onPress={() => isCompleted ? setSelectedShiftForDetails(shiftData) : setSelectedShiftForDetails(shiftData)}
+      >
+        {isCurrentShift && (
+          <View style={[styles.currentBadge, { backgroundColor: theme.warning }]}>
+            <ThemedText type="caption" style={{ color: "#FFFFFF", fontWeight: "600" }}>
+              Текущая смена
+            </ThemedText>
+          </View>
+        )}
+        <View style={styles.shiftHeader}>
+          <View style={[styles.shiftTypeIcon, { backgroundColor: isCurrentShift ? theme.warningLight : theme.accentLight }]}>
+            <Feather
+              name={shift.shiftType === "day" ? "sun" : "moon"}
+              size={18}
+              color={isCurrentShift ? theme.warning : theme.accent}
+            />
+          </View>
+          <View style={styles.shiftInfo}>
+            <ThemedText type="body" style={{ fontWeight: "600" }}>
+              {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {getSmartDateLabel(new Date(shift.scheduledDate))} • {formatShiftTime(shift.shiftType)}
+            </ThemedText>
+          </View>
+          {!isCurrentShift && (
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
+              <ThemedText type="caption" style={{ color: getStatusColor(shift.status, theme), fontWeight: "500" }}>
+                {getStatusLabel(shift.status)}
+              </ThemedText>
+            </View>
+          )}
+        </View>
+        {canRecordEarnings && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.recordEarningsButton,
+              { backgroundColor: theme.success },
+              pressed && { opacity: 0.8 },
+            ]}
+            onPress={() => setSelectedShiftForEarnings(shiftData)}
+          >
+            <Feather name="dollar-sign" size={16} color="#FFFFFF" />
+            <ThemedText style={styles.recordEarningsText}>
+              Записать заработок
+            </ThemedText>
+          </Pressable>
+        )}
+        {isCompleted && shift.earnings && (
+          <View style={[styles.earnedBadge, { backgroundColor: theme.successLight }]}>
+            <View style={styles.earnedRow}>
+              <ThemedText style={[styles.earnedText, { color: theme.success }]}>
+                Заработано: {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnings))} ₽
+              </ThemedText>
+              <Feather name="chevron-right" size={16} color={theme.success} />
+            </View>
+          </View>
+        )}
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
+      {hasAnyShifts && (
+        <View style={[styles.filterContainer, { paddingHorizontal: Spacing["2xl"] }]}>
+          <View 
+            style={[styles.filterToggle, { backgroundColor: theme.backgroundSecondary }]}
+            onLayout={handleTabLayout}
+          >
+            <Animated.View 
+              style={[
+                styles.filterIndicator, 
+                { backgroundColor: theme.backgroundContent, width: tabWidth > 0 ? tabWidth : "48%" },
+                animatedIndicatorStyle,
+              ]} 
+            />
+            <Pressable
+              style={styles.filterButton}
+              onPress={() => handleFilterChange("scheduled")}
+            >
+              <ThemedText
+                style={[
+                  styles.filterText,
+                  { color: filter === "scheduled" ? theme.text : theme.textSecondary },
+                ]}
+              >
+                Запланированные ({scheduledShifts.length})
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              style={styles.filterButton}
+              onPress={() => handleFilterChange("completed")}
+            >
+              <ThemedText
+                style={[
+                  styles.filterText,
+                  { color: filter === "completed" ? theme.text : theme.textSecondary },
+                ]}
+              >
+                Прошедшие ({completedShifts.length})
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      )}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: Spacing["2xl"],
+          paddingTop: Spacing.lg,
           paddingHorizontal: Spacing["2xl"],
           paddingBottom: BUTTON_AREA_HEIGHT + insets.bottom + Spacing["2xl"],
-          ...((!hasShifts && !isLoading) && { flex: 1 }),
+          ...((!hasShiftsInCurrentTab && !isLoading) && { flex: 1 }),
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -82,87 +264,30 @@ export default function ShiftsScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.accent} />
           </View>
-        ) : hasShifts ? (
-          shifts.map((shift) => {
-            const isCompleted = shift.status === "completed";
-            const canRecordEarnings = isCompleted && !shift.earnings;
-            const shiftData = shift as ShiftType;
-            return (
-              <Pressable
-                key={shift.id}
-                style={({ pressed }) => [
-                  styles.shiftCard,
-                  { backgroundColor: theme.backgroundContent, borderColor: theme.border },
-                  isCompleted && pressed && { opacity: 0.8 },
-                ]}
-                onPress={isCompleted ? () => setSelectedShiftForDetails(shiftData) : undefined}
-                disabled={!isCompleted}
-              >
-                <View style={styles.shiftHeader}>
-                  <View style={[styles.shiftTypeIcon, { backgroundColor: theme.accentLight }]}>
-                    <Feather
-                      name={shift.shiftType === "day" ? "sun" : "moon"}
-                      size={18}
-                      color={theme.accent}
-                    />
-                  </View>
-                  <View style={styles.shiftInfo}>
-                    <ThemedText type="body" style={{ fontWeight: "600" }}>
-                      {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                      {formatShiftDate(new Date(shift.scheduledDate))} • {formatShiftTime(shift.shiftType)}
-                    </ThemedText>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
-                    <ThemedText type="caption" style={{ color: getStatusColor(shift.status, theme), fontWeight: "500" }}>
-                      {getStatusLabel(shift.status)}
-                    </ThemedText>
-                  </View>
-                </View>
-                {canRecordEarnings && (
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.recordEarningsButton,
-                      { backgroundColor: theme.success },
-                      pressed && { opacity: 0.8 },
-                    ]}
-                    onPress={() => setSelectedShiftForEarnings(shiftData)}
-                  >
-                    <Feather name="dollar-sign" size={16} color="#FFFFFF" />
-                    <ThemedText style={styles.recordEarningsText}>
-                      Записать заработок
-                    </ThemedText>
-                  </Pressable>
-                )}
-                {isCompleted && shift.earnings && (
-                  <View style={[styles.earnedBadge, { backgroundColor: theme.successLight }]}>
-                    <View style={styles.earnedRow}>
-                      <ThemedText style={[styles.earnedText, { color: theme.success }]}>
-                        Заработано: {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnings))} ₽
-                      </ThemedText>
-                      <Feather name="chevron-right" size={16} color={theme.success} />
-                    </View>
-                  </View>
-                )}
-              </Pressable>
-            );
-          })
         ) : (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIcon, { backgroundColor: theme.accentLight }]}>
-              <Feather name="clock" size={36} color={theme.accent} />
-            </View>
-            <ThemedText type="h4" style={styles.emptyTitle}>
-              Нет смен
-            </ThemedText>
-            <ThemedText 
-              type="small" 
-              style={[styles.emptyDescription, { color: theme.textSecondary }]}
-            >
-              Добавьте свою первую рабочую смену, чтобы начать отслеживать заработок
-            </ThemedText>
-          </View>
+          <>
+            {currentShift && filter === "scheduled" && renderShiftCard(currentShift, true)}
+            {hasShiftsInCurrentTab ? (
+              displayShifts.map((shift) => renderShiftCard(shift))
+            ) : !currentShift && (
+              <View style={styles.emptyState}>
+                <View style={[styles.emptyIcon, { backgroundColor: theme.accentLight }]}>
+                  <Feather name={filter === "scheduled" ? "clock" : "check-circle"} size={36} color={theme.accent} />
+                </View>
+                <ThemedText type="h4" style={styles.emptyTitle}>
+                  {filter === "scheduled" ? "Нет запланированных смен" : "Нет прошедших смен"}
+                </ThemedText>
+                <ThemedText 
+                  type="small" 
+                  style={[styles.emptyDescription, { color: theme.textSecondary }]}
+                >
+                  {filter === "scheduled" 
+                    ? "Добавьте рабочую смену, чтобы начать отслеживать заработок"
+                    : "Завершённые смены будут отображаться здесь"}
+                </ThemedText>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
 
@@ -222,6 +347,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  filterContainer: {
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
+  },
+  filterToggle: {
+    flexDirection: "row",
+    borderRadius: BorderRadius.xs,
+    padding: 3,
+    position: "relative",
+  },
+  filterIndicator: {
+    position: "absolute",
+    top: 3,
+    bottom: 3,
+    left: 3,
+    borderRadius: BorderRadius.xs - 2,
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.xs - 2,
+    alignItems: "center",
+    zIndex: 1,
+  },
+  filterText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
   scrollView: {
     flex: 1,
   },
@@ -230,6 +384,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing["4xl"],
+  },
+  currentBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.xs,
+    marginBottom: Spacing.md,
   },
   shiftCard: {
     borderRadius: BorderRadius.sm,

@@ -25,6 +25,22 @@ function formatBalance(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(amount);
 }
 
+function pluralizeGoals(count: number): string {
+  const lastTwo = count % 100;
+  const lastOne = count % 10;
+  
+  if (lastTwo >= 11 && lastTwo <= 19) {
+    return "целей";
+  }
+  if (lastOne === 1) {
+    return "цель";
+  }
+  if (lastOne >= 2 && lastOne <= 4) {
+    return "цели";
+  }
+  return "целей";
+}
+
 export type TabInfo = 
   | { type: "goals"; count: number; totalTarget: number; totalCurrent: number }
   | { type: "shifts"; past: number; scheduled: number; hasCurrent: boolean }
@@ -50,7 +66,7 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
         return (
           <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
             <ThemedText style={[styles.infoText, { color: theme.accent }]}>
-              {tabInfo.count} целей • {formatBalance(tabInfo.totalTarget)} ₽ • {percentage}%
+              {tabInfo.count} {pluralizeGoals(tabInfo.count)} • {formatBalance(tabInfo.totalTarget)} ₽ • {percentage}%
             </ThemedText>
           </View>
         );
