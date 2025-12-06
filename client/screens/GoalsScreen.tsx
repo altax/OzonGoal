@@ -12,8 +12,8 @@ const demoGoals: Goal[] = [
     id: "1",
     title: "Отпуск в Турции",
     icon: "send",
-    iconColor: "#2196F3",
-    iconBgColor: "#E3F2FD",
+    iconColor: "#D4A574",
+    iconBgColor: "#FDF5ED",
     currentAmount: 65000,
     targetAmount: 100000,
     shiftsRemaining: 12,
@@ -22,8 +22,8 @@ const demoGoals: Goal[] = [
     id: "2",
     title: "Новый MacBook",
     icon: "monitor",
-    iconColor: "#9C27B0",
-    iconBgColor: "#F3E5F5",
+    iconColor: "#9B8AA0",
+    iconBgColor: "#F5F0F7",
     currentAmount: 40000,
     targetAmount: 160000,
     shiftsRemaining: 38,
@@ -32,8 +32,8 @@ const demoGoals: Goal[] = [
     id: "3",
     title: "Новая машина",
     icon: "truck",
-    iconColor: "#607D8B",
-    iconBgColor: "#ECEFF1",
+    iconColor: "#7B9B9B",
+    iconBgColor: "#F0F5F5",
     currentAmount: 60000,
     targetAmount: 500000,
     shiftsRemaining: 138,
@@ -42,13 +42,15 @@ const demoGoals: Goal[] = [
     id: "4",
     title: "Ремонт квартиры",
     icon: "home",
-    iconColor: "#FF9800",
-    iconBgColor: "#FFF3E0",
+    iconColor: "#E5B87C",
+    iconBgColor: "#FDF8F0",
     currentAmount: 120000,
     targetAmount: 300000,
     shiftsRemaining: 56,
   },
 ];
+
+const BUTTON_AREA_HEIGHT = 80;
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
@@ -59,9 +61,9 @@ export default function GoalsScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: Spacing["2xl"],
+          paddingTop: Spacing.lg,
           paddingHorizontal: Spacing.lg,
-          paddingBottom: Spacing.lg + 60 + insets.bottom,
+          paddingBottom: BUTTON_AREA_HEIGHT + insets.bottom + Spacing.xl,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -73,7 +75,10 @@ export default function GoalsScreen() {
       <View
         style={[
           styles.bottomButtonContainer,
-          { paddingBottom: insets.bottom + Spacing.lg },
+          { 
+            paddingBottom: insets.bottom + Spacing.lg,
+            backgroundColor: theme.backgroundRoot,
+          },
         ]}
       >
         <Pressable
@@ -116,7 +121,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
-    backgroundColor: "transparent",
   },
   addButton: {
     flexDirection: "row",
@@ -124,11 +128,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     height: Spacing.buttonHeight,
     borderRadius: BorderRadius.xl,
-    shadowColor: "#2196F3",
+    shadowColor: "#D4A574",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
   addButtonIcon: {
     marginRight: Spacing.sm,

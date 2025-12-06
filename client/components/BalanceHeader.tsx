@@ -1,18 +1,24 @@
 import { View, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
-import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
-function getCurrentMonth(): string {
+function getCurrentFullDate(): string {
+  const days = [
+    "Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"
+  ];
   const months = [
-    "ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ",
-    "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ"
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря"
   ];
   const now = new Date();
-  return `${months[now.getMonth()]} ${now.getFullYear()}`;
+  const dayName = days[now.getDay()];
+  const day = now.getDate();
+  const month = months[now.getMonth()];
+  const year = now.getFullYear();
+  return `${dayName}, ${day} ${month} ${year}`;
 }
 
 function formatBalance(amount: number): string {
@@ -30,8 +36,8 @@ export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeade
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <ThemedText type="caption" style={[styles.monthText, { color: theme.textSecondary }]}>
-          {getCurrentMonth()}
+        <ThemedText type="caption" style={[styles.dateText, { color: theme.textSecondary }]}>
+          {getCurrentFullDate()}
         </ThemedText>
         <Pressable
           style={({ pressed }) => [
@@ -57,7 +63,7 @@ export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeade
         </ThemedText>
         {lastShiftIncome > 0 ? (
           <View style={[styles.incomeTag, { backgroundColor: theme.successLight }]}>
-            <ThemedText type="small" style={{ color: theme.success }}>
+            <ThemedText style={[styles.incomeText, { color: theme.success }]}>
               +{formatBalance(lastShiftIncome)} за последнюю смену
             </ThemedText>
           </View>
@@ -77,8 +83,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.xl,
   },
-  monthText: {
-    letterSpacing: 1,
+  dateText: {
+    fontSize: 12,
     fontWeight: "500",
   },
   avatar: {
@@ -106,7 +112,11 @@ const styles = StyleSheet.create({
   },
   incomeTag: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
+  },
+  incomeText: {
+    fontSize: 11,
+    fontWeight: "400",
   },
 });

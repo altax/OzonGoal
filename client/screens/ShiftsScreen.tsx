@@ -6,6 +6,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 
+const BUTTON_AREA_HEIGHT = 80;
+
 export default function ShiftsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -15,9 +17,9 @@ export default function ShiftsScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: Spacing["2xl"],
+          paddingTop: Spacing.lg,
           paddingHorizontal: Spacing.lg,
-          paddingBottom: Spacing.lg + 60 + insets.bottom,
+          paddingBottom: BUTTON_AREA_HEIGHT + insets.bottom + Spacing.xl,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -40,7 +42,10 @@ export default function ShiftsScreen() {
       <View
         style={[
           styles.bottomButtonContainer,
-          { paddingBottom: insets.bottom + Spacing.lg },
+          { 
+            paddingBottom: insets.bottom + Spacing.lg,
+            backgroundColor: theme.backgroundRoot,
+          },
         ]}
       >
         <Pressable
@@ -104,7 +109,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
-    backgroundColor: "transparent",
   },
   addButton: {
     flexDirection: "row",
@@ -112,11 +116,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     height: Spacing.buttonHeight,
     borderRadius: BorderRadius.xl,
-    shadowColor: "#4CAF50",
+    shadowColor: "#7CB87C",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
   addButtonIcon: {
     marginRight: Spacing.sm,
