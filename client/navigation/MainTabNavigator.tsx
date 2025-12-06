@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -7,8 +7,10 @@ import ShiftsScreen from "@/screens/ShiftsScreen";
 import StatisticsScreen from "@/screens/StatisticsScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import { useTheme } from "@/hooks/useTheme";
-import { BalanceHeader } from "@/components/BalanceHeader";
+import { BalanceHeader, TabInfo } from "@/components/BalanceHeader";
+import { BalanceHistoryModal } from "@/components/BalanceHistoryModal";
 import { SegmentedTabs, TabKey } from "@/components/SegmentedTabs";
+import { useGoalsSummary, useShiftsSummary, useUser } from "@/api";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 export type MainTabParamList = {
@@ -22,6 +24,38 @@ export default function MainTabNavigator() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>("goals");
+  const [showBalanceHistory, setShowBalanceHistory] = useState(false);
+
+  const { data: goalsSummary } = useGoalsSummary();
+  const { data: shiftsSummary } = useShiftsSummary();
+  const { data: user } = useUser();
+
+  const tabInfo: TabInfo | undefined = useMemo(() => {
+    switch (activeTab) {
+      case "goals":
+        if (goalsSummary && goalsSummary.count > 0) {
+          return {
+            type: "goals",
+            count: goalsSummary.count,
+            totalTarget: goalsSummary.totalTarget,
+            totalCurrent: goalsSummary.totalCurrent,
+          };
+        }
+        return undefined;
+      case "shifts":
+        if (shiftsSummary) {
+          return {
+            type: "shifts",
+            past: shiftsSummary.past,
+            scheduled: shiftsSummary.scheduled,
+            hasCurrent: !!shiftsSummary.current,
+          };
+        }
+        return undefined;
+      default:
+        return undefined;
+    }
+  }, [activeTab, goalsSummary, shiftsSummary]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -41,12 +75,20 @@ export default function MainTabNavigator() {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <BalanceHeader balance={24580} />
+        <BalanceHeader 
+          balance={user?.balance || 0} 
+          tabInfo={tabInfo} 
+          onBalancePress={() => setShowBalanceHistory(true)}
+        />
         <SegmentedTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </View>
       <View style={[styles.content, { backgroundColor: theme.backgroundContent }]}>
         {renderContent()}
       </View>
+      <BalanceHistoryModal
+        visible={showBalanceHistory}
+        onClose={() => setShowBalanceHistory(false)}
+      />
     </View>
   );
 }

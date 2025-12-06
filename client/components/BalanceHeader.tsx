@@ -33,9 +33,10 @@ export type TabInfo =
 interface BalanceHeaderProps {
   balance?: number;
   tabInfo?: TabInfo;
+  onBalancePress?: () => void;
 }
 
-export function BalanceHeader({ balance = 0, tabInfo }: BalanceHeaderProps) {
+export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceHeaderProps) {
   const { theme } = useTheme();
 
   const renderTabInfo = () => {
@@ -105,7 +106,14 @@ export function BalanceHeader({ balance = 0, tabInfo }: BalanceHeaderProps) {
         </Pressable>
       </View>
 
-      <View style={styles.balanceSection}>
+      <Pressable 
+        style={({ pressed }) => [
+          styles.balanceSection,
+          pressed && onBalancePress && { opacity: 0.7 },
+        ]}
+        onPress={onBalancePress}
+        disabled={!onBalancePress}
+      >
         <ThemedText type="caption" style={[styles.balanceLabel, { color: theme.textSecondary }]}>
           БАЛАНС
         </ThemedText>
@@ -113,7 +121,7 @@ export function BalanceHeader({ balance = 0, tabInfo }: BalanceHeaderProps) {
           {formatBalance(balance)} ₽
         </ThemedText>
         {renderTabInfo()}
-      </View>
+      </Pressable>
     </View>
   );
 }

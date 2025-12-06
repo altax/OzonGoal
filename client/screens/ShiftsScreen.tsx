@@ -6,6 +6,7 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { AddShiftModal } from "@/components/AddShiftModal";
+import { RecordEarningsModal } from "@/components/RecordEarningsModal";
 import { useShifts } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
@@ -43,10 +44,19 @@ function getStatusColor(status: string, theme: any): string {
   return colors[status] || theme.textSecondary;
 }
 
+type ShiftType = {
+  id: string;
+  operationType: string;
+  shiftType: string;
+  scheduledDate: string;
+  status: string;
+};
+
 export default function ShiftsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<ShiftType | null>(null);
   const { data: shifts, isLoading } = useShifts();
 
   const hasShifts = shifts && shifts.length > 0;
@@ -68,35 +78,60 @@ export default function ShiftsScreen() {
             <ActivityIndicator size="large" color={theme.accent} />
           </View>
         ) : hasShifts ? (
-          shifts.map((shift) => (
-            <View
-              key={shift.id}
-              style={[styles.shiftCard, { backgroundColor: theme.backgroundContent, borderColor: theme.border }]}
-            >
-              <View style={styles.shiftHeader}>
-                <View style={[styles.shiftTypeIcon, { backgroundColor: theme.accentLight }]}>
-                  <Feather
-                    name={shift.shiftType === "day" ? "sun" : "moon"}
-                    size={18}
-                    color={theme.accent}
-                  />
+          shifts.map((shift) => {
+            const canRecordEarnings = shift.status === "in_progress" || shift.status === "scheduled";
+            return (
+              <View
+                key={shift.id}
+                style={[styles.shiftCard, { backgroundColor: theme.backgroundContent, borderColor: theme.border }]}
+              >
+                <View style={styles.shiftHeader}>
+                  <View style={[styles.shiftTypeIcon, { backgroundColor: theme.accentLight }]}>
+                    <Feather
+                      name={shift.shiftType === "day" ? "sun" : "moon"}
+                      size={18}
+                      color={theme.accent}
+                    />
+                  </View>
+                  <View style={styles.shiftInfo}>
+                    <ThemedText type="body" style={{ fontWeight: "600" }}>
+                      {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {formatShiftDate(new Date(shift.scheduledDate))} • {formatShiftTime(shift.shiftType)}
+                    </ThemedText>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
+                    <ThemedText type="caption" style={{ color: getStatusColor(shift.status, theme), fontWeight: "500" }}>
+                      {getStatusLabel(shift.status)}
+                    </ThemedText>
+                  </View>
                 </View>
-                <View style={styles.shiftInfo}>
-                  <ThemedText type="body" style={{ fontWeight: "600" }}>
-                    {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
-                  </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                    {formatShiftDate(new Date(shift.scheduledDate))} • {formatShiftTime(shift.shiftType)}
-                  </ThemedText>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
-                  <ThemedText type="caption" style={{ color: getStatusColor(shift.status, theme), fontWeight: "500" }}>
-                    {getStatusLabel(shift.status)}
-                  </ThemedText>
-                </View>
+                {canRecordEarnings && (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.recordEarningsButton,
+                      { backgroundColor: theme.success },
+                      pressed && { opacity: 0.8 },
+                    ]}
+                    onPress={() => setSelectedShift(shift as ShiftType)}
+                  >
+                    <Feather name="dollar-sign" size={16} color="#FFFFFF" />
+                    <ThemedText style={styles.recordEarningsText}>
+                      Записать заработок
+                    </ThemedText>
+                  </Pressable>
+                )}
+                {shift.status === "completed" && shift.earnedAmount && (
+                  <View style={[styles.earnedBadge, { backgroundColor: theme.successLight }]}>
+                    <ThemedText style={[styles.earnedText, { color: theme.success }]}>
+                      Заработано: {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnedAmount))} ₽
+                    </ThemedText>
+                  </View>
+                )}
               </View>
-            </View>
-          ))
+            );
+          })
         ) : (
           <View style={styles.emptyState}>
             <View style={[styles.emptyIcon, { backgroundColor: theme.accentLight }]}>
@@ -150,6 +185,12 @@ export default function ShiftsScreen() {
       <AddShiftModal
         visible={isAddModalVisible}
         onClose={() => setIsAddModalVisible(false)}
+      />
+
+      <RecordEarningsModal
+        visible={!!selectedShift}
+        shift={selectedShift}
+        onClose={() => setSelectedShift(null)}
       />
     </View>
   );
@@ -237,5 +278,30 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontWeight: "600",
     fontSize: 15,
+  },
+  recordEarningsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.xs,
+  },
+  recordEarningsText: {
+    color: "#FFFFFF",
+    fontWeight: "500",
+    fontSize: 13,
+  },
+  earnedBadge: {
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+  },
+  earnedText: {
+    fontWeight: "500",
+    fontSize: 13,
   },
 });

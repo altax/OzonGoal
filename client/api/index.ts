@@ -396,6 +396,79 @@ export function useMarkNoShow() {
   });
 }
 
+export function useBalanceHistory() {
+  return useQuery<{ 
+    id: string;
+    type: 'earning' | 'allocation';
+    amount: number;
+    date: string;
+    description: string;
+    goalName?: string;
+  }[]>({
+    queryKey: ["balance", "history"],
+    queryFn: async () => {
+      const { data: shifts, error: shiftsError } = await supabase
+        .from('shifts')
+        .select('id, earnings, earnings_recorded_at, shift_type, operation_type')
+        .eq('user_id', DEFAULT_USER_ID)
+        .eq('status', 'completed')
+        .not('earnings', 'is', null)
+        .order('earnings_recorded_at', { ascending: false })
+        .limit(50);
+      
+      if (shiftsError) throw new Error(shiftsError.message);
+      
+      const history: { 
+        id: string;
+        type: 'earning' | 'allocation';
+        amount: number;
+        date: string;
+        description: string;
+        goalName?: string;
+      }[] = [];
+      
+      for (const shift of (shifts || [])) {
+        const shiftTypeName = shift.shift_type === 'day' ? 'Дневная' : 'Ночная';
+        const opTypeName = shift.operation_type === 'returns' ? 'возвраты' : 'приёмка';
+        
+        history.push({
+          id: `shift-${shift.id}`,
+          type: 'earning',
+          amount: parseFloat(shift.earnings || '0'),
+          date: shift.earnings_recorded_at || new Date().toISOString(),
+          description: `${shiftTypeName} смена (${opTypeName})`,
+        });
+        
+        const { data: allocations } = await supabase
+          .from('goal_allocations')
+          .select('id, amount, created_at, goal_id')
+          .eq('shift_id', shift.id);
+        
+        for (const alloc of (allocations || [])) {
+          const { data: goal } = await supabase
+            .from('goals')
+            .select('name')
+            .eq('id', alloc.goal_id)
+            .single();
+          
+          history.push({
+            id: `alloc-${alloc.id}`,
+            type: 'allocation',
+            amount: -parseFloat(alloc.amount || '0'),
+            date: alloc.created_at || new Date().toISOString(),
+            description: 'Пополнение цели',
+            goalName: goal?.name || 'Неизвестная цель',
+          });
+        }
+      }
+      
+      history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      return history;
+    },
+  });
+}
+
 export function useRecordEarnings() {
   const queryClient = useQueryClient();
   
