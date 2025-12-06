@@ -74,6 +74,7 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- Pure white design (#FFFFFF) applied everywhere - all backgrounds, secondary colors, tertiary colors are white
 - Created 4-tab navigation structure
 - Implemented empty states for Goals and Shifts screens
 - Added Statistics screen with placeholder charts

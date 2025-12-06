@@ -57,7 +57,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
             <View
               style={[
                 styles.progressBar,
-                { backgroundColor: theme.backgroundTertiary },
+                { backgroundColor: "#F0F0F0" },
               ]}
             >
               <View
