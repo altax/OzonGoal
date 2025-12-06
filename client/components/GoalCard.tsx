@@ -9,34 +9,60 @@ import Animated, {
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
-
-export interface Goal {
-  id: string;
-  title: string;
-  icon: keyof typeof Feather.glyphMap;
-  iconColor: string;
-  iconBgColor: string;
-  currentAmount: number;
-  targetAmount: number;
-  shiftsRemaining: number;
-}
+import type { Goal } from "@shared/schema";
 
 interface GoalCardProps {
   goal: Goal;
   onPress?: () => void;
+  onLongPress?: () => void;
+  showPrimaryBadge?: boolean;
 }
 
 function formatAmount(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(amount);
 }
 
+function calculateShiftsRemaining(currentAmount: number, targetAmount: number, avgEarningsPerShift: number = 3200): number {
+  const remaining = targetAmount - currentAmount;
+  if (remaining <= 0) return 0;
+  return Math.ceil(remaining / avgEarningsPerShift);
+}
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function GoalCard({ goal, onPress }: GoalCardProps) {
+const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
+  target: "target",
+  send: "send",
+  monitor: "monitor",
+  truck: "truck",
+  home: "home",
+  heart: "heart",
+  star: "star",
+  gift: "gift",
+  briefcase: "briefcase",
+  book: "book",
+  camera: "camera",
+  music: "music",
+  shopping: "shopping-cart",
+  travel: "map-pin",
+  education: "book-open",
+  health: "activity",
+  car: "truck",
+  phone: "smartphone",
+  laptop: "laptop",
+  watch: "watch",
+};
+
+export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge }: GoalCardProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
-  const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+  
+  const currentAmount = parseFloat(goal.currentAmount);
+  const targetAmount = parseFloat(goal.targetAmount);
+  const progress = Math.min((currentAmount / targetAmount) * 100, 100);
   const progressPercent = Math.round(progress);
+  const shiftsRemaining = calculateShiftsRemaining(currentAmount, targetAmount);
+  const iconName = iconMap[goal.iconKey] || "target";
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -50,6 +76,8 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
     scale.value = withSpring(1, { damping: 20, stiffness: 200 });
   };
 
+  const isCompleted = goal.status === "completed";
+
   return (
     <AnimatedPressable
       style={[
@@ -57,24 +85,32 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
         { backgroundColor: theme.backgroundDefault },
         Shadows.card,
         animatedStyle,
+        isCompleted && { opacity: 0.7 },
       ]}
       onPress={onPress}
+      onLongPress={onLongPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
+      {showPrimaryBadge && goal.isPrimary && (
+        <View style={[styles.primaryBadge, { backgroundColor: theme.accent }]}>
+          <Feather name="star" size={10} color="#FFFFFF" />
+        </View>
+      )}
+      
       <View style={styles.leftSection}>
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: theme.accentLight },
+            { backgroundColor: goal.iconBgColor || theme.accentLight },
           ]}
         >
-          <Feather name={goal.icon} size={20} color={theme.accent} />
+          <Feather name={iconName} size={20} color={goal.iconColor || theme.accent} />
         </View>
 
         <View style={styles.content}>
           <ThemedText type="body" style={styles.title}>
-            {goal.title}
+            {goal.name}
           </ThemedText>
           <View style={styles.progressBarContainer}>
             <View
@@ -87,7 +123,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
                 style={[
                   styles.progressFill,
                   {
-                    backgroundColor: theme.progressFill,
+                    backgroundColor: isCompleted ? theme.success : theme.progressFill,
                     width: `${progress}%`,
                   },
                 ]}
@@ -96,33 +132,43 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
           </View>
           <View style={styles.amountRow}>
             <ThemedText type="small" style={[styles.currentAmount, { color: theme.accent }]}>
-              {formatAmount(goal.currentAmount)}
+              {formatAmount(currentAmount)}
             </ThemedText>
             <ThemedText
               type="small"
               style={[styles.targetAmount, { color: theme.textSecondary }]}
             >
-              {" "}из {formatAmount(goal.targetAmount)}
+              {" "}из {formatAmount(targetAmount)}
             </ThemedText>
           </View>
         </View>
       </View>
 
       <View style={styles.rightSection}>
-        <View style={[styles.percentageBadge, { backgroundColor: theme.accentLight }]}>
+        <View style={[styles.percentageBadge, { backgroundColor: isCompleted ? theme.successLight : theme.accentLight }]}>
           <ThemedText
             type="small"
-            style={[styles.percentage, { color: theme.accent }]}
+            style={[styles.percentage, { color: isCompleted ? theme.success : theme.accent }]}
           >
             {progressPercent}%
           </ThemedText>
         </View>
-        <ThemedText
-          type="caption"
-          style={[styles.shiftsRemaining, { color: theme.textSecondary }]}
-        >
-          ~{goal.shiftsRemaining} смен
-        </ThemedText>
+        {!isCompleted && (
+          <ThemedText
+            type="caption"
+            style={[styles.shiftsRemaining, { color: theme.textSecondary }]}
+          >
+            ~{shiftsRemaining} смен
+          </ThemedText>
+        )}
+        {isCompleted && (
+          <ThemedText
+            type="caption"
+            style={[styles.shiftsRemaining, { color: theme.success }]}
+          >
+            Выполнено
+          </ThemedText>
+        )}
       </View>
     </AnimatedPressable>
   );
@@ -136,6 +182,17 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing["2xl"],
+    position: "relative",
+  },
+  primaryBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   leftSection: {
     flexDirection: "row",

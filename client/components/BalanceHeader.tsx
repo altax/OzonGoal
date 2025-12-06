@@ -25,13 +25,63 @@ function formatBalance(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(amount);
 }
 
+export type TabInfo = 
+  | { type: "goals"; count: number; totalTarget: number; totalCurrent: number }
+  | { type: "shifts"; past: number; scheduled: number; hasCurrent: boolean }
+  | { type: "default"; lastShiftIncome?: number };
+
 interface BalanceHeaderProps {
   balance?: number;
-  lastShiftIncome?: number;
+  tabInfo?: TabInfo;
 }
 
-export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeaderProps) {
+export function BalanceHeader({ balance = 0, tabInfo }: BalanceHeaderProps) {
   const { theme } = useTheme();
+
+  const renderTabInfo = () => {
+    if (!tabInfo) return null;
+
+    switch (tabInfo.type) {
+      case "goals": {
+        const percentage = tabInfo.totalTarget > 0 
+          ? Math.round((tabInfo.totalCurrent / tabInfo.totalTarget) * 100) 
+          : 0;
+        return (
+          <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+            <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+              {tabInfo.count} целей • {formatBalance(tabInfo.totalTarget)} ₽ • {percentage}%
+            </ThemedText>
+          </View>
+        );
+      }
+      case "shifts": {
+        const parts = [];
+        if (tabInfo.past > 0) parts.push(`${tabInfo.past} отработано`);
+        if (tabInfo.scheduled > 0) parts.push(`${tabInfo.scheduled} запланировано`);
+        if (tabInfo.hasCurrent) parts.push("идет смена");
+        
+        if (parts.length === 0) return null;
+        
+        return (
+          <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+            <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+              {parts.join(" • ")}
+            </ThemedText>
+          </View>
+        );
+      }
+      case "default": {
+        if (!tabInfo.lastShiftIncome || tabInfo.lastShiftIncome <= 0) return null;
+        return (
+          <View style={[styles.infoTag, { backgroundColor: theme.successLight }]}>
+            <ThemedText style={[styles.infoText, { color: theme.success }]}>
+              +{formatBalance(tabInfo.lastShiftIncome)} ₽ за последнюю смену
+            </ThemedText>
+          </View>
+        );
+      }
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -62,13 +112,7 @@ export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeade
         <ThemedText type="h1" style={[styles.balanceAmount, { color: theme.text }]}>
           {formatBalance(balance)} ₽
         </ThemedText>
-        {lastShiftIncome > 0 ? (
-          <View style={[styles.incomeTag, { backgroundColor: theme.successLight }]}>
-            <ThemedText style={[styles.incomeText, { color: theme.success }]}>
-              +{formatBalance(lastShiftIncome)} ₽ за последнюю смену
-            </ThemedText>
-          </View>
-        ) : null}
+        {renderTabInfo()}
       </View>
     </View>
   );
@@ -114,12 +158,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     letterSpacing: -1,
   },
-  incomeTag: {
+  infoTag: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
   },
-  incomeText: {
+  infoText: {
     fontSize: 13,
     fontWeight: "500",
   },
