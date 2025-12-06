@@ -103,26 +103,26 @@ export function SegmentedTabs({ activeTab, onTabChange }: SegmentedTabsProps) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
   },
   container: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: BorderRadius.sm,
-    padding: 4,
-    gap: 4,
+    borderRadius: BorderRadius.xs,
+    padding: 3,
+    gap: 2,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: 6,
   },
   tabLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
   },
   tabLabelActive: {
