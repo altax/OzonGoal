@@ -44,7 +44,9 @@ export default function MainTabNavigator() {
         <BalanceHeader balance={24580} lastShiftIncome={3200} />
         <SegmentedTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </View>
-      <View style={styles.content}>{renderContent()}</View>
+      <View style={[styles.content, { backgroundColor: theme.backgroundContent }]}>
+        {renderContent()}
+      </View>
     </View>
   );
 }
@@ -58,5 +60,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    marginTop: Spacing.lg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
 });

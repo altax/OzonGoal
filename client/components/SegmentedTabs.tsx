@@ -2,7 +2,7 @@ import { View, Pressable, StyleSheet } from "react-native";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 export type TabKey = "goals" | "shifts" | "statistics" | "settings";
 
@@ -36,26 +36,23 @@ function TabItem({
 
   return (
     <Pressable
-      style={styles.tabItem}
+      style={[
+        styles.tabItem,
+        {
+          backgroundColor: isActive ? theme.tabActiveBackground : "transparent",
+        },
+      ]}
       onPress={onPress}
-      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+      hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
     >
-      <View style={styles.tabContainer}>
-        <ThemedText
-          style={[
-            styles.tabLabel,
-            { color: isActive ? theme.text : theme.textSecondary },
-          ]}
-        >
-          {tab.label}
-        </ThemedText>
-        <View
-          style={[
-            styles.underline,
-            { backgroundColor: isActive ? theme.text : "transparent" },
-          ]}
-        />
-      </View>
+      <ThemedText
+        style={[
+          styles.tabLabel,
+          { color: isActive ? theme.tabActiveText : theme.tabInactiveText },
+        ]}
+      >
+        {tab.label}
+      </ThemedText>
     </Pressable>
   );
 }
@@ -64,44 +61,44 @@ export function SegmentedTabs({ activeTab, onTabChange }: SegmentedTabsProps) {
   const { theme } = useTheme();
 
   return (
-    <View style={[styles.container, { borderBottomColor: theme.border }]}>
-      {tabs.map((tab) => (
-        <TabItem
-          key={tab.key}
-          tab={tab}
-          isActive={activeTab === tab.key}
-          onPress={() => onTabChange(tab.key)}
-        />
-      ))}
+    <View style={styles.wrapper}>
+      <View style={[styles.container, { backgroundColor: theme.tabBackground }]}>
+        {tabs.map((tab) => (
+          <TabItem
+            key={tab.key}
+            tab={tab}
+            isActive={activeTab === tab.key}
+            onPress={() => onTabChange(tab.key)}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
   container: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: Spacing.xl,
-    marginTop: Spacing.md,
-    borderBottomWidth: 1,
+    borderRadius: BorderRadius.sm,
+    padding: 4,
+    gap: 4,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
-  },
-  tabContainer: {
-    paddingVertical: Spacing.md,
-    alignItems: "center",
-  },
-  underline: {
-    height: 2,
-    width: "100%",
-    marginTop: Spacing.sm,
-    borderRadius: 1,
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.xs,
   },
   tabLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
   },
 });
