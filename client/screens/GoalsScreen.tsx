@@ -1,64 +1,103 @@
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
+import { GoalCard, Goal } from "@/components/GoalCard";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
-import { BalanceHeader } from "@/components/BalanceHeader";
+
+const demoGoals: Goal[] = [
+  {
+    id: "1",
+    title: "Отпуск в Турции",
+    icon: "send",
+    iconColor: "#2196F3",
+    iconBgColor: "#E3F2FD",
+    currentAmount: 65000,
+    targetAmount: 100000,
+    shiftsRemaining: 12,
+  },
+  {
+    id: "2",
+    title: "Новый MacBook",
+    icon: "monitor",
+    iconColor: "#9C27B0",
+    iconBgColor: "#F3E5F5",
+    currentAmount: 40000,
+    targetAmount: 160000,
+    shiftsRemaining: 38,
+  },
+  {
+    id: "3",
+    title: "Новая машина",
+    icon: "truck",
+    iconColor: "#607D8B",
+    iconBgColor: "#ECEFF1",
+    currentAmount: 60000,
+    targetAmount: 500000,
+    shiftsRemaining: 138,
+  },
+  {
+    id: "4",
+    title: "Ремонт квартиры",
+    icon: "home",
+    iconColor: "#FF9800",
+    iconBgColor: "#FFF3E0",
+    currentAmount: 120000,
+    targetAmount: 300000,
+    shiftsRemaining: 56,
+  },
+];
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
-          paddingBottom: tabBarHeight + Spacing["3xl"] + 56,
+          paddingTop: Spacing["2xl"],
           paddingHorizontal: Spacing.lg,
+          paddingBottom: Spacing.lg + 60 + insets.bottom,
         }}
-        scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <BalanceHeader />
-        
-        <View style={styles.emptyState}>
-          <View style={[styles.emptyIcon, { backgroundColor: theme.accentLight }]}>
-            <Feather name="target" size={32} color={theme.accent} />
-          </View>
-          <ThemedText type="h4" style={styles.emptyTitle}>
-            Нет целей
-          </ThemedText>
-          <ThemedText 
-            type="small" 
-            style={[styles.emptyDescription, { color: theme.textSecondary }]}
-          >
-            Добавьте свою первую финансовую цель, чтобы начать отслеживать прогресс
-          </ThemedText>
-        </View>
+        {demoGoals.map((goal) => (
+          <GoalCard key={goal.id} goal={goal} onPress={() => {}} />
+        ))}
       </ScrollView>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.fab,
-          { 
-            backgroundColor: theme.accent,
-            bottom: tabBarHeight + Spacing.lg,
-            opacity: pressed ? 0.8 : 1,
-            transform: [{ scale: pressed ? 0.95 : 1 }],
-          },
+      <View
+        style={[
+          styles.bottomButtonContainer,
+          { paddingBottom: insets.bottom + Spacing.lg },
         ]}
-        onPress={() => {}}
       >
-        <Feather name="plus" size={24} color={Colors.light.buttonText} />
-      </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.addButton,
+            { backgroundColor: theme.accent },
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+          ]}
+          onPress={() => {}}
+        >
+          <Feather
+            name="plus"
+            size={20}
+            color={Colors.light.buttonText}
+            style={styles.addButtonIcon}
+          />
+          <ThemedText
+            type="body"
+            style={[styles.addButtonText, { color: Colors.light.buttonText }]}
+          >
+            Добавить новую цель
+          </ThemedText>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -70,39 +109,32 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: Spacing["5xl"],
-    paddingHorizontal: Spacing["2xl"],
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.xl,
-  },
-  emptyTitle: {
-    marginBottom: Spacing.sm,
-    textAlign: "center",
-  },
-  emptyDescription: {
-    textAlign: "center",
-  },
-  fab: {
+  bottomButtonContainer: {
     position: "absolute",
-    right: Spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.full,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    backgroundColor: "transparent",
+  },
+  addButton: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    height: Spacing.buttonHeight,
+    borderRadius: BorderRadius.xl,
+    shadowColor: "#2196F3",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  addButtonIcon: {
+    marginRight: Spacing.sm,
+  },
+  addButtonText: {
+    fontWeight: "600",
+    fontSize: 16,
   },
 });

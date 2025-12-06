@@ -1,34 +1,26 @@
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
-import { BalanceHeader } from "@/components/BalanceHeader";
 
 export default function ShiftsScreen() {
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
-          paddingBottom: tabBarHeight + Spacing["3xl"] + 56,
+          paddingTop: Spacing["2xl"],
           paddingHorizontal: Spacing.lg,
+          paddingBottom: Spacing.lg + 60 + insets.bottom,
         }}
-        scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <BalanceHeader />
-        
         <View style={styles.emptyState}>
           <View style={[styles.emptyIcon, { backgroundColor: theme.successLight }]}>
             <Feather name="clock" size={32} color={theme.success} />
@@ -45,20 +37,34 @@ export default function ShiftsScreen() {
         </View>
       </ScrollView>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.fab,
-          { 
-            backgroundColor: theme.success,
-            bottom: tabBarHeight + Spacing.lg,
-            opacity: pressed ? 0.8 : 1,
-            transform: [{ scale: pressed ? 0.95 : 1 }],
-          },
+      <View
+        style={[
+          styles.bottomButtonContainer,
+          { paddingBottom: insets.bottom + Spacing.lg },
         ]}
-        onPress={() => {}}
       >
-        <Feather name="plus" size={24} color={Colors.light.buttonText} />
-      </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.addButton,
+            { backgroundColor: theme.success },
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+          ]}
+          onPress={() => {}}
+        >
+          <Feather
+            name="plus"
+            size={20}
+            color={Colors.light.buttonText}
+            style={styles.addButtonIcon}
+          />
+          <ThemedText
+            type="body"
+            style={[styles.addButtonText, { color: Colors.light.buttonText }]}
+          >
+            Добавить смену
+          </ThemedText>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -73,7 +79,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: Spacing["5xl"],
+    paddingTop: Spacing["3xl"],
     paddingHorizontal: Spacing["2xl"],
   },
   emptyIcon: {
@@ -91,18 +97,32 @@ const styles = StyleSheet.create({
   emptyDescription: {
     textAlign: "center",
   },
-  fab: {
+  bottomButtonContainer: {
     position: "absolute",
-    right: Spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.full,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    backgroundColor: "transparent",
+  },
+  addButton: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    height: Spacing.buttonHeight,
+    borderRadius: BorderRadius.xl,
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  addButtonIcon: {
+    marginRight: Spacing.sm,
+  },
+  addButtonText: {
+    fontWeight: "600",
+    fontSize: 16,
   },
 });

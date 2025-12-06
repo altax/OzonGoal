@@ -1,4 +1,5 @@
 import { View, StyleSheet, Pressable } from "react-native";
+import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -7,8 +8,8 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 
 function getCurrentMonth(): string {
   const months = [
-    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+    "ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ",
+    "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ"
   ];
   const now = new Date();
   return `${months[now.getMonth()]} ${now.getFullYear()}`;
@@ -29,26 +30,27 @@ export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeade
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <ThemedText type="small" style={{ color: theme.textSecondary }}>
+        <ThemedText type="caption" style={[styles.monthText, { color: theme.textSecondary }]}>
           {getCurrentMonth()}
         </ThemedText>
         <Pressable
           style={({ pressed }) => [
             styles.avatar,
-            { 
-              backgroundColor: theme.accentLight,
-              opacity: pressed ? 0.7 : 1,
-            },
+            { opacity: pressed ? 0.7 : 1 },
           ]}
           onPress={() => {}}
         >
-          <Feather name="user" size={18} color={theme.accent} />
+          <Image
+            source={{ uri: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" }}
+            style={styles.avatarImage}
+            contentFit="cover"
+          />
         </Pressable>
       </View>
 
       <View style={styles.balanceSection}>
-        <ThemedText type="small" style={{ color: theme.textSecondary }}>
-          Баланс
+        <ThemedText type="caption" style={[styles.balanceLabel, { color: theme.textSecondary }]}>
+          БАЛАНС
         </ThemedText>
         <ThemedText type="h1" style={styles.balanceAmount}>
           {formatBalance(balance)}
@@ -67,31 +69,44 @@ export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeade
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: Spacing["2xl"],
+    marginBottom: Spacing.sm,
   },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  monthText: {
+    letterSpacing: 1,
+    fontWeight: "500",
   },
   avatar: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: BorderRadius.full,
-    alignItems: "center",
-    justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.full,
   },
   balanceSection: {
     alignItems: "center",
   },
+  balanceLabel: {
+    letterSpacing: 1,
+    marginBottom: Spacing.xs,
+  },
   balanceAmount: {
-    marginVertical: Spacing.xs,
+    fontSize: 48,
+    fontWeight: "700",
+    marginBottom: Spacing.sm,
   },
   incomeTag: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    marginTop: Spacing.sm,
   },
 });

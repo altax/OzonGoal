@@ -1,35 +1,30 @@
 import { View, StyleSheet, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { BalanceHeader } from "@/components/BalanceHeader";
 import { Card } from "@/components/Card";
 
 export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
-          paddingBottom: tabBarHeight + Spacing["3xl"],
+          paddingTop: Spacing["2xl"],
           paddingHorizontal: Spacing.lg,
+          paddingBottom: Spacing["3xl"] + insets.bottom,
         }}
-        scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <BalanceHeader />
-        
+        <ThemedText type="h3" style={styles.screenTitle}>
+          Статистика
+        </ThemedText>
         <View style={styles.periodSelector}>
           <View style={[styles.periodButton, styles.periodButtonActive, { backgroundColor: theme.accent }]}>
             <ThemedText type="small" style={{ color: "#FFFFFF", fontWeight: "600" }}>
@@ -98,6 +93,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  screenTitle: {
+    marginBottom: Spacing.xl,
   },
   periodSelector: {
     flexDirection: "row",

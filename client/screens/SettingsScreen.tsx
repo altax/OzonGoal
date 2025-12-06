@@ -1,6 +1,5 @@
-import { View, StyleSheet, ScrollView, Pressable, Image } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -52,21 +51,22 @@ function SettingsItem({ icon, title, value, onPress, showChevron = true }: Setti
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: Spacing.xl,
-          paddingBottom: tabBarHeight + Spacing["3xl"],
+          paddingTop: Spacing["2xl"],
           paddingHorizontal: Spacing.lg,
+          paddingBottom: Spacing["3xl"] + insets.bottom,
         }}
-        scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
+        <ThemedText type="h3" style={styles.screenTitle}>
+          Настройки
+        </ThemedText>
         <Card style={styles.profileCard}>
           <View style={styles.profileContent}>
             <View style={[styles.avatar, { backgroundColor: theme.accentLight }]}>
@@ -124,6 +124,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  screenTitle: {
+    marginBottom: Spacing.xl,
   },
   profileCard: {
     marginBottom: Spacing.xl,
