@@ -18,8 +18,8 @@ type GoalFilter = "active" | "completed";
 type GoalType = {
   id: string;
   name: string;
-  targetAmount: string;
-  currentAmount: string;
+  targetAmount: string | number;
+  currentAmount: string | number;
   iconKey: string;
   iconColor: string;
   iconBgColor: string;

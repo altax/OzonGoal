@@ -16,8 +16,8 @@ type Goal = {
   iconKey: string;
   iconColor: string;
   iconBgColor: string;
-  targetAmount: string;
-  currentAmount: string;
+  targetAmount: string | number;
+  currentAmount: string | number;
   status: 'active' | 'completed';
   isPrimary: boolean;
   orderIndex: number;

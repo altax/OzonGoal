@@ -22,8 +22,8 @@ import { useUpdateGoal, useDeleteGoal } from "@/api";
 interface Goal {
   id: string;
   name: string;
-  targetAmount: string;
-  currentAmount: string;
+  targetAmount: string | number;
+  currentAmount: string | number;
   iconKey: string;
   iconColor: string;
   iconBgColor: string;
@@ -49,7 +49,8 @@ const iconOptions: { key: string; icon: keyof typeof Feather.glyphMap; label: st
   { key: "star", icon: "star", label: "Мечта" },
 ];
 
-function formatAmountStatic(text: string): string {
+function formatAmountStatic(value: string | number): string {
+  const text = String(value ?? "");
   const cleaned = text.replace(/[^\d]/g, "");
   if (!cleaned) return "";
   const number = parseInt(cleaned, 10);
