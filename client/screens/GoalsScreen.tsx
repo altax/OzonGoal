@@ -5,15 +5,15 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { GoalCard, Goal } from "@/components/GoalCard";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 const demoGoals: Goal[] = [
   {
     id: "1",
     title: "Отпуск в Турции",
     icon: "send",
-    iconColor: "#D4A574",
-    iconBgColor: "#FDF5ED",
+    iconColor: "#1A1A1A",
+    iconBgColor: "#F5F5F5",
     currentAmount: 65000,
     targetAmount: 100000,
     shiftsRemaining: 12,
@@ -22,8 +22,8 @@ const demoGoals: Goal[] = [
     id: "2",
     title: "Новый MacBook",
     icon: "monitor",
-    iconColor: "#9B8AA0",
-    iconBgColor: "#F5F0F7",
+    iconColor: "#1A1A1A",
+    iconBgColor: "#F5F5F5",
     currentAmount: 40000,
     targetAmount: 160000,
     shiftsRemaining: 38,
@@ -32,8 +32,8 @@ const demoGoals: Goal[] = [
     id: "3",
     title: "Новая машина",
     icon: "truck",
-    iconColor: "#7B9B9B",
-    iconBgColor: "#F0F5F5",
+    iconColor: "#1A1A1A",
+    iconBgColor: "#F5F5F5",
     currentAmount: 60000,
     targetAmount: 500000,
     shiftsRemaining: 138,
@@ -42,15 +42,15 @@ const demoGoals: Goal[] = [
     id: "4",
     title: "Ремонт квартиры",
     icon: "home",
-    iconColor: "#E5B87C",
-    iconBgColor: "#FDF8F0",
+    iconColor: "#1A1A1A",
+    iconBgColor: "#F5F5F5",
     currentAmount: 120000,
     targetAmount: 300000,
     shiftsRemaining: 56,
   },
 ];
 
-const BUTTON_AREA_HEIGHT = 80;
+const BUTTON_AREA_HEIGHT = 60;
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
@@ -76,7 +76,7 @@ export default function GoalsScreen() {
         style={[
           styles.bottomButtonContainer,
           { 
-            paddingBottom: insets.bottom + Spacing.lg,
+            paddingBottom: insets.bottom + Spacing.md,
             backgroundColor: theme.backgroundRoot,
           },
         ]}
@@ -85,21 +85,20 @@ export default function GoalsScreen() {
           style={({ pressed }) => [
             styles.addButton,
             { backgroundColor: theme.accent },
-            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            pressed && { opacity: 0.8 },
           ]}
           onPress={() => {}}
         >
           <Feather
             name="plus"
-            size={20}
-            color={Colors.light.buttonText}
+            size={16}
+            color={theme.buttonText}
             style={styles.addButtonIcon}
           />
           <ThemedText
-            type="body"
-            style={[styles.addButtonText, { color: Colors.light.buttonText }]}
+            style={[styles.addButtonText, { color: theme.buttonText }]}
           >
-            Добавить новую цель
+            Добавить цель
           </ThemedText>
         </Pressable>
       </View>
@@ -120,25 +119,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.md,
   },
   addButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.xl,
-    shadowColor: "#D4A574",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
+    height: 40,
+    borderRadius: BorderRadius.sm,
   },
   addButtonIcon: {
-    marginRight: Spacing.sm,
+    marginRight: Spacing.xs,
   },
   addButtonText: {
-    fontWeight: "600",
-    fontSize: 16,
+    fontWeight: "500",
+    fontSize: 14,
   },
 });

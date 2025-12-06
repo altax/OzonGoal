@@ -64,7 +64,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
                 style={[
                   styles.progressFill,
                   {
-                    backgroundColor: goal.iconColor,
+                    backgroundColor: theme.accent,
                     width: `${progress}%`,
                   },
                 ]}
@@ -88,7 +88,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       <View style={styles.rightSection}>
         <ThemedText
           type="body"
-          style={[styles.percentage, { color: goal.iconColor }]}
+          style={[styles.percentage, { color: theme.text }]}
         >
           {progressPercent}%
         </ThemedText>

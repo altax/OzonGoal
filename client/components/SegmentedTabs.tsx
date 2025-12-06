@@ -1,12 +1,8 @@
 import { View, Pressable, StyleSheet } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-} from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 
 export type TabKey = "goals" | "shifts" | "statistics" | "settings";
 
@@ -38,47 +34,37 @@ function TabItem({
 }) {
   const { theme } = useTheme();
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        scale: withSpring(isActive ? 1 : 1, {
-          damping: 15,
-          stiffness: 150,
-        }),
-      },
-    ],
-  }));
-
   return (
     <Pressable
       style={styles.tabItem}
       onPress={onPress}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
     >
-      <Animated.View
-        style={[
-          styles.tabContainer,
-          isActive && styles.tabContainerActive,
-          isActive && { backgroundColor: theme.accent },
-          animatedStyle,
-        ]}
-      >
+      <View style={styles.tabContainer}>
         <ThemedText
           style={[
             styles.tabLabel,
-            { color: isActive ? "#FFFFFF" : theme.textSecondary },
+            { color: isActive ? theme.text : theme.textSecondary },
           ]}
         >
           {tab.label}
         </ThemedText>
-      </Animated.View>
+        <View
+          style={[
+            styles.underline,
+            { backgroundColor: isActive ? theme.text : "transparent" },
+          ]}
+        />
+      </View>
     </Pressable>
   );
 }
 
 export function SegmentedTabs({ activeTab, onTabChange }: SegmentedTabsProps) {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { borderBottomColor: theme.border }]}>
       {tabs.map((tab) => (
         <TabItem
           key={tab.key}
@@ -94,30 +80,28 @@ export function SegmentedTabs({ activeTab, onTabChange }: SegmentedTabsProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
     marginTop: Spacing.md,
-    marginBottom: Spacing.lg,
-    gap: Spacing.sm,
+    borderBottomWidth: 1,
   },
   tabItem: {
+    flex: 1,
     alignItems: "center",
   },
   tabContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
   },
-  tabContainerActive: {
-    shadowColor: "#D4A574",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+  underline: {
+    height: 2,
+    width: "100%",
+    marginTop: Spacing.sm,
+    borderRadius: 1,
   },
   tabLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "500",
   },
 });
