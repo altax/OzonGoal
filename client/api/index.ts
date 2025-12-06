@@ -235,10 +235,49 @@ export function useSetPrimaryGoal() {
   });
 }
 
+async function autoUpdateShiftStatuses() {
+  const now = new Date().toISOString();
+  
+  const { data: expiredShifts } = await supabase
+    .from('shifts')
+    .select('id')
+    .eq('user_id', DEFAULT_USER_ID)
+    .eq('status', 'in_progress')
+    .lt('scheduled_end', now);
+  
+  if (expiredShifts && expiredShifts.length > 0) {
+    for (const shift of expiredShifts) {
+      await supabase
+        .from('shifts')
+        .update({ status: 'completed' })
+        .eq('id', shift.id);
+    }
+  }
+  
+  const { data: startedShifts } = await supabase
+    .from('shifts')
+    .select('id')
+    .eq('user_id', DEFAULT_USER_ID)
+    .eq('status', 'scheduled')
+    .lte('scheduled_start', now)
+    .gt('scheduled_end', now);
+  
+  if (startedShifts && startedShifts.length > 0) {
+    for (const shift of startedShifts) {
+      await supabase
+        .from('shifts')
+        .update({ status: 'in_progress' })
+        .eq('id', shift.id);
+    }
+  }
+}
+
 export function useShifts() {
   return useQuery<Shift[]>({
     queryKey: ["shifts"],
     queryFn: async () => {
+      await autoUpdateShiftStatuses();
+      
       const { data, error } = await supabase
         .from('shifts')
         .select('*')
@@ -255,6 +294,7 @@ export function useShiftsSummary() {
   return useQuery<{ past: number; scheduled: number; current: Shift | null }>({
     queryKey: ["shifts", "summary"],
     queryFn: async () => {
+      await autoUpdateShiftStatuses();
       const now = new Date().toISOString();
       
       const { data: pastData } = await supabase
