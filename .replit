@@ -14,14 +14,6 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 5001
-externalPort = 3003
-
-[[ports]]
-localPort = 32899
-externalPort = 6800
-
-[[ports]]
 localPort = 40441
 externalPort = 6000
 
@@ -40,6 +32,10 @@ externalPort = 3002
 [[ports]]
 localPort = 43383
 externalPort = 4200
+
+[[ports]]
+localPort = 43451
+externalPort = 6800
 
 [[ports]]
 localPort = 44167
@@ -79,4 +75,8 @@ outputType = "webview"
 task = "shell.exec"
 args = "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN ./node_modules/.bin/expo start --web --port 5000"
 waitForPort = 5000
+
+[userenv]
+
+[userenv.shared]
 

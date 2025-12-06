@@ -9,7 +9,22 @@ import Animated, {
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
-import type { Goal } from "@shared/schema";
+type Goal = {
+  id: string;
+  userId: string | null;
+  name: string;
+  iconKey: string;
+  iconColor: string;
+  iconBgColor: string;
+  targetAmount: string;
+  currentAmount: string;
+  status: 'active' | 'completed';
+  isPrimary: boolean;
+  orderIndex: number;
+  completedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 interface GoalCardProps {
   goal: Goal;
