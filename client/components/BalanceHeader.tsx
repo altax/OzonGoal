@@ -1,10 +1,9 @@
 import { View, StyleSheet, Pressable } from "react-native";
-import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 function getCurrentFullDate(): string {
   const days = [
@@ -91,36 +90,20 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
         <ThemedText type="caption" style={[styles.dateText, { color: theme.textSecondary }]}>
           {getCurrentFullDate()}
         </ThemedText>
-        <View style={styles.topRowRight}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.themeToggle,
-              { backgroundColor: theme.backgroundSecondary },
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={toggleTheme}
-          >
-            <Feather
-              name={isDark ? "sun" : "moon"}
-              size={18}
-              color={theme.accent}
-            />
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.avatar,
-              { opacity: pressed ? 0.7 : 1 },
-              Shadows.cardLight,
-            ]}
-            onPress={() => {}}
-          >
-            <Image
-              source={{ uri: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" }}
-              style={styles.avatarImage}
-              contentFit="cover"
-            />
-          </Pressable>
-        </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.themeToggle,
+            { backgroundColor: theme.backgroundSecondary },
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={toggleTheme}
+        >
+          <Feather
+            name={isDark ? "sun" : "moon"}
+            size={18}
+            color={theme.accent}
+          />
+        </Pressable>
       </View>
 
       <Pressable 
@@ -153,11 +136,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing["2xl"],
   },
-  topRowRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-  },
   dateText: {
     fontSize: 13,
     fontWeight: "500",
@@ -168,18 +146,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
-    overflow: "hidden",
-    backgroundColor: "#FFFFFF",
-  },
-  avatarImage: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
   },
   balanceSection: {
     alignItems: "center",

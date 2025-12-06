@@ -1,7 +1,13 @@
 import { useState, useMemo } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, LayoutChangeEvent, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
@@ -24,6 +30,7 @@ type GoalType = {
   iconColor: string;
   iconBgColor: string;
   status: string;
+  isPrimary?: boolean;
 };
 
 export default function GoalsScreen() {
@@ -33,6 +40,26 @@ export default function GoalsScreen() {
   const [selectedGoal, setSelectedGoal] = useState<GoalType | null>(null);
   const [filter, setFilter] = useState<GoalFilter>("active");
   const { data: goals, isLoading } = useGoals();
+  
+  const [tabWidth, setTabWidth] = useState(0);
+  const indicatorPosition = useSharedValue(0);
+  
+  const handleFilterChange = (newFilter: GoalFilter) => {
+    indicatorPosition.value = withTiming(newFilter === "active" ? 0 : 1, {
+      duration: 200,
+      easing: Easing.bezier(0.4, 0, 0.2, 1),
+    });
+    setFilter(newFilter);
+  };
+  
+  const animatedIndicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorPosition.value * tabWidth }],
+  }));
+
+  const handleTabLayout = (e: LayoutChangeEvent) => {
+    const width = e.nativeEvent.layout.width / 2;
+    setTabWidth(width);
+  };
 
   const { activeGoals, completedGoals } = useMemo(() => {
     if (!goals) return { activeGoals: [], completedGoals: [] };
@@ -50,13 +77,20 @@ export default function GoalsScreen() {
     <View style={styles.container}>
       {hasAnyGoals && (
         <View style={[styles.filterContainer, { paddingHorizontal: Spacing["2xl"] }]}>
-          <View style={[styles.filterToggle, { backgroundColor: theme.backgroundRoot }]}>
-            <Pressable
+          <View 
+            style={[styles.filterToggle, { backgroundColor: theme.backgroundSecondary }]}
+            onLayout={handleTabLayout}
+          >
+            <Animated.View 
               style={[
-                styles.filterButton,
-                filter === "active" && { backgroundColor: theme.backgroundContent },
-              ]}
-              onPress={() => setFilter("active")}
+                styles.filterIndicator, 
+                { backgroundColor: theme.backgroundContent, width: tabWidth || "50%" },
+                animatedIndicatorStyle,
+              ]} 
+            />
+            <Pressable
+              style={styles.filterButton}
+              onPress={() => handleFilterChange("active")}
             >
               <ThemedText
                 style={[
@@ -68,11 +102,8 @@ export default function GoalsScreen() {
               </ThemedText>
             </Pressable>
             <Pressable
-              style={[
-                styles.filterButton,
-                filter === "completed" && { backgroundColor: theme.backgroundContent },
-              ]}
-              onPress={() => setFilter("completed")}
+              style={styles.filterButton}
+              onPress={() => handleFilterChange("completed")}
             >
               <ThemedText
                 style={[
@@ -102,7 +133,7 @@ export default function GoalsScreen() {
           </View>
         ) : hasGoals ? (
           displayGoals.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} onPress={() => setSelectedGoal(goal as GoalType)} />
+            <GoalCard key={goal.id} goal={goal} onPress={() => setSelectedGoal(goal as GoalType)} showPrimaryBadge />
           ))
         ) : (
           <View style={styles.emptyState}>
@@ -175,24 +206,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterContainer: {
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.sm,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xs,
   },
   filterToggle: {
     flexDirection: "row",
-    borderRadius: BorderRadius.sm,
-    padding: 4,
+    borderRadius: BorderRadius.xs,
+    padding: 3,
+    position: "relative",
+  },
+  filterIndicator: {
+    position: "absolute",
+    top: 3,
+    bottom: 3,
+    left: 0,
+    borderRadius: BorderRadius.xs - 2,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.xs,
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.xs - 2,
     alignItems: "center",
+    zIndex: 1,
   },
   filterText: {
-    fontSize: 13,
-    fontWeight: "500",
+    fontSize: 12,
+    fontWeight: "600",
   },
   scrollView: {
     flex: 1,

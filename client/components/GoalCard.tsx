@@ -69,11 +69,11 @@ const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
 };
 
 export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge }: GoalCardProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
   
-  const currentAmount = parseFloat(goal.currentAmount);
-  const targetAmount = parseFloat(goal.targetAmount);
+  const currentAmount = parseFloat(String(goal.currentAmount));
+  const targetAmount = parseFloat(String(goal.targetAmount));
   const progress = Math.min((currentAmount / targetAmount) * 100, 100);
   const progressPercent = Math.round(progress);
   const shiftsRemaining = calculateShiftsRemaining(currentAmount, targetAmount);
@@ -98,7 +98,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge }: GoalC
       style={[
         styles.container,
         { backgroundColor: theme.backgroundDefault },
-        Shadows.card,
+        !isDark && Shadows.card,
         animatedStyle,
         isCompleted && { opacity: 0.7 },
       ]}

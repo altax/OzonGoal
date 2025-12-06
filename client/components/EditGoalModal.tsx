@@ -17,7 +17,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
-import { useUpdateGoal, useDeleteGoal } from "@/api";
+import { useUpdateGoal, useDeleteGoal, useSetPrimaryGoal } from "@/api";
 
 interface Goal {
   id: string;
@@ -28,6 +28,7 @@ interface Goal {
   iconColor: string;
   iconBgColor: string;
   status: string;
+  isPrimary?: boolean;
 }
 
 interface EditGoalModalProps {
@@ -79,6 +80,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
   const insets = useSafeAreaInsets();
   const updateGoal = useUpdateGoal();
   const deleteGoal = useDeleteGoal();
+  const setPrimaryGoal = useSetPrimaryGoal();
 
   const [name, setName] = useState(goal.name);
   const [targetAmount, setTargetAmount] = useState(formatAmountStatic(goal.targetAmount));
@@ -103,7 +105,15 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
       return;
     }
 
-    const current = parseFloat(currentAmount.replace(/\s/g, "").replace(",", ".")) || 0;
+    let current = parseFloat(currentAmount.replace(/\s/g, "").replace(",", ".")) || 0;
+
+    if (current > target) {
+      setError("Сумма накопления не может превышать целевую сумму");
+      return;
+    }
+
+    const shouldBeCompleted = current >= target;
+    const newStatus = shouldBeCompleted ? "completed" : "active";
 
     try {
       await updateGoal.mutateAsync({
@@ -112,6 +122,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
         targetAmount: target.toString(),
         currentAmount: current.toString(),
         iconKey: selectedIcon,
+        status: newStatus,
       });
       handleClose();
     } catch (e) {
@@ -142,6 +153,14 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
   };
 
   const handleMarkComplete = async () => {
+    const target = parseFloat(targetAmount.replace(/\s/g, "").replace(",", ".")) || 0;
+    const current = parseFloat(currentAmount.replace(/\s/g, "").replace(",", ".")) || 0;
+
+    if (goal.status !== "completed" && current < target) {
+      setError("Цель не может быть завершена, пока не набрана полная сумма");
+      return;
+    }
+
     try {
       await updateGoal.mutateAsync({
         id: goal.id,
@@ -150,6 +169,22 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
       handleClose();
     } catch (e) {
       setError("Не удалось изменить статус цели");
+    }
+  };
+
+  const handleTogglePrimary = async () => {
+    try {
+      if (goal.isPrimary) {
+        await updateGoal.mutateAsync({
+          id: goal.id,
+          isPrimary: false,
+        });
+      } else {
+        await setPrimaryGoal.mutateAsync(goal.id);
+      }
+      handleClose();
+    } catch (e) {
+      setError("Не удалось изменить статус закрепления");
     }
   };
 
@@ -309,31 +344,59 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
           </View>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.statusButton,
-            { 
-              backgroundColor: goal.status === "completed" ? theme.accentLight : theme.successLight,
-              borderColor: goal.status === "completed" ? theme.accent : theme.success,
-            },
-            pressed && { opacity: 0.8 },
-          ]}
-          onPress={handleMarkComplete}
-        >
-          <Feather
-            name={goal.status === "completed" ? "rotate-ccw" : "check-circle"}
-            size={18}
-            color={goal.status === "completed" ? theme.accent : theme.success}
-          />
-          <ThemedText
-            style={[
-              styles.statusButtonText,
-              { color: goal.status === "completed" ? theme.accent : theme.success },
+        <View style={styles.actionButtonsRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              { 
+                backgroundColor: goal.isPrimary ? theme.warningLight : theme.backgroundSecondary,
+                borderColor: goal.isPrimary ? theme.warning : theme.border,
+              },
+              pressed && { opacity: 0.8 },
             ]}
+            onPress={handleTogglePrimary}
           >
-            {goal.status === "completed" ? "Вернуть в активные" : "Отметить как завершённую"}
-          </ThemedText>
-        </Pressable>
+            <Feather
+              name="star"
+              size={18}
+              color={goal.isPrimary ? theme.warning : theme.textSecondary}
+            />
+            <ThemedText
+              style={[
+                styles.actionButtonText,
+                { color: goal.isPrimary ? theme.warning : theme.textSecondary },
+              ]}
+            >
+              {goal.isPrimary ? "Открепить" : "Закрепить"}
+            </ThemedText>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              { 
+                backgroundColor: goal.status === "completed" ? theme.accentLight : theme.successLight,
+                borderColor: goal.status === "completed" ? theme.accent : theme.success,
+              },
+              pressed && { opacity: 0.8 },
+            ]}
+            onPress={handleMarkComplete}
+          >
+            <Feather
+              name={goal.status === "completed" ? "rotate-ccw" : "check-circle"}
+              size={18}
+              color={goal.status === "completed" ? theme.accent : theme.success}
+            />
+            <ThemedText
+              style={[
+                styles.actionButtonText,
+                { color: goal.status === "completed" ? theme.accent : theme.success },
+              ]}
+            >
+              {goal.status === "completed" ? "Вернуть" : "Завершить"}
+            </ThemedText>
+          </Pressable>
+        </View>
 
         {error ? (
           <View style={[styles.errorContainer, { backgroundColor: theme.errorLight }]}>
@@ -455,19 +518,24 @@ const styles = StyleSheet.create({
   iconLabel: {
     fontSize: 11,
   },
-  statusButton: {
+  actionButtonsRow: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginBottom: Spacing["2xl"],
+  },
+  actionButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    gap: Spacing.sm,
-    marginBottom: Spacing["2xl"],
+    gap: Spacing.xs,
   },
-  statusButtonText: {
-    fontSize: 14,
+  actionButtonText: {
+    fontSize: 13,
     fontWeight: "500",
   },
   errorContainer: {

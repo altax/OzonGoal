@@ -513,10 +513,13 @@ export function useRecordEarnings() {
           .single();
         
         if (goal) {
-          const newAmount = parseFloat(goal.current_amount || '0') + parseFloat(allocation.amount);
+          const targetAmount = parseFloat(goal.target_amount || '0');
+          const currentAmount = parseFloat(goal.current_amount || '0');
+          const allocationAmount = parseFloat(allocation.amount);
+          const newAmount = Math.min(currentAmount + allocationAmount, targetAmount);
           const updateData: Record<string, unknown> = { current_amount: newAmount };
           
-          if (newAmount >= parseFloat(goal.target_amount)) {
+          if (newAmount >= targetAmount) {
             updateData.status = 'completed';
             updateData.completed_at = new Date().toISOString();
           }
