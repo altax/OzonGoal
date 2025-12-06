@@ -375,6 +375,57 @@ export function useCancelShift() {
   });
 }
 
+export function useUpdateShift() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, scheduledDate }: { id: string; scheduledDate: string }) => {
+      const date = new Date(scheduledDate);
+      
+      const { data: shift } = await supabase
+        .from('shifts')
+        .select('shift_type')
+        .eq('id', id)
+        .single();
+      
+      if (!shift) throw new Error('Shift not found');
+      
+      let scheduledStart: Date;
+      let scheduledEnd: Date;
+      
+      if (shift.shift_type === "day") {
+        scheduledStart = new Date(date);
+        scheduledStart.setHours(8, 0, 0, 0);
+        scheduledEnd = new Date(date);
+        scheduledEnd.setHours(20, 0, 0, 0);
+      } else {
+        scheduledStart = new Date(date);
+        scheduledStart.setHours(20, 0, 0, 0);
+        scheduledEnd = new Date(date);
+        scheduledEnd.setDate(scheduledEnd.getDate() + 1);
+        scheduledEnd.setHours(8, 0, 0, 0);
+      }
+      
+      const { data, error } = await supabase
+        .from('shifts')
+        .update({
+          scheduled_date: date.toISOString(),
+          scheduled_start: scheduledStart.toISOString(),
+          scheduled_end: scheduledEnd.toISOString(),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw new Error(error.message);
+      return toClientShift(data as SupabaseShift);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+    },
+  });
+}
+
 export function useMarkNoShow() {
   const queryClient = useQueryClient();
   

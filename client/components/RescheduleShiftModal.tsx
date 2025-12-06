@@ -1,0 +1,271 @@
+import { useState, useEffect } from "react";
+import { View, StyleSheet, Modal, Pressable, ScrollView, Platform } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
+
+import { useTheme } from "@/hooks/useTheme";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ThemedText } from "@/components/ThemedText";
+import { Spacing, BorderRadius } from "@/constants/theme";
+import { useUpdateShift } from "@/api";
+
+type ShiftType = {
+  id: string;
+  operationType: string;
+  shiftType: string;
+  scheduledDate: Date;
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  status: string;
+  earnings: string | null;
+};
+
+interface RescheduleShiftModalProps {
+  visible: boolean;
+  shift: ShiftType | null;
+  onClose: () => void;
+}
+
+function RescheduleShiftModalContent({ visible, shift, onClose }: RescheduleShiftModalProps) {
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const updateShift = useUpdateShift();
+  
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (shift) {
+      setSelectedDate(new Date(shift.scheduledDate));
+    }
+  }, [shift]);
+
+  const generateDates = () => {
+    const dates: Date[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  };
+
+  const formatDateLabel = (date: Date) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    if (dateDay.getTime() === today.getTime()) {
+      return "Сегодня";
+    }
+    if (dateDay.getTime() === tomorrow.getTime()) {
+      return "Завтра";
+    }
+    
+    const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    const months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+    return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`;
+  };
+
+  const handleSave = async () => {
+    if (!shift || !selectedDate) return;
+    
+    try {
+      await updateShift.mutateAsync({
+        id: shift.id,
+        scheduledDate: selectedDate.toISOString(),
+      });
+      onClose();
+    } catch (error) {
+      console.error("Failed to reschedule shift:", error);
+    }
+  };
+
+  const dates = generateDates();
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <BlurView
+        intensity={20}
+        tint={isDark ? "dark" : "light"}
+        style={styles.blurContainer}
+      >
+        <Pressable style={styles.overlay} onPress={onClose} />
+        
+        <View
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: theme.backgroundContent,
+              paddingBottom: insets.bottom + Spacing.xl,
+            },
+          ]}
+        >
+          <View style={styles.handle} />
+          
+          <View style={styles.header}>
+            <ThemedText type="h4" style={styles.title}>
+              Перенести смену
+            </ThemedText>
+            <Pressable onPress={onClose} style={styles.closeButton}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+
+          <ThemedText type="small" style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Выберите новую дату для смены
+          </ThemedText>
+
+          <ScrollView
+            style={styles.datesContainer}
+            contentContainerStyle={styles.datesContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {dates.map((date) => {
+              const isSelected = selectedDate && 
+                date.getDate() === selectedDate.getDate() &&
+                date.getMonth() === selectedDate.getMonth() &&
+                date.getFullYear() === selectedDate.getFullYear();
+              
+              return (
+                <Pressable
+                  key={date.toISOString()}
+                  style={[
+                    styles.dateOption,
+                    { 
+                      backgroundColor: isSelected ? theme.accent : theme.backgroundSecondary,
+                      borderColor: isSelected ? theme.accent : theme.border,
+                    },
+                  ]}
+                  onPress={() => setSelectedDate(date)}
+                >
+                  <Feather 
+                    name="calendar" 
+                    size={18} 
+                    color={isSelected ? "#FFFFFF" : theme.textSecondary} 
+                  />
+                  <ThemedText 
+                    style={[
+                      styles.dateText, 
+                      { color: isSelected ? "#FFFFFF" : theme.text }
+                    ]}
+                  >
+                    {formatDateLabel(date)}
+                  </ThemedText>
+                  {isSelected && (
+                    <Feather name="check" size={18} color="#FFFFFF" />
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <Pressable
+            style={[
+              styles.saveButton,
+              { backgroundColor: theme.accent },
+              updateShift.isPending && { opacity: 0.7 },
+            ]}
+            onPress={handleSave}
+            disabled={updateShift.isPending}
+          >
+            <ThemedText style={styles.saveButtonText}>
+              {updateShift.isPending ? "Сохранение..." : "Сохранить"}
+            </ThemedText>
+          </Pressable>
+        </View>
+      </BlurView>
+    </Modal>
+  );
+}
+
+export function RescheduleShiftModal(props: RescheduleShiftModalProps) {
+  return (
+    <ThemeProvider>
+      <RescheduleShiftModalContent {...props} />
+    </ThemeProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  blurContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    paddingTop: Spacing.md,
+    paddingHorizontal: Spacing["2xl"],
+    maxHeight: "70%",
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: "#D1D5DB",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: Spacing.lg,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.sm,
+  },
+  title: {
+    fontWeight: "700",
+  },
+  closeButton: {
+    padding: Spacing.xs,
+  },
+  subtitle: {
+    marginBottom: Spacing.xl,
+  },
+  datesContainer: {
+    maxHeight: 300,
+  },
+  datesContent: {
+    gap: Spacing.sm,
+  },
+  dateOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    gap: Spacing.md,
+  },
+  dateText: {
+    flex: 1,
+    fontWeight: "500",
+    fontSize: 15,
+  },
+  saveButton: {
+    marginTop: Spacing.xl,
+    height: 52,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+});

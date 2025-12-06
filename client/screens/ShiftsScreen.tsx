@@ -14,7 +14,9 @@ import { ThemedText } from "@/components/ThemedText";
 import { AddShiftModal } from "@/components/AddShiftModal";
 import { RecordEarningsModal } from "@/components/RecordEarningsModal";
 import { ShiftDetailsModal } from "@/components/ShiftDetailsModal";
-import { useShifts } from "@/api";
+import { ShiftCard } from "@/components/ShiftCard";
+import { RescheduleShiftModal } from "@/components/RescheduleShiftModal";
+import { useShifts, useCancelShift } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const BUTTON_AREA_HEIGHT = 72;
@@ -85,8 +87,10 @@ export default function ShiftsScreen() {
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [selectedShiftForEarnings, setSelectedShiftForEarnings] = useState<ShiftType | null>(null);
   const [selectedShiftForDetails, setSelectedShiftForDetails] = useState<ShiftType | null>(null);
+  const [selectedShiftForReschedule, setSelectedShiftForReschedule] = useState<ShiftType | null>(null);
   const [filter, setFilter] = useState<ShiftFilter>("scheduled");
   const { data: shifts, isLoading } = useShifts();
+  const cancelShift = useCancelShift();
   
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorPosition = useSharedValue(0);
@@ -130,79 +134,34 @@ export default function ShiftsScreen() {
     : displayShifts.length > 0;
   const hasAnyShifts = shifts && shifts.length > 0;
 
+  const handleCancelShift = async (shiftId: string) => {
+    try {
+      await cancelShift.mutateAsync(shiftId);
+    } catch (error) {
+      console.error("Failed to cancel shift:", error);
+    }
+  };
+
+  const handleRescheduleShift = (shiftId: string) => {
+    const shift = shifts?.find(s => s.id === shiftId);
+    if (shift) {
+      setSelectedShiftForReschedule(shift as ShiftType);
+    }
+  };
+
   const renderShiftCard = (shift: any, isCurrentShift: boolean = false) => {
-    const isCompleted = shift.status === "completed";
-    const canRecordEarnings = isCompleted && !shift.earnings;
     const shiftData = shift as ShiftType;
     
     return (
-      <Pressable
+      <ShiftCard
         key={shift.id}
-        style={({ pressed }) => [
-          styles.shiftCard,
-          { backgroundColor: theme.backgroundContent, borderColor: isCurrentShift ? theme.warning : theme.border },
-          isCurrentShift && { borderWidth: 2 },
-          pressed && { opacity: 0.8 },
-        ]}
-        onPress={() => isCompleted ? setSelectedShiftForDetails(shiftData) : setSelectedShiftForDetails(shiftData)}
-      >
-        {isCurrentShift && (
-          <View style={[styles.currentBadge, { backgroundColor: theme.warning }]}>
-            <ThemedText type="caption" style={{ color: "#FFFFFF", fontWeight: "600" }}>
-              Текущая смена
-            </ThemedText>
-          </View>
-        )}
-        <View style={styles.shiftHeader}>
-          <View style={[styles.shiftTypeIcon, { backgroundColor: isCurrentShift ? theme.warningLight : theme.accentLight }]}>
-            <Feather
-              name={shift.shiftType === "day" ? "sun" : "moon"}
-              size={18}
-              color={isCurrentShift ? theme.warning : theme.accent}
-            />
-          </View>
-          <View style={styles.shiftInfo}>
-            <ThemedText type="body" style={{ fontWeight: "600" }}>
-              {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {getSmartDateLabel(new Date(shift.scheduledDate))} • {formatShiftTime(shift.shiftType)}
-            </ThemedText>
-          </View>
-          {!isCurrentShift && (
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
-              <ThemedText type="caption" style={{ color: getStatusColor(shift.status, theme), fontWeight: "500" }}>
-                {getStatusLabel(shift.status)}
-              </ThemedText>
-            </View>
-          )}
-        </View>
-        {canRecordEarnings && (
-          <Pressable
-            style={({ pressed }) => [
-              styles.recordEarningsButton,
-              { backgroundColor: theme.success },
-              pressed && { opacity: 0.8 },
-            ]}
-            onPress={() => setSelectedShiftForEarnings(shiftData)}
-          >
-            <Feather name="dollar-sign" size={16} color="#FFFFFF" />
-            <ThemedText style={styles.recordEarningsText}>
-              Записать заработок
-            </ThemedText>
-          </Pressable>
-        )}
-        {isCompleted && shift.earnings && (
-          <View style={[styles.earnedBadge, { backgroundColor: theme.successLight }]}>
-            <View style={styles.earnedRow}>
-              <ThemedText style={[styles.earnedText, { color: theme.success }]}>
-                Заработано: {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnings))} ₽
-              </ThemedText>
-              <Feather name="chevron-right" size={16} color={theme.success} />
-            </View>
-          </View>
-        )}
-      </Pressable>
+        shift={shiftData}
+        isCurrentShift={isCurrentShift}
+        onPress={() => setSelectedShiftForDetails(shiftData)}
+        onRecordEarnings={() => setSelectedShiftForEarnings(shiftData)}
+        onCancel={handleCancelShift}
+        onReschedule={handleRescheduleShift}
+      />
     );
   };
 
@@ -338,6 +297,12 @@ export default function ShiftsScreen() {
         visible={!!selectedShiftForDetails}
         shift={selectedShiftForDetails}
         onClose={() => setSelectedShiftForDetails(null)}
+      />
+
+      <RescheduleShiftModal
+        visible={!!selectedShiftForReschedule}
+        shift={selectedShiftForReschedule}
+        onClose={() => setSelectedShiftForReschedule(null)}
       />
     </View>
   );
