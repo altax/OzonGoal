@@ -39,6 +39,7 @@ export default function MainTabNavigator() {
             count: goalsSummary.count,
             totalTarget: goalsSummary.totalTarget,
             totalCurrent: goalsSummary.totalCurrent,
+            averageEarningsPerShift: 3200,
           };
         }
         return undefined;
@@ -49,6 +50,10 @@ export default function MainTabNavigator() {
             past: shiftsSummary.past,
             scheduled: shiftsSummary.scheduled,
             hasCurrent: !!shiftsSummary.current,
+            currentShift: shiftsSummary.current ? {
+              scheduledEnd: shiftsSummary.current.scheduledEnd,
+              shiftType: shiftsSummary.current.shiftType,
+            } : null,
           };
         }
         return undefined;
@@ -76,7 +81,7 @@ export default function MainTabNavigator() {
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <BalanceHeader 
-          balance={user?.balance || 0} 
+          balance={typeof user?.balance === 'string' ? parseFloat(user.balance) || 0 : user?.balance || 0} 
           tabInfo={tabInfo} 
           onBalancePress={() => setShowBalanceHistory(true)}
         />

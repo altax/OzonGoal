@@ -41,15 +41,52 @@ function pluralizeGoals(count: number): string {
   return "целей";
 }
 
+type CurrentShift = {
+  scheduledEnd: Date;
+  shiftType: string;
+};
+
 export type TabInfo = 
-  | { type: "goals"; count: number; totalTarget: number; totalCurrent: number }
-  | { type: "shifts"; past: number; scheduled: number; hasCurrent: boolean }
+  | { type: "goals"; count: number; totalTarget: number; totalCurrent: number; averageEarningsPerShift?: number }
+  | { type: "shifts"; past: number; scheduled: number; hasCurrent: boolean; currentShift?: CurrentShift | null }
   | { type: "default"; lastShiftIncome?: number };
 
 interface BalanceHeaderProps {
   balance?: number;
   tabInfo?: TabInfo;
   onBalancePress?: () => void;
+}
+
+function getTimeRemaining(endDate: Date): string {
+  const now = new Date();
+  const end = new Date(endDate);
+  const diff = end.getTime() - now.getTime();
+  
+  if (diff <= 0) return "Смена завершается";
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours > 0) {
+    return `До конца смены: ${hours} ч ${minutes} мин`;
+  }
+  return `До конца смены: ${minutes} мин`;
+}
+
+function pluralizeDays(count: number): string {
+  const lastTwo = count % 100;
+  const lastOne = count % 10;
+  
+  if (lastTwo >= 11 && lastTwo <= 19) {
+    return "смен";
+  }
+  if (lastOne === 1) {
+    return "смена";
+  }
+  if (lastOne >= 2 && lastOne <= 4) {
+    return "смены";
+  }
+  return "смен";
 }
 
 export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceHeaderProps) {
@@ -63,11 +100,24 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
         const percentage = tabInfo.totalTarget > 0 
           ? Math.round((tabInfo.totalCurrent / tabInfo.totalTarget) * 100) 
           : 0;
+        const remaining = tabInfo.totalTarget - tabInfo.totalCurrent;
+        const avgEarnings = tabInfo.averageEarningsPerShift || 3200;
+        const shiftsNeeded = remaining > 0 ? Math.ceil(remaining / avgEarnings) : 0;
+        
         return (
-          <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
-            <ThemedText style={[styles.infoText, { color: theme.accent }]}>
-              {tabInfo.count} {pluralizeGoals(tabInfo.count)} • {formatBalance(tabInfo.totalTarget)} ₽ • {percentage}%
-            </ThemedText>
+          <View style={styles.infoTagContainer}>
+            <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+              <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+                {tabInfo.count} {pluralizeGoals(tabInfo.count)} • {formatBalance(tabInfo.totalTarget)} ₽ • {percentage}%
+              </ThemedText>
+            </View>
+            {shiftsNeeded > 0 && (
+              <View style={[styles.infoTag, { backgroundColor: theme.successLight, marginTop: Spacing.sm }]}>
+                <ThemedText style={[styles.infoText, { color: theme.success }]}>
+                  ≈ {shiftsNeeded} {pluralizeDays(shiftsNeeded)} до всех целей
+                </ThemedText>
+              </View>
+            )}
           </View>
         );
       }
@@ -77,13 +127,22 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
         if (tabInfo.scheduled > 0) parts.push(`${tabInfo.scheduled} запланировано`);
         if (tabInfo.hasCurrent) parts.push("идет смена");
         
-        if (parts.length === 0) return null;
-        
         return (
-          <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
-            <ThemedText style={[styles.infoText, { color: theme.accent }]}>
-              {parts.join(" • ")}
-            </ThemedText>
+          <View style={styles.infoTagContainer}>
+            {parts.length > 0 && (
+              <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+                <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+                  {parts.join(" • ")}
+                </ThemedText>
+              </View>
+            )}
+            {tabInfo.currentShift && (
+              <View style={[styles.infoTag, { backgroundColor: theme.successLight, marginTop: parts.length > 0 ? Spacing.sm : 0 }]}>
+                <ThemedText style={[styles.infoText, { color: theme.success }]}>
+                  {getTimeRemaining(tabInfo.currentShift.scheduledEnd)}
+                </ThemedText>
+              </View>
+            )}
           </View>
         );
       }
@@ -176,6 +235,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: Spacing.md,
     letterSpacing: -1,
+  },
+  infoTagContainer: {
+    alignItems: "center",
   },
   infoTag: {
     paddingHorizontal: Spacing.lg,

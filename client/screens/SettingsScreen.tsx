@@ -1,11 +1,15 @@
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { useState, useMemo } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Modal, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 
 import { useTheme } from "@/hooks/useTheme";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { Card } from "@/components/Card";
+import { useShifts, useUpdateShift } from "@/api";
 
 interface SettingsItemProps {
   icon: keyof typeof Feather.glyphMap;
@@ -49,9 +53,227 @@ function SettingsItem({ icon, title, value, onPress, showChevron = true }: Setti
   );
 }
 
+function HiddenShiftsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <ThemeProvider>
+        <HiddenShiftsModalContent onClose={onClose} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const { data: shifts = [] } = useShifts();
+  const updateShift = useUpdateShift();
+
+  const hiddenShifts = useMemo(() => {
+    return shifts.filter(s => s.status === "canceled").sort((a, b) => 
+      new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
+    );
+  }, [shifts]);
+
+  const handleRestoreShift = async (shiftId: string) => {
+    try {
+      await updateShift.mutateAsync({
+        id: shiftId,
+        status: "scheduled",
+      });
+    } catch (error) {
+      Alert.alert("Ошибка", "Не удалось восстановить смену");
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    const d = new Date(date);
+    const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+    return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+  };
+
+  return (
+    <BlurView
+      intensity={20}
+      tint={isDark ? "dark" : "light"}
+      style={hiddenShiftsStyles.blurContainer}
+    >
+      <Pressable style={hiddenShiftsStyles.overlay} onPress={onClose} />
+      
+      <View
+        style={[
+          hiddenShiftsStyles.modalContent,
+          {
+            backgroundColor: theme.backgroundContent,
+            paddingBottom: insets.bottom + Spacing.xl,
+          },
+        ]}
+      >
+        <View style={hiddenShiftsStyles.handle} />
+        
+        <View style={hiddenShiftsStyles.header}>
+          <ThemedText type="h4" style={hiddenShiftsStyles.title}>
+            Скрытые смены
+          </ThemedText>
+          <Pressable onPress={onClose} style={hiddenShiftsStyles.closeButton}>
+            <Feather name="x" size={24} color={theme.text} />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          style={hiddenShiftsStyles.listContainer}
+          contentContainerStyle={hiddenShiftsStyles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {hiddenShifts.length === 0 ? (
+            <View style={hiddenShiftsStyles.emptyState}>
+              <View style={[hiddenShiftsStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
+                <Feather name="eye-off" size={32} color={theme.accent} />
+              </View>
+              <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg, textAlign: "center" }}>
+                Нет скрытых смен
+              </ThemedText>
+            </View>
+          ) : (
+            hiddenShifts.map((shift) => (
+              <View
+                key={shift.id}
+                style={[
+                  hiddenShiftsStyles.shiftItem,
+                  { 
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <View style={hiddenShiftsStyles.shiftItemLeft}>
+                  <View style={[hiddenShiftsStyles.shiftTypeIcon, { backgroundColor: theme.accentLight }]}>
+                    <Feather
+                      name={shift.shiftType === "day" ? "sun" : "moon"}
+                      size={18}
+                      color={theme.accent}
+                    />
+                  </View>
+                  <View>
+                    <ThemedText type="body" style={{ fontWeight: "500" }}>
+                      {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {formatDate(shift.scheduledDate)} • {shift.shiftType === "day" ? "08:00 - 20:00" : "20:00 - 08:00"}
+                    </ThemedText>
+                  </View>
+                </View>
+                <Pressable
+                  style={({ pressed }) => [
+                    hiddenShiftsStyles.restoreButton,
+                    { backgroundColor: theme.accentLight },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  onPress={() => handleRestoreShift(shift.id)}
+                >
+                  <Feather name="rotate-ccw" size={16} color={theme.accent} />
+                </Pressable>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
+    </BlurView>
+  );
+}
+
+const hiddenShiftsStyles = StyleSheet.create({
+  blurContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    paddingTop: Spacing.md,
+    paddingHorizontal: Spacing["2xl"],
+    maxHeight: "70%",
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: "#D1D5DB",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: Spacing.lg,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.xl,
+  },
+  title: {
+    fontWeight: "700",
+  },
+  closeButton: {
+    padding: Spacing.xs,
+  },
+  listContainer: {
+    maxHeight: 400,
+  },
+  listContent: {
+    gap: Spacing.md,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: Spacing["4xl"],
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shiftItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  shiftItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  shiftTypeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  restoreButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const [showHiddenShifts, setShowHiddenShifts] = useState(false);
+  const { data: shifts = [] } = useShifts();
+
+  const hiddenShiftsCount = useMemo(() => {
+    return shifts.filter(s => s.status === "canceled").length;
+  }, [shifts]);
 
   return (
     <View style={styles.container}>
@@ -101,6 +323,18 @@ export default function SettingsScreen() {
         </Card>
 
         <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          СМЕНЫ
+        </ThemedText>
+        <Card style={styles.settingsGroup}>
+          <SettingsItem 
+            icon="eye-off" 
+            title="Скрытые смены" 
+            value={hiddenShiftsCount > 0 ? `${hiddenShiftsCount}` : undefined}
+            onPress={() => setShowHiddenShifts(true)}
+          />
+        </Card>
+
+        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
           ДАННЫЕ
         </ThemedText>
         <Card style={styles.settingsGroup}>
@@ -116,6 +350,11 @@ export default function SettingsScreen() {
           <SettingsItem icon="help-circle" title="Помощь" />
         </Card>
       </ScrollView>
+
+      <HiddenShiftsModal
+        visible={showHiddenShifts}
+        onClose={() => setShowHiddenShifts(false)}
+      />
     </View>
   );
 }

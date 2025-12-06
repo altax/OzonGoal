@@ -121,7 +121,7 @@ export default function ShiftsScreen() {
     const scheduled = shifts.filter(s => s.status === "scheduled").sort((a, b) => 
       new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
     );
-    const completed = shifts.filter(s => s.status === "completed" || s.status === "canceled").sort((a, b) => 
+    const completed = shifts.filter(s => s.status === "completed").sort((a, b) => 
       new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
     );
     

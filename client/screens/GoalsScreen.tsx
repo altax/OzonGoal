@@ -70,7 +70,12 @@ export default function GoalsScreen() {
     if (!goals) return { activeGoals: [], completedGoals: [] };
     return {
       activeGoals: goals.filter(g => g.status === "active"),
-      completedGoals: goals.filter(g => g.status === "completed"),
+      completedGoals: goals.filter(g => {
+        if (g.status !== "completed") return false;
+        const current = parseFloat(String(g.currentAmount)) || 0;
+        const target = parseFloat(String(g.targetAmount)) || 0;
+        return target > 0 && current >= target;
+      }),
     };
   }, [goals]);
 

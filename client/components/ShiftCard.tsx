@@ -202,7 +202,7 @@ export function ShiftCard({
             styles.shiftCard,
             { 
               backgroundColor: theme.backgroundContent, 
-              borderColor: isCurrentShift ? theme.warning : theme.border,
+              borderColor: isCurrentShift ? theme.success : theme.border,
             },
             isCurrentShift && { borderWidth: 2 },
             cardAnimatedStyle,
@@ -212,18 +212,18 @@ export function ShiftCard({
           onPressOut={handlePressOut}
         >
           {isCurrentShift && (
-            <View style={[styles.currentBadge, { backgroundColor: theme.warning }]}>
+            <View style={[styles.currentBadge, { backgroundColor: theme.success }]}>
               <ThemedText type="caption" style={{ color: "#FFFFFF", fontWeight: "600" }}>
                 Текущая смена
               </ThemedText>
             </View>
           )}
           <View style={styles.shiftHeader}>
-            <View style={[styles.shiftTypeIcon, { backgroundColor: isCurrentShift ? theme.warningLight : theme.accentLight }]}>
+            <View style={[styles.shiftTypeIcon, { backgroundColor: isCurrentShift ? theme.successLight : theme.accentLight }]}>
               <Feather
                 name={shift.shiftType === "day" ? "sun" : "moon"}
                 size={18}
-                color={isCurrentShift ? theme.warning : theme.accent}
+                color={isCurrentShift ? theme.success : theme.accent}
               />
             </View>
             <View style={styles.shiftInfo}>

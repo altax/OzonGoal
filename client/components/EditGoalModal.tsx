@@ -152,26 +152,6 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
     );
   };
 
-  const handleMarkComplete = async () => {
-    const target = parseFloat(targetAmount.replace(/\s/g, "").replace(",", ".")) || 0;
-    const current = parseFloat(currentAmount.replace(/\s/g, "").replace(",", ".")) || 0;
-
-    if (goal.status !== "completed" && current < target) {
-      setError("Цель не может быть завершена, пока не набрана полная сумма");
-      return;
-    }
-
-    try {
-      await updateGoal.mutateAsync({
-        id: goal.id,
-        status: goal.status === "completed" ? "active" : "completed",
-      });
-      handleClose();
-    } catch (e) {
-      setError("Не удалось изменить статус цели");
-    }
-  };
-
   const handleTogglePrimary = async () => {
     try {
       if (goal.isPrimary) {
@@ -368,32 +348,6 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
               ]}
             >
               {goal.isPrimary ? "Открепить" : "Закрепить"}
-            </ThemedText>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.actionButton,
-              { 
-                backgroundColor: goal.status === "completed" ? theme.accentLight : theme.successLight,
-                borderColor: goal.status === "completed" ? theme.accent : theme.success,
-              },
-              pressed && { opacity: 0.8 },
-            ]}
-            onPress={handleMarkComplete}
-          >
-            <Feather
-              name={goal.status === "completed" ? "rotate-ccw" : "check-circle"}
-              size={18}
-              color={goal.status === "completed" ? theme.accent : theme.success}
-            />
-            <ThemedText
-              style={[
-                styles.actionButtonText,
-                { color: goal.status === "completed" ? theme.accent : theme.success },
-              ]}
-            >
-              {goal.status === "completed" ? "Вернуть" : "Завершить"}
             </ThemedText>
           </Pressable>
         </View>

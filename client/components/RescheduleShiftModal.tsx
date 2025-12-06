@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useUpdateShift } from "@/api";
+import { useUpdateShift, useShifts } from "@/api";
 
 type ShiftType = {
   id: string;
@@ -31,6 +31,7 @@ function RescheduleShiftModalContent({ visible, shift, onClose }: RescheduleShif
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const updateShift = useUpdateShift();
+  const { data: allShifts = [] } = useShifts();
   
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
@@ -39,6 +40,21 @@ function RescheduleShiftModalContent({ visible, shift, onClose }: RescheduleShif
       setSelectedDate(new Date(shift.scheduledDate));
     }
   }, [shift]);
+
+  const isDateConflict = (date: Date): boolean => {
+    if (!shift) return false;
+    
+    const dateStr = date.toISOString().split('T')[0];
+    
+    return allShifts.some((s) => {
+      if (s.id === shift.id) return false;
+      if (s.status === 'canceled') return false;
+      if (s.shiftType !== shift.shiftType) return false;
+      
+      const shiftDateStr = new Date(s.scheduledDate).toISOString().split('T')[0];
+      return shiftDateStr === dateStr;
+    });
+  };
 
   const generateDates = () => {
     const dates: Date[] = [];
@@ -137,6 +153,7 @@ function RescheduleShiftModalContent({ visible, shift, onClose }: RescheduleShif
                 date.getDate() === selectedDate.getDate() &&
                 date.getMonth() === selectedDate.getMonth() &&
                 date.getFullYear() === selectedDate.getFullYear();
+              const hasConflict = isDateConflict(date);
               
               return (
                 <Pressable
@@ -144,26 +161,46 @@ function RescheduleShiftModalContent({ visible, shift, onClose }: RescheduleShif
                   style={[
                     styles.dateOption,
                     { 
-                      backgroundColor: isSelected ? theme.accent : theme.backgroundSecondary,
-                      borderColor: isSelected ? theme.accent : theme.border,
+                      backgroundColor: hasConflict 
+                        ? theme.backgroundSecondary 
+                        : isSelected 
+                          ? theme.accent 
+                          : theme.backgroundSecondary,
+                      borderColor: hasConflict 
+                        ? theme.border 
+                        : isSelected 
+                          ? theme.accent 
+                          : theme.border,
+                      opacity: hasConflict ? 0.5 : 1,
                     },
                   ]}
-                  onPress={() => setSelectedDate(date)}
+                  onPress={() => !hasConflict && setSelectedDate(date)}
+                  disabled={hasConflict}
                 >
                   <Feather 
-                    name="calendar" 
+                    name={hasConflict ? "x-circle" : "calendar"} 
                     size={18} 
-                    color={isSelected ? "#FFFFFF" : theme.textSecondary} 
+                    color={hasConflict ? theme.error : isSelected ? "#FFFFFF" : theme.textSecondary} 
                   />
-                  <ThemedText 
-                    style={[
-                      styles.dateText, 
-                      { color: isSelected ? "#FFFFFF" : theme.text }
-                    ]}
-                  >
-                    {formatDateLabel(date)}
-                  </ThemedText>
-                  {isSelected && (
+                  <View style={styles.dateTextContainer}>
+                    <ThemedText 
+                      style={[
+                        styles.dateText, 
+                        { color: hasConflict ? theme.textSecondary : isSelected ? "#FFFFFF" : theme.text }
+                      ]}
+                    >
+                      {formatDateLabel(date)}
+                    </ThemedText>
+                    {hasConflict && (
+                      <ThemedText 
+                        type="caption" 
+                        style={{ color: theme.error, fontSize: 11 }}
+                      >
+                        Уже есть {shift?.shiftType === "day" ? "дневная" : "ночная"} смена
+                      </ThemedText>
+                    )}
+                  </View>
+                  {isSelected && !hasConflict && (
                     <Feather name="check" size={18} color="#FFFFFF" />
                   )}
                 </Pressable>
@@ -251,8 +288,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: Spacing.md,
   },
-  dateText: {
+  dateTextContainer: {
     flex: 1,
+  },
+  dateText: {
     fontWeight: "500",
     fontSize: 15,
   },
