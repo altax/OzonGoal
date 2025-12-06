@@ -84,8 +84,8 @@ export default function ShiftsScreen() {
           </View>
         ) : hasShifts ? (
           shifts.map((shift) => {
-            const canRecordEarnings = shift.status === "in_progress";
             const isCompleted = shift.status === "completed";
+            const canRecordEarnings = isCompleted && !shift.earnings;
             const shiftData = shift as ShiftType;
             return (
               <Pressable
