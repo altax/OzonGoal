@@ -46,8 +46,8 @@ export function SegmentedTabs({ activeTab, onTabChange }: SegmentedTabsProps) {
     }
     return {
       opacity: 1,
-      transform: [{ translateX: withSpring(activeLayout.x, { damping: 20, stiffness: 200 }) }],
-      width: withSpring(activeLayout.width, { damping: 20, stiffness: 200 }),
+      left: activeLayout.x,
+      width: activeLayout.width,
     };
   }, [activeLayout]);
 
