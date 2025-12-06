@@ -4,11 +4,17 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
+  runOnJS,
+  interpolate,
+  Extrapolation,
 } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+
 type Goal = {
   id: string;
   userId: string | null;
@@ -31,6 +37,9 @@ interface GoalCardProps {
   onPress?: () => void;
   onLongPress?: () => void;
   showPrimaryBadge?: boolean;
+  onHide?: (goalId: string) => void;
+  onDelete?: (goalId: string) => void;
+  onPin?: (goalId: string) => void;
 }
 
 function formatAmount(amount: number): string {
@@ -68,9 +77,14 @@ const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
   watch: "watch",
 };
 
-export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge }: GoalCardProps) {
+const ACTION_BUTTON_WIDTH = 70;
+const SWIPE_THRESHOLD = 80;
+
+export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, onPin }: GoalCardProps) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const actionsVisible = useSharedValue(false);
   
   const currentAmount = parseFloat(String(goal.currentAmount));
   const targetAmount = parseFloat(String(goal.targetAmount));
@@ -79,8 +93,74 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge }: GoalC
   const shiftsRemaining = calculateShiftsRemaining(currentAmount, targetAmount);
   const iconName = iconMap[goal.iconKey] || "target";
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+  const handleHide = () => {
+    if (onHide && goal.status !== "completed") {
+      onHide(goal.id);
+    }
+    translateX.value = withSpring(0);
+    actionsVisible.value = false;
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(goal.id);
+    }
+  };
+
+  const handlePin = () => {
+    if (onPin) {
+      onPin(goal.id);
+    }
+    translateX.value = withSpring(0);
+    actionsVisible.value = false;
+  };
+
+  const isCompleted = goal.status === "completed";
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .failOffsetY([-10, 10])
+    .onUpdate((event) => {
+      const newX = event.translationX;
+      
+      if (newX > 0) {
+        if (!isCompleted) {
+          translateX.value = Math.min(newX, SWIPE_THRESHOLD + 20);
+        }
+      } else {
+        translateX.value = Math.max(newX, -(ACTION_BUTTON_WIDTH * 2 + 20));
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationX > SWIPE_THRESHOLD && !isCompleted) {
+        translateX.value = withTiming(SWIPE_THRESHOLD + 50, { duration: 200 }, () => {
+          runOnJS(handleHide)();
+        });
+      } else if (event.translationX < -SWIPE_THRESHOLD) {
+        translateX.value = withSpring(-(ACTION_BUTTON_WIDTH * 2));
+        actionsVisible.value = true;
+      } else {
+        translateX.value = withSpring(0);
+        actionsVisible.value = false;
+      }
+    });
+
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  const hideIndicatorStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [0, SWIPE_THRESHOLD], [0, 1], Extrapolation.CLAMP),
+    transform: [
+      { scale: interpolate(translateX.value, [0, SWIPE_THRESHOLD], [0.5, 1], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  const actionsContainerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0], Extrapolation.CLAMP),
   }));
 
   const handlePressIn = () => {
@@ -91,104 +171,134 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge }: GoalC
     scale.value = withSpring(1, { damping: 20, stiffness: 200 });
   };
 
-  const isCompleted = goal.status === "completed";
-
   return (
-    <AnimatedPressable
-      style={[
-        styles.container,
-        { backgroundColor: theme.backgroundContent, borderColor: theme.border },
-        animatedStyle,
-        isCompleted && { opacity: 0.7 },
-      ]}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-    >
-      {showPrimaryBadge && goal.isPrimary && (
-        <View style={[styles.primaryBadge, { backgroundColor: theme.accent }]}>
-          <Feather name="star" size={10} color="#FFFFFF" />
-        </View>
-      )}
-      
-      <View style={styles.leftSection}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: goal.iconBgColor || theme.accentLight },
-          ]}
-        >
-          <Feather name={iconName} size={20} color={goal.iconColor || theme.accent} />
-        </View>
+    <View style={styles.swipeContainer}>
+      <Animated.View style={[styles.hideIndicator, { backgroundColor: theme.warning }, hideIndicatorStyle]}>
+        <Feather name="eye-off" size={20} color="#FFFFFF" />
+        <ThemedText style={styles.hideText}>Скрыть</ThemedText>
+      </Animated.View>
 
-        <View style={styles.content}>
-          <ThemedText type="body" style={styles.title}>
-            {goal.name}
+      <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
+        <Pressable
+          style={[styles.actionButton, { backgroundColor: theme.accent }]}
+          onPress={handlePin}
+        >
+          <Feather name={goal.isPrimary ? "star" : "star"} size={20} color="#FFFFFF" />
+          <ThemedText style={styles.actionText}>
+            {goal.isPrimary ? "Убрать" : "В топ"}
           </ThemedText>
-          <View style={styles.progressBarContainer}>
+        </Pressable>
+        <Pressable
+          style={[styles.actionButton, { backgroundColor: theme.error }]}
+          onPress={handleDelete}
+        >
+          <Feather name="trash-2" size={20} color="#FFFFFF" />
+          <ThemedText style={styles.actionText}>Удалить</ThemedText>
+        </Pressable>
+      </Animated.View>
+
+      <GestureDetector gesture={panGesture}>
+        <AnimatedPressable
+          style={[
+            styles.container,
+            { backgroundColor: theme.backgroundContent, borderColor: theme.border },
+            cardAnimatedStyle,
+            isCompleted && { opacity: 0.7 },
+          ]}
+          onPress={onPress}
+          onLongPress={onLongPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
+          {showPrimaryBadge && goal.isPrimary && (
+            <View style={[styles.primaryBadge, { backgroundColor: theme.accent }]}>
+              <Feather name="star" size={10} color="#FFFFFF" />
+            </View>
+          )}
+          
+          <View style={styles.leftSection}>
             <View
               style={[
-                styles.progressBar,
-                { backgroundColor: theme.progressBackground },
+                styles.iconContainer,
+                { backgroundColor: goal.iconBgColor || theme.accentLight },
               ]}
             >
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    backgroundColor: isCompleted ? theme.success : theme.progressFill,
-                    width: `${progress}%`,
-                  },
-                ]}
-              />
+              <Feather name={iconName} size={20} color={goal.iconColor || theme.accent} />
+            </View>
+
+            <View style={styles.content}>
+              <ThemedText type="body" style={styles.title}>
+                {goal.name}
+              </ThemedText>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    { backgroundColor: theme.progressBackground },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        backgroundColor: isCompleted ? theme.success : theme.progressFill,
+                        width: `${progress}%`,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+              <View style={styles.amountRow}>
+                <ThemedText type="small" style={[styles.currentAmount, { color: theme.accent }]}>
+                  {formatAmount(currentAmount)}
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={[styles.targetAmount, { color: theme.textSecondary }]}
+                >
+                  {" "}из {formatAmount(targetAmount)}
+                </ThemedText>
+              </View>
             </View>
           </View>
-          <View style={styles.amountRow}>
-            <ThemedText type="small" style={[styles.currentAmount, { color: theme.accent }]}>
-              {formatAmount(currentAmount)}
-            </ThemedText>
-            <ThemedText
-              type="small"
-              style={[styles.targetAmount, { color: theme.textSecondary }]}
-            >
-              {" "}из {formatAmount(targetAmount)}
-            </ThemedText>
-          </View>
-        </View>
-      </View>
 
-      <View style={styles.rightSection}>
-        <View style={[styles.percentageBadge, { backgroundColor: isCompleted ? theme.successLight : theme.accentLight }]}>
-          <ThemedText
-            type="small"
-            style={[styles.percentage, { color: isCompleted ? theme.success : theme.accent }]}
-          >
-            {progressPercent}%
-          </ThemedText>
-        </View>
-        {!isCompleted && (
-          <ThemedText
-            type="caption"
-            style={[styles.shiftsRemaining, { color: theme.textSecondary }]}
-          >
-            ~{shiftsRemaining} смен
-          </ThemedText>
-        )}
-        {isCompleted && (
-          <ThemedText
-            type="caption"
-            style={[styles.shiftsRemaining, { color: theme.success }]}
-          >
-            Выполнено
-          </ThemedText>
-        )}
-      </View>
-    </AnimatedPressable>
+          <View style={styles.rightSection}>
+            <View style={[styles.percentageBadge, { backgroundColor: isCompleted ? theme.successLight : theme.accentLight }]}>
+              <ThemedText
+                type="small"
+                style={[styles.percentage, { color: isCompleted ? theme.success : theme.accent }]}
+              >
+                {progressPercent}%
+              </ThemedText>
+            </View>
+            {!isCompleted && (
+              <ThemedText
+                type="caption"
+                style={[styles.shiftsRemaining, { color: theme.textSecondary }]}
+              >
+                ~{shiftsRemaining} смен
+              </ThemedText>
+            )}
+            {isCompleted && (
+              <ThemedText
+                type="caption"
+                style={[styles.shiftsRemaining, { color: theme.success }]}
+              >
+                Выполнено
+              </ThemedText>
+            )}
+          </View>
+        </AnimatedPressable>
+      </GestureDetector>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  swipeContainer: {
+    marginBottom: Spacing.lg,
+    position: "relative",
+  },
   container: {
     flexDirection: "row",
     alignItems: "center",
@@ -196,8 +306,47 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    marginBottom: Spacing.lg,
     position: "relative",
+    zIndex: 2,
+  },
+  hideIndicator: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: SWIPE_THRESHOLD + 30,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: Spacing.sm,
+    zIndex: 1,
+  },
+  hideText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  actionsContainer: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    flexDirection: "row",
+    zIndex: 1,
+  },
+  actionButton: {
+    width: ACTION_BUTTON_WIDTH,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.sm,
+    marginLeft: 4,
+  },
+  actionText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 4,
   },
   primaryBadge: {
     position: "absolute",
@@ -208,6 +357,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 3,
   },
   leftSection: {
     flexDirection: "row",

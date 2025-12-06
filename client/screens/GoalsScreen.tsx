@@ -14,7 +14,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { GoalCard } from "@/components/GoalCard";
 import { AddGoalModal } from "@/components/AddGoalModal";
 import { EditGoalModal } from "@/components/EditGoalModal";
-import { useGoals } from "@/api";
+import { useGoals, useDeleteGoal, useUpdateGoal, useSetPrimaryGoal } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const BUTTON_AREA_HEIGHT = 72;
@@ -40,6 +40,9 @@ export default function GoalsScreen() {
   const [selectedGoal, setSelectedGoal] = useState<GoalType | null>(null);
   const [filter, setFilter] = useState<GoalFilter>("active");
   const { data: goals, isLoading } = useGoals();
+  const deleteGoal = useDeleteGoal();
+  const updateGoal = useUpdateGoal();
+  const setPrimaryGoal = useSetPrimaryGoal();
   
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorPosition = useSharedValue(0);
@@ -74,6 +77,23 @@ export default function GoalsScreen() {
   const displayGoals = filter === "active" ? activeGoals : completedGoals;
   const hasGoals = displayGoals.length > 0;
   const hasAnyGoals = goals && goals.length > 0;
+
+  const handleHideGoal = (goalId: string) => {
+    updateGoal.mutate({ id: goalId, status: "completed" });
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    deleteGoal.mutate(goalId);
+  };
+
+  const handlePinGoal = (goalId: string) => {
+    const goal = goals?.find(g => g.id === goalId);
+    if (goal?.isPrimary) {
+      updateGoal.mutate({ id: goalId, isPrimary: false });
+    } else {
+      setPrimaryGoal.mutate(goalId);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -135,7 +155,15 @@ export default function GoalsScreen() {
           </View>
         ) : hasGoals ? (
           displayGoals.map((goal) => (
-            <GoalCard key={goal.id} goal={goal} onPress={() => setSelectedGoal(goal as GoalType)} showPrimaryBadge />
+            <GoalCard
+              key={goal.id}
+              goal={goal}
+              onPress={() => setSelectedGoal(goal as GoalType)}
+              showPrimaryBadge
+              onHide={handleHideGoal}
+              onDelete={handleDeleteGoal}
+              onPin={handlePinGoal}
+            />
           ))
         ) : (
           <View style={styles.emptyState}>
