@@ -11,10 +11,6 @@ run = ["npm", "run", "server:prod"]
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 8081
 externalPort = 80
 
 [[ports]]
@@ -24,6 +20,10 @@ externalPort = 3003
 [[ports]]
 localPort = 39205
 externalPort = 3002
+
+[[ports]]
+localPort = 41175
+externalPort = 5173
 
 [[ports]]
 localPort = 43383
@@ -62,7 +62,9 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run all:dev"
-waitForPort = 8081
-ensurePreviewReachable = "/status"
+args = "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN npx expo start --web --port 5000"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 

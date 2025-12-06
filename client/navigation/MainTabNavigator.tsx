@@ -9,7 +9,7 @@ import SettingsScreen from "@/screens/SettingsScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { BalanceHeader } from "@/components/BalanceHeader";
 import { SegmentedTabs, TabKey } from "@/components/SegmentedTabs";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 export type MainTabParamList = {
   GoalsTab: undefined;
@@ -40,7 +40,7 @@ export default function MainTabNavigator() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing["2xl"] }]}>
         <BalanceHeader balance={24580} lastShiftIncome={3200} />
         <SegmentedTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </View>
@@ -56,12 +56,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing["2xl"],
   },
   content: {
     flex: 1,
-    marginTop: Spacing.lg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    marginTop: Spacing["2xl"],
+    borderTopLeftRadius: BorderRadius["2xl"],
+    borderTopRightRadius: BorderRadius["2xl"],
   },
 });

@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { Card } from "@/components/Card";
 
 interface SettingsItemProps {
@@ -59,8 +59,8 @@ export default function SettingsScreen() {
         style={styles.scrollView}
         contentContainerStyle={{
           paddingTop: Spacing["2xl"],
-          paddingHorizontal: Spacing.lg,
-          paddingBottom: Spacing["3xl"] + insets.bottom,
+          paddingHorizontal: Spacing["2xl"],
+          paddingBottom: Spacing["4xl"] + insets.bottom,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -74,16 +74,18 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.profileInfo}>
               <ThemedText type="h4">Пользователь</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                 Нажмите для редактирования
               </ThemedText>
             </View>
-            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            <View style={[styles.chevronBadge, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+            </View>
           </View>
         </Card>
 
-        <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          Основные
+        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          ОСНОВНЫЕ
         </ThemedText>
         <Card style={styles.settingsGroup}>
           <SettingsItem icon="dollar-sign" title="Валюта" value="RUB" />
@@ -91,23 +93,23 @@ export default function SettingsScreen() {
           <SettingsItem icon="bell" title="Уведомления" />
         </Card>
 
-        <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          Внешний вид
+        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          ВНЕШНИЙ ВИД
         </ThemedText>
         <Card style={styles.settingsGroup}>
           <SettingsItem icon="moon" title="Тема" value="Системная" />
         </Card>
 
-        <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          Данные
+        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          ДАННЫЕ
         </ThemedText>
         <Card style={styles.settingsGroup}>
           <SettingsItem icon="download" title="Экспорт данных" />
           <SettingsItem icon="trash-2" title="Очистить данные" />
         </Card>
 
-        <ThemedText type="small" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          О приложении
+        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          О ПРИЛОЖЕНИИ
         </ThemedText>
         <Card style={styles.settingsGroup}>
           <SettingsItem icon="info" title="Версия" value="1.0.0" showChevron={false} />
@@ -126,10 +128,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   screenTitle: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing["2xl"],
   },
   profileCard: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing["2xl"],
   },
   profileContent: {
     flexDirection: "row",
@@ -138,7 +140,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 64,
     height: 64,
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.md,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.lg,
@@ -146,14 +148,20 @@ const styles = StyleSheet.create({
   profileInfo: {
     flex: 1,
   },
+  chevronBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   sectionTitle: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
     marginLeft: Spacing.xs,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   settingsGroup: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing["2xl"],
     paddingHorizontal: 0,
     paddingVertical: 0,
     overflow: "hidden",
@@ -162,18 +170,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   settingsItemLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.md,
+    gap: Spacing.lg,
   },
   settingsItemIcon: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: BorderRadius.xs,
     alignItems: "center",
     justifyContent: "center",

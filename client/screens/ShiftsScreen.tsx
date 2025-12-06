@@ -4,9 +4,9 @@ import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
-const BUTTON_AREA_HEIGHT = 60;
+const BUTTON_AREA_HEIGHT = 72;
 
 export default function ShiftsScreen() {
   const insets = useSafeAreaInsets();
@@ -17,15 +17,16 @@ export default function ShiftsScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: Spacing.lg,
-          paddingHorizontal: Spacing.lg,
-          paddingBottom: BUTTON_AREA_HEIGHT + insets.bottom + Spacing.xl,
+          paddingTop: Spacing["2xl"],
+          paddingHorizontal: Spacing["2xl"],
+          paddingBottom: BUTTON_AREA_HEIGHT + insets.bottom + Spacing["2xl"],
+          flex: 1,
         }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.emptyState}>
-          <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundTertiary }]}>
-            <Feather name="clock" size={32} color={theme.textSecondary} />
+          <View style={[styles.emptyIcon, { backgroundColor: theme.accentLight }]}>
+            <Feather name="clock" size={36} color={theme.accent} />
           </View>
           <ThemedText type="h4" style={styles.emptyTitle}>
             Нет смен
@@ -43,8 +44,8 @@ export default function ShiftsScreen() {
         style={[
           styles.bottomButtonContainer,
           { 
-            paddingBottom: insets.bottom + Spacing.md,
-            backgroundColor: theme.backgroundRoot,
+            paddingBottom: insets.bottom + Spacing.lg,
+            backgroundColor: theme.backgroundContent,
           },
         ]}
       >
@@ -52,13 +53,14 @@ export default function ShiftsScreen() {
           style={({ pressed }) => [
             styles.addButton,
             { backgroundColor: theme.accent },
-            pressed && { opacity: 0.8 },
+            Shadows.fab,
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
           ]}
           onPress={() => {}}
         >
           <Feather
             name="plus"
-            size={16}
+            size={18}
             color={theme.buttonText}
             style={styles.addButtonIcon}
           />
@@ -81,46 +83,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   emptyState: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: Spacing["3xl"],
-    paddingHorizontal: Spacing["2xl"],
+    paddingHorizontal: Spacing["3xl"],
   },
   emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.full,
+    width: 88,
+    height: 88,
+    borderRadius: BorderRadius.xl,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing["2xl"],
   },
   emptyTitle: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
     textAlign: "center",
   },
   emptyDescription: {
     textAlign: "center",
+    lineHeight: 22,
   },
   bottomButtonContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingHorizontal: Spacing["2xl"],
+    paddingTop: Spacing.lg,
   },
   addButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 40,
+    height: 52,
     borderRadius: BorderRadius.sm,
   },
   addButtonIcon: {
-    marginRight: Spacing.xs,
+    marginRight: Spacing.sm,
   },
   addButtonText: {
-    fontWeight: "500",
-    fontSize: 14,
+    fontWeight: "600",
+    fontSize: 15,
   },
 });

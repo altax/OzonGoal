@@ -5,15 +5,15 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { GoalCard, Goal } from "@/components/GoalCard";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const demoGoals: Goal[] = [
   {
     id: "1",
     title: "Отпуск в Турции",
     icon: "send",
-    iconColor: "#1A1A1A",
-    iconBgColor: "#FFFFFF",
+    iconColor: "#3B82F6",
+    iconBgColor: "#E0E7FF",
     currentAmount: 65000,
     targetAmount: 100000,
     shiftsRemaining: 12,
@@ -22,8 +22,8 @@ const demoGoals: Goal[] = [
     id: "2",
     title: "Новый MacBook",
     icon: "monitor",
-    iconColor: "#1A1A1A",
-    iconBgColor: "#FFFFFF",
+    iconColor: "#3B82F6",
+    iconBgColor: "#E0E7FF",
     currentAmount: 40000,
     targetAmount: 160000,
     shiftsRemaining: 38,
@@ -32,8 +32,8 @@ const demoGoals: Goal[] = [
     id: "3",
     title: "Новая машина",
     icon: "truck",
-    iconColor: "#1A1A1A",
-    iconBgColor: "#FFFFFF",
+    iconColor: "#3B82F6",
+    iconBgColor: "#E0E7FF",
     currentAmount: 60000,
     targetAmount: 500000,
     shiftsRemaining: 138,
@@ -42,15 +42,15 @@ const demoGoals: Goal[] = [
     id: "4",
     title: "Ремонт квартиры",
     icon: "home",
-    iconColor: "#1A1A1A",
-    iconBgColor: "#FFFFFF",
+    iconColor: "#3B82F6",
+    iconBgColor: "#E0E7FF",
     currentAmount: 120000,
     targetAmount: 300000,
     shiftsRemaining: 56,
   },
 ];
 
-const BUTTON_AREA_HEIGHT = 60;
+const BUTTON_AREA_HEIGHT = 72;
 
 export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
@@ -61,9 +61,9 @@ export default function GoalsScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: Spacing.lg,
-          paddingHorizontal: Spacing.lg,
-          paddingBottom: BUTTON_AREA_HEIGHT + insets.bottom + Spacing.xl,
+          paddingTop: Spacing["2xl"],
+          paddingHorizontal: Spacing["2xl"],
+          paddingBottom: BUTTON_AREA_HEIGHT + insets.bottom + Spacing["2xl"],
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -76,8 +76,8 @@ export default function GoalsScreen() {
         style={[
           styles.bottomButtonContainer,
           { 
-            paddingBottom: insets.bottom + Spacing.md,
-            backgroundColor: theme.backgroundRoot,
+            paddingBottom: insets.bottom + Spacing.lg,
+            backgroundColor: theme.backgroundContent,
           },
         ]}
       >
@@ -85,13 +85,14 @@ export default function GoalsScreen() {
           style={({ pressed }) => [
             styles.addButton,
             { backgroundColor: theme.accent },
-            pressed && { opacity: 0.8 },
+            Shadows.fab,
+            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
           ]}
           onPress={() => {}}
         >
           <Feather
             name="plus"
-            size={16}
+            size={18}
             color={theme.buttonText}
             style={styles.addButtonIcon}
           />
@@ -118,21 +119,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingHorizontal: Spacing["2xl"],
+    paddingTop: Spacing.lg,
   },
   addButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 40,
+    height: 52,
     borderRadius: BorderRadius.sm,
   },
   addButtonIcon: {
-    marginRight: Spacing.xs,
+    marginRight: Spacing.sm,
   },
   addButtonText: {
-    fontWeight: "500",
-    fontSize: 14,
+    fontWeight: "600",
+    fontSize: 15,
   },
 });

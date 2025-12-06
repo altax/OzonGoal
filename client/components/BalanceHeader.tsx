@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 function getCurrentFullDate(): string {
   const days = [
@@ -43,6 +43,7 @@ export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeade
           style={({ pressed }) => [
             styles.avatar,
             { opacity: pressed ? 0.7 : 1 },
+            Shadows.cardLight,
           ]}
           onPress={() => {}}
         >
@@ -58,13 +59,13 @@ export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeade
         <ThemedText type="caption" style={[styles.balanceLabel, { color: theme.textSecondary }]}>
           БАЛАНС
         </ThemedText>
-        <ThemedText type="h1" style={styles.balanceAmount}>
-          {formatBalance(balance)}
+        <ThemedText type="h1" style={[styles.balanceAmount, { color: theme.text }]}>
+          {formatBalance(balance)} ₽
         </ThemedText>
         {lastShiftIncome > 0 ? (
           <View style={[styles.incomeTag, { backgroundColor: theme.successLight }]}>
             <ThemedText style={[styles.incomeText, { color: theme.success }]}>
-              +{formatBalance(lastShiftIncome)} за последнюю смену
+              +{formatBalance(lastShiftIncome)} ₽ за последнюю смену
             </ThemedText>
           </View>
         ) : null}
@@ -75,48 +76,51 @@ export function BalanceHeader({ balance = 0, lastShiftIncome = 0 }: BalanceHeade
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing["2xl"],
   },
   dateText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "500",
   },
   avatar: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: BorderRadius.full,
     overflow: "hidden",
+    backgroundColor: "#FFFFFF",
   },
   avatarImage: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: BorderRadius.full,
   },
   balanceSection: {
     alignItems: "center",
+    paddingVertical: Spacing.lg,
   },
   balanceLabel: {
-    letterSpacing: 1,
-    marginBottom: Spacing.xs,
-  },
-  balanceAmount: {
-    fontSize: 48,
-    fontWeight: "700",
+    letterSpacing: 1.5,
     marginBottom: Spacing.sm,
   },
+  balanceAmount: {
+    fontSize: 44,
+    fontWeight: "700",
+    marginBottom: Spacing.md,
+    letterSpacing: -1,
+  },
   incomeTag: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
   },
   incomeText: {
-    fontSize: 11,
-    fontWeight: "400",
+    fontSize: 13,
+    fontWeight: "500",
   },
 });

@@ -1,9 +1,14 @@
 import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius, Colors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 export interface Goal {
   id: string;
@@ -25,28 +30,46 @@ function formatAmount(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(amount);
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function GoalCard({ goal, onPress }: GoalCardProps) {
   const { theme } = useTheme();
+  const scale = useSharedValue(1);
   const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
   const progressPercent = Math.round(progress);
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.98, { damping: 20, stiffness: 200 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 20, stiffness: 200 });
+  };
+
   return (
-    <Pressable
-      style={({ pressed }) => [
+    <AnimatedPressable
+      style={[
         styles.container,
         { backgroundColor: theme.backgroundDefault },
-        pressed && { opacity: 0.95, transform: [{ scale: 0.99 }] },
+        Shadows.card,
+        animatedStyle,
       ]}
       onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
     >
       <View style={styles.leftSection}>
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: goal.iconBgColor },
+            { backgroundColor: theme.accentLight },
           ]}
         >
-          <Feather name={goal.icon} size={18} color={goal.iconColor} />
+          <Feather name={goal.icon} size={20} color={theme.accent} />
         </View>
 
         <View style={styles.content}>
@@ -57,14 +80,14 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
             <View
               style={[
                 styles.progressBar,
-                { backgroundColor: "#F0F0F0" },
+                { backgroundColor: theme.progressBackground },
               ]}
             >
               <View
                 style={[
                   styles.progressFill,
                   {
-                    backgroundColor: theme.accent,
+                    backgroundColor: theme.progressFill,
                     width: `${progress}%`,
                   },
                 ]}
@@ -72,7 +95,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
             </View>
           </View>
           <View style={styles.amountRow}>
-            <ThemedText type="small" style={styles.currentAmount}>
+            <ThemedText type="small" style={[styles.currentAmount, { color: theme.accent }]}>
               {formatAmount(goal.currentAmount)}
             </ThemedText>
             <ThemedText
@@ -86,12 +109,14 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
       </View>
 
       <View style={styles.rightSection}>
-        <ThemedText
-          type="body"
-          style={[styles.percentage, { color: theme.text }]}
-        >
-          {progressPercent}%
-        </ThemedText>
+        <View style={[styles.percentageBadge, { backgroundColor: theme.accentLight }]}>
+          <ThemedText
+            type="small"
+            style={[styles.percentage, { color: theme.accent }]}
+          >
+            {progressPercent}%
+          </ThemedText>
+        </View>
         <ThemedText
           type="caption"
           style={[styles.shiftsRemaining, { color: theme.textSecondary }]}
@@ -99,7 +124,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps) {
           ~{goal.shiftsRemaining} смен
         </ThemedText>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -108,10 +133,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: Spacing.lg,
+    padding: Spacing.xl,
     borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-    ...Shadows.card,
+    marginBottom: Spacing["2xl"],
   },
   leftSection: {
     flexDirection: "row",
@@ -119,31 +143,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.full,
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: Spacing.md,
+    marginRight: Spacing.lg,
   },
   content: {
     flex: 1,
   },
   title: {
     fontWeight: "600",
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   progressBarContainer: {
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   progressBar: {
-    height: 4,
-    borderRadius: 2,
+    height: 6,
+    borderRadius: 3,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderRadius: 2,
+    borderRadius: 3,
   },
   amountRow: {
     flexDirection: "row",
@@ -157,11 +181,16 @@ const styles = StyleSheet.create({
   },
   rightSection: {
     alignItems: "flex-end",
-    marginLeft: Spacing.md,
+    marginLeft: Spacing.lg,
+  },
+  percentageBadge: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.xs,
+    marginBottom: Spacing.xs,
   },
   percentage: {
-    fontWeight: "600",
-    marginBottom: Spacing.xs,
+    fontWeight: "700",
   },
   shiftsRemaining: {
     fontSize: 11,

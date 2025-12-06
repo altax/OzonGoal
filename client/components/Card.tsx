@@ -9,7 +9,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 interface CardProps {
   elevation?: number;
@@ -21,27 +21,10 @@ interface CardProps {
 }
 
 const springConfig: WithSpringConfig = {
-  damping: 15,
-  mass: 0.3,
-  stiffness: 150,
+  damping: 20,
+  mass: 0.4,
+  stiffness: 200,
   overshootClamping: true,
-  energyThreshold: 0.001,
-};
-
-const getBackgroundColorForElevation = (
-  elevation: number,
-  theme: any,
-): string => {
-  switch (elevation) {
-    case 1:
-      return theme.backgroundDefault;
-    case 2:
-      return theme.backgroundSecondary;
-    case 3:
-      return theme.backgroundTertiary;
-    default:
-      return theme.backgroundRoot;
-  }
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -57,8 +40,6 @@ export function Card({
   const { theme } = useTheme();
   const scale = useSharedValue(1);
 
-  const cardBackgroundColor = getBackgroundColorForElevation(elevation, theme);
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
@@ -71,6 +52,8 @@ export function Card({
     scale.value = withSpring(1, springConfig);
   };
 
+  const shadowStyle = elevation === 1 ? Shadows.card : Shadows.cardLight;
+
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -79,8 +62,9 @@ export function Card({
       style={[
         styles.card,
         {
-          backgroundColor: cardBackgroundColor,
+          backgroundColor: theme.backgroundDefault,
         },
+        shadowStyle,
         animatedStyle,
         style,
       ]}
@@ -91,7 +75,7 @@ export function Card({
         </ThemedText>
       ) : null}
       {description ? (
-        <ThemedText type="small" style={styles.cardDescription}>
+        <ThemedText type="small" style={[styles.cardDescription, { color: theme.textSecondary }]}>
           {description}
         </ThemedText>
       ) : null}
@@ -102,13 +86,13 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    padding: Spacing.xl,
-    borderRadius: BorderRadius["2xl"],
+    padding: Spacing["2xl"],
+    borderRadius: BorderRadius.md,
   },
   cardTitle: {
     marginBottom: Spacing.sm,
   },
   cardDescription: {
-    opacity: 0.7,
+    marginBottom: Spacing.md,
   },
 });
