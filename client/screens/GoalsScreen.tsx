@@ -20,6 +20,7 @@ import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 const BUTTON_AREA_HEIGHT = 72;
 
 type GoalFilter = "active" | "completed";
+type ViewMode = "full" | "compact";
 
 type GoalType = {
   id: string;
@@ -39,6 +40,7 @@ export default function GoalsScreen() {
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<GoalType | null>(null);
   const [filter, setFilter] = useState<GoalFilter>("active");
+  const [viewMode, setViewMode] = useState<ViewMode>("full");
   const { data: goals, isLoading } = useGoals();
   const deleteGoal = useDeleteGoal();
   const updateGoal = useUpdateGoal();
@@ -104,42 +106,54 @@ export default function GoalsScreen() {
     <View style={styles.container}>
       {hasAnyGoals && (
         <View style={[styles.filterContainer, { paddingHorizontal: Spacing["2xl"] }]}>
-          <View 
-            style={[styles.filterToggle, { backgroundColor: theme.backgroundSecondary }]}
-            onLayout={handleTabLayout}
-          >
-            <Animated.View 
-              style={[
-                styles.filterIndicator, 
-                { backgroundColor: theme.backgroundContent, width: tabWidth > 0 ? tabWidth : "48%" },
-                animatedIndicatorStyle,
-              ]} 
-            />
-            <Pressable
-              style={styles.filterButton}
-              onPress={() => handleFilterChange("active")}
+          <View style={styles.filterRow}>
+            <View 
+              style={[styles.filterToggle, { backgroundColor: theme.backgroundSecondary, flex: 1 }]}
+              onLayout={handleTabLayout}
             >
-              <ThemedText
+              <Animated.View 
                 style={[
-                  styles.filterText,
-                  { color: filter === "active" ? theme.text : theme.textSecondary },
-                ]}
+                  styles.filterIndicator, 
+                  { backgroundColor: theme.backgroundContent, width: tabWidth > 0 ? tabWidth : "48%" },
+                  animatedIndicatorStyle,
+                ]} 
+              />
+              <Pressable
+                style={styles.filterButton}
+                onPress={() => handleFilterChange("active")}
               >
-                Активные ({activeGoals.length})
-              </ThemedText>
-            </Pressable>
+                <ThemedText
+                  style={[
+                    styles.filterText,
+                    { color: filter === "active" ? theme.text : theme.textSecondary },
+                  ]}
+                >
+                  Активные ({activeGoals.length})
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.filterButton}
+                onPress={() => handleFilterChange("completed")}
+              >
+                <ThemedText
+                  style={[
+                    styles.filterText,
+                    { color: filter === "completed" ? theme.text : theme.textSecondary },
+                  ]}
+                >
+                  Завершённые ({completedGoals.length})
+                </ThemedText>
+              </Pressable>
+            </View>
             <Pressable
-              style={styles.filterButton}
-              onPress={() => handleFilterChange("completed")}
+              style={[styles.viewModeButton, { backgroundColor: theme.backgroundSecondary }]}
+              onPress={() => setViewMode(viewMode === "full" ? "compact" : "full")}
             >
-              <ThemedText
-                style={[
-                  styles.filterText,
-                  { color: filter === "completed" ? theme.text : theme.textSecondary },
-                ]}
-              >
-                Завершённые ({completedGoals.length})
-              </ThemedText>
+              <Feather 
+                name={viewMode === "compact" ? "list" : "grid"} 
+                size={18} 
+                color={theme.textSecondary} 
+              />
             </Pressable>
           </View>
         </View>
@@ -168,7 +182,7 @@ export default function GoalsScreen() {
               onHide={handleHideGoal}
               onDelete={handleDeleteGoal}
               onPin={handlePinGoal}
-              compact
+              compact={viewMode === "compact"}
             />
           ))
         ) : (
@@ -244,6 +258,18 @@ const styles = StyleSheet.create({
   filterContainer: {
     paddingTop: Spacing.md,
     paddingBottom: Spacing.xs,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  viewModeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterToggle: {
     flexDirection: "row",
