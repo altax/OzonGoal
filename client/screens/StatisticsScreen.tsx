@@ -344,47 +344,37 @@ function CurrentShiftCard({
     return () => clearInterval(interval);
   }, [isCurrentShift, shift.scheduledDate, shift.scheduledStart, shift.shiftType]);
   
+  const shiftColor = isNight ? theme.accent : theme.warning;
+  const shiftBgColor = isNight ? theme.accentLight : theme.warningLight;
+  
   return (
-    <View style={[styles.shiftCard, { backgroundColor: theme.backgroundDefault }]}>
-      <View style={styles.shiftCardHeader}>
-        <View style={[styles.shiftTypeIcon, { backgroundColor: isNight ? theme.accentLight : theme.warningLight }]}>
-          <Feather name={isNight ? "moon" : "sun"} size={16} color={isNight ? theme.accent : theme.warning} />
+    <View style={[styles.shiftCardCompact, { backgroundColor: theme.backgroundDefault }]}>
+      <View style={[styles.shiftIconCompact, { backgroundColor: shiftBgColor }]}>
+        <Feather name={isNight ? "moon" : "sun"} size={14} color={shiftColor} />
+      </View>
+      <View style={styles.shiftInfoCompact}>
+        <View style={styles.shiftTopRow}>
+          <ThemedText style={styles.shiftTitleCompact}>
+            {isCurrentShift ? "Сейчас" : formatShiftDate(shift.scheduledDate)}
+          </ThemedText>
+          <ThemedText style={[styles.shiftTimeCompact, { color: theme.textSecondary }]}>
+            {formatShiftTime(shift.shiftType)}
+          </ThemedText>
         </View>
-        <View style={styles.shiftCardInfo}>
-          <View style={styles.shiftTitleRow}>
-            <ThemedText style={styles.shiftCardTitle}>
-              {isCurrentShift ? "Текущая смена" : "Следующая смена"}
-            </ThemedText>
-            {isCurrentShift && (
-              <ThemedText style={[styles.liveNowText, { color: theme.accent }]}>
-                идёт сейчас
-              </ThemedText>
-            )}
-          </View>
-          <ThemedText style={[styles.shiftCardDate, { color: theme.textSecondary }]}>
-            {formatShiftDate(shift.scheduledDate)} • {formatShiftTime(shift.shiftType)}
+        <View style={styles.shiftBottomRow}>
+          <ThemedText style={[styles.shiftTypeText, { color: theme.textSecondary }]}>
+            {isNight ? "Ночь" : "День"} • {isReturns ? "Возвраты" : "Приёмка"}
           </ThemedText>
           {isCurrentShift && countdown > 0 && (
-            <ThemedText style={[styles.countdownText, { color: theme.textSecondary }]}>
-              до конца: {formatCountdown(countdown)}
+            <ThemedText style={[styles.shiftCountdownCompact, { color: shiftColor }]}>
+              {formatCountdown(countdown)}
             </ThemedText>
           )}
         </View>
       </View>
-      <View style={styles.shiftCardDetails}>
-        <View style={[styles.shiftDetailBadge, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name={isReturns ? "rotate-ccw" : "package"} size={12} color={theme.textSecondary} />
-          <ThemedText style={[styles.shiftDetailText, { color: theme.textSecondary }]}>
-            {isReturns ? "Возвраты" : "Приёмка"}
-          </ThemedText>
-        </View>
-        <View style={[styles.shiftDetailBadge, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name={isNight ? "moon" : "sun"} size={12} color={theme.textSecondary} />
-          <ThemedText style={[styles.shiftDetailText, { color: theme.textSecondary }]}>
-            {isNight ? "Ночная" : "Дневная"}
-          </ThemedText>
-        </View>
-      </View>
+      {isCurrentShift && (
+        <View style={[styles.liveDot, { backgroundColor: theme.success }]} />
+      )}
     </View>
   );
 }
@@ -1221,59 +1211,54 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
   },
-  shiftCard: {
-    padding: Spacing.md,
-    borderRadius: 12,
-    marginBottom: Spacing.md,
-  },
-  shiftCardHeader: {
+  shiftCardCompact: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  shiftTypeIcon: {
-    width: 40,
-    height: 40,
+    padding: Spacing.sm,
     borderRadius: 10,
+    marginBottom: Spacing.sm,
+  },
+  shiftIconCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  shiftCardInfo: {
+  shiftInfoCompact: {
     flex: 1,
     marginLeft: Spacing.sm,
   },
-  shiftCardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  shiftCardDate: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  liveIndicator: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  liveText: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: "#FFF",
-  },
-  shiftCardDetails: {
-    flexDirection: "row",
-    marginTop: Spacing.sm,
-    gap: 8,
-  },
-  shiftDetailBadge: {
+  shiftTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 4,
+    justifyContent: "space-between",
   },
-  shiftDetailText: {
+  shiftBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 2,
+  },
+  shiftTitleCompact: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  shiftTimeCompact: {
     fontSize: 11,
+  },
+  shiftTypeText: {
+    fontSize: 11,
+  },
+  shiftCountdownCompact: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginLeft: Spacing.sm,
   },
   weeklyCompRow: {
     flexDirection: "row",
