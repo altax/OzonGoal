@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -53,7 +53,6 @@ export default function ShiftsScreen() {
   
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorPosition = useSharedValue(0);
-  const previousShiftsRef = useRef<ShiftType[]>([]);
 
   useEffect(() => {
     AsyncStorage.getItem(SHIFT_VIEW_MODE_KEY).then((stored) => {
