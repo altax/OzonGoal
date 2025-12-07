@@ -768,8 +768,6 @@ export default function StatisticsScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      <StreakBanner streak={stats?.streak || 0} />
-
       <View style={[styles.periodTabs, { backgroundColor: theme.backgroundSecondary }]}>
         <Animated.View 
           style={[
@@ -796,6 +794,17 @@ export default function StatisticsScreen() {
           </Pressable>
         ))}
       </View>
+
+      {stats?.streak && stats.streak > 0 ? (
+        <View style={styles.streakRow}>
+          <View style={[styles.streakBadge, { backgroundColor: theme.backgroundDefault }]}>
+            <Feather name="zap" size={14} color={theme.accent} />
+            <ThemedText style={[styles.streakBadgeText, { color: theme.text }]}>
+              {stats.streak} {pluralizeShifts(stats.streak)} подряд
+            </ThemedText>
+          </View>
+        </View>
+      ) : null}
 
       {currentOrNextShift && (
         <CurrentShiftCard 
@@ -1544,14 +1553,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "rgba(255,255,255,0.8)",
   },
+  streakRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: Spacing.sm,
+  },
   streakBadge: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    marginBottom: Spacing.sm,
     gap: 6,
   },
   streakBadgeText: {
