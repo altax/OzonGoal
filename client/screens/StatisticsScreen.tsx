@@ -12,7 +12,7 @@ import Animated, {
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useEarningsStats, useGoals, type StatsPeriod } from "@/api";
+import { useEarningsStats, useGoals, useShiftsSummary, useShifts, type StatsPeriod } from "@/api";
 
 function formatK(amount: number): string {
   if (amount >= 1000) {
@@ -29,6 +29,27 @@ function formatDay(dateStr: string): string {
   const d = new Date(dateStr);
   const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
   return days[d.getDay()];
+}
+
+function formatShiftDate(date: Date | string): string {
+  const d = date instanceof Date ? date : new Date(date);
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const isToday = d.toDateString() === now.toDateString();
+  const isTomorrow = d.toDateString() === tomorrow.toDateString();
+  
+  if (isToday) return "Сегодня";
+  if (isTomorrow) return "Завтра";
+  
+  const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  const months = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function formatShiftTime(shiftType: string): string {
+  return shiftType === "day" ? "8:00 – 20:00" : "20:00 – 8:00";
 }
 
 type PeriodOption = { key: StatsPeriod; label: string };
@@ -109,27 +130,20 @@ function GoalProgress({
   current, 
   target,
   color,
-  isClosest,
 }: { 
   name: string;
   current: number;
   target: number;
   color: string;
-  isClosest: boolean;
 }) {
   const { theme } = useTheme();
   const pct = target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
   
   return (
-    <View style={[styles.goalItem, isClosest && { backgroundColor: theme.successLight, borderRadius: 8, padding: 8, margin: -8, marginBottom: 4 }]}>
+    <View style={styles.goalItem}>
       <View style={styles.goalHeader}>
         <View style={[styles.goalDot, { backgroundColor: color }]} />
         <ThemedText style={styles.goalName} numberOfLines={1}>{name}</ThemedText>
-        {isClosest && (
-          <View style={[styles.closestBadge, { backgroundColor: theme.success }]}>
-            <Feather name="star" size={8} color="#FFF" />
-          </View>
-        )}
         <ThemedText style={[styles.goalPct, { color: pct >= 100 ? theme.success : theme.textSecondary }]}>
           {pct}%
         </ThemedText>
@@ -175,12 +189,166 @@ function StatItem({
   );
 }
 
+function CurrentShiftCard({ 
+  shift,
+  isCurrentShift,
+}: { 
+  shift: { 
+    scheduledDate: Date;
+    shiftType: 'day' | 'night';
+    operationType: 'returns' | 'receiving';
+    status: string;
+  };
+  isCurrentShift: boolean;
+}) {
+  const { theme } = useTheme();
+  const isNight = shift.shiftType === "night";
+  const isReturns = shift.operationType === "returns";
+  
+  return (
+    <View style={[styles.shiftCard, { backgroundColor: theme.backgroundDefault }]}>
+      <View style={styles.shiftCardHeader}>
+        <View style={[styles.shiftTypeIcon, { backgroundColor: isNight ? theme.accentLight : theme.warningLight }]}>
+          <Feather name={isNight ? "moon" : "sun"} size={16} color={isNight ? theme.accent : theme.warning} />
+        </View>
+        <View style={styles.shiftCardInfo}>
+          <ThemedText style={styles.shiftCardTitle}>
+            {isCurrentShift ? "Текущая смена" : "Следующая смена"}
+          </ThemedText>
+          <ThemedText style={[styles.shiftCardDate, { color: theme.textSecondary }]}>
+            {formatShiftDate(shift.scheduledDate)} • {formatShiftTime(shift.shiftType)}
+          </ThemedText>
+        </View>
+        {isCurrentShift && (
+          <View style={[styles.liveIndicator, { backgroundColor: theme.success }]}>
+            <ThemedText style={styles.liveText}>LIVE</ThemedText>
+          </View>
+        )}
+      </View>
+      <View style={styles.shiftCardDetails}>
+        <View style={[styles.shiftDetailBadge, { backgroundColor: theme.backgroundSecondary }]}>
+          <Feather name={isReturns ? "rotate-ccw" : "package"} size={12} color={theme.textSecondary} />
+          <ThemedText style={[styles.shiftDetailText, { color: theme.textSecondary }]}>
+            {isReturns ? "Возвраты" : "Приёмка"}
+          </ThemedText>
+        </View>
+        <View style={[styles.shiftDetailBadge, { backgroundColor: theme.backgroundSecondary }]}>
+          <Feather name={isNight ? "moon" : "sun"} size={12} color={theme.textSecondary} />
+          <ThemedText style={[styles.shiftDetailText, { color: theme.textSecondary }]}>
+            {isNight ? "Ночная" : "Дневная"}
+          </ThemedText>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function WeeklyComparison({
+  thisWeek,
+  lastWeek,
+}: {
+  thisWeek: number;
+  lastWeek: number;
+}) {
+  const { theme } = useTheme();
+  const diff = thisWeek - lastWeek;
+  const diffPercent = lastWeek > 0 ? Math.round((diff / lastWeek) * 100) : 0;
+  const isPositive = diff >= 0;
+  
+  return (
+    <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>Сравнение недель</ThemedText>
+      <View style={styles.weeklyCompRow}>
+        <View style={styles.weeklyCol}>
+          <ThemedText style={[styles.weeklyLabel, { color: theme.textSecondary }]}>Эта неделя</ThemedText>
+          <ThemedText style={styles.weeklyAmount}>{formatK(thisWeek)} ₽</ThemedText>
+        </View>
+        <View style={styles.weeklyDivider}>
+          <Feather 
+            name={isPositive ? "trending-up" : "trending-down"} 
+            size={20} 
+            color={isPositive ? theme.success : theme.error} 
+          />
+          {diffPercent !== 0 && (
+            <ThemedText style={[styles.weeklyDiff, { color: isPositive ? theme.success : theme.error }]}>
+              {isPositive ? "+" : ""}{diffPercent}%
+            </ThemedText>
+          )}
+        </View>
+        <View style={[styles.weeklyCol, { alignItems: "flex-end" }]}>
+          <ThemedText style={[styles.weeklyLabel, { color: theme.textSecondary }]}>Прошлая</ThemedText>
+          <ThemedText style={[styles.weeklyAmount, { color: theme.textSecondary }]}>{formatK(lastWeek)} ₽</ThemedText>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ShiftTypeDistribution({
+  dayShifts,
+  nightShifts,
+  returnsShifts,
+  receivingShifts,
+}: {
+  dayShifts: number;
+  nightShifts: number;
+  returnsShifts: number;
+  receivingShifts: number;
+}) {
+  const { theme } = useTheme();
+  const totalByTime = dayShifts + nightShifts;
+  const totalByType = returnsShifts + receivingShifts;
+  
+  const dayPct = totalByTime > 0 ? Math.round((dayShifts / totalByTime) * 100) : 0;
+  const returnsPct = totalByType > 0 ? Math.round((returnsShifts / totalByType) * 100) : 0;
+  
+  return (
+    <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>Распределение смен</ThemedText>
+      <View style={styles.distRow}>
+        <View style={styles.distItem}>
+          <View style={styles.distHeader}>
+            <Feather name="sun" size={14} color={theme.warning} />
+            <ThemedText style={styles.distLabel}> День / </ThemedText>
+            <Feather name="moon" size={14} color={theme.accent} />
+            <ThemedText style={styles.distLabel}> Ночь</ThemedText>
+          </View>
+          <View style={[styles.distBar, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={[styles.distFill, { width: `${dayPct}%`, backgroundColor: theme.warning }]} />
+          </View>
+          <View style={styles.distCounts}>
+            <ThemedText style={[styles.distCount, { color: theme.warning }]}>{dayShifts}</ThemedText>
+            <ThemedText style={[styles.distCount, { color: theme.accent }]}>{nightShifts}</ThemedText>
+          </View>
+        </View>
+        <View style={styles.distItem}>
+          <View style={styles.distHeader}>
+            <Feather name="rotate-ccw" size={14} color={theme.success} />
+            <ThemedText style={styles.distLabel}> Возвр / </ThemedText>
+            <Feather name="package" size={14} color={theme.error} />
+            <ThemedText style={styles.distLabel}> Приём</ThemedText>
+          </View>
+          <View style={[styles.distBar, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={[styles.distFill, { width: `${returnsPct}%`, backgroundColor: theme.success }]} />
+          </View>
+          <View style={styles.distCounts}>
+            <ThemedText style={[styles.distCount, { color: theme.success }]}>{returnsShifts}</ThemedText>
+            <ThemedText style={[styles.distCount, { color: theme.error }]}>{receivingShifts}</ThemedText>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function StatisticsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [period, setPeriod] = useState<StatsPeriod>("month");
   const { data: stats, isLoading, error, refetch } = useEarningsStats(period);
   const { data: goals } = useGoals();
+  const { data: shiftsSummary } = useShiftsSummary();
+  const { data: shifts } = useShifts();
   
   const activeIndex = PERIOD_OPTIONS.findIndex(p => p.key === period);
   const indicatorX = useSharedValue(activeIndex);
@@ -208,21 +376,63 @@ export default function StatisticsScreen() {
     return goals.filter(g => g.status === 'active').slice(0, 5);
   }, [goals]);
 
-  const closestGoalId = useMemo(() => {
-    if (!activeGoals.length) return null;
-    let closest = activeGoals[0];
-    let closestPct = 0;
-    for (const g of activeGoals) {
-      const current = parseFloat(String(g.currentAmount)) || 0;
-      const target = parseFloat(String(g.targetAmount)) || 1;
-      const pct = current / target;
-      if (pct > closestPct && pct < 1) {
-        closestPct = pct;
-        closest = g;
-      }
-    }
-    return closest?.id;
-  }, [activeGoals]);
+  const nextScheduledShift = useMemo(() => {
+    if (!shifts) return null;
+    const now = new Date();
+    return shifts
+      .filter(s => s.status === 'scheduled' && new Date(s.scheduledStart) > now)
+      .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())[0] || null;
+  }, [shifts]);
+
+  const currentOrNextShift = useMemo(() => {
+    if (shiftsSummary?.current) return { shift: shiftsSummary.current, isCurrent: true };
+    if (nextScheduledShift) return { shift: nextScheduledShift, isCurrent: false };
+    return null;
+  }, [shiftsSummary?.current, nextScheduledShift]);
+
+  const weeklyStats = useMemo(() => {
+    if (!shifts) return { thisWeek: 0, lastWeek: 0 };
+    const now = new Date();
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
+    thisWeekStart.setHours(0, 0, 0, 0);
+    
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    const lastWeekEnd = new Date(thisWeekStart);
+    
+    const thisWeek = shifts
+      .filter(s => {
+        if (s.status !== 'completed' || !s.earnings) return false;
+        const date = s.earningsRecordedAt || s.scheduledDate;
+        if (!date) return false;
+        return date >= thisWeekStart;
+      })
+      .reduce((sum, s) => sum + (parseFloat(String(s.earnings)) || 0), 0);
+    
+    const lastWeek = shifts
+      .filter(s => {
+        if (s.status !== 'completed' || !s.earnings) return false;
+        const date = s.earningsRecordedAt || s.scheduledDate;
+        if (!date) return false;
+        return date >= lastWeekStart && date < lastWeekEnd;
+      })
+      .reduce((sum, s) => sum + (parseFloat(String(s.earnings)) || 0), 0);
+    
+    return { thisWeek, lastWeek };
+  }, [shifts]);
+
+  const shiftTypeStats = useMemo(() => {
+    if (!shifts) return { dayShifts: 0, nightShifts: 0, returnsShifts: 0, receivingShifts: 0 };
+    const completedShifts = shifts.filter(s => s.status === 'completed');
+    return {
+      dayShifts: completedShifts.filter(s => s.shiftType === 'day').length,
+      nightShifts: completedShifts.filter(s => s.shiftType === 'night').length,
+      returnsShifts: completedShifts.filter(s => s.operationType === 'returns').length,
+      receivingShifts: completedShifts.filter(s => s.operationType === 'receiving').length,
+    };
+  }, [shifts]);
+
 
   if (isLoading) {
     return (
@@ -286,6 +496,13 @@ export default function StatisticsScreen() {
         ))}
       </View>
 
+      {currentOrNextShift && (
+        <CurrentShiftCard 
+          shift={currentOrNextShift.shift} 
+          isCurrentShift={currentOrNextShift.isCurrent} 
+        />
+      )}
+
       <View style={styles.heroSection}>
         <ThemedText style={[styles.heroLabel, { color: theme.textSecondary }]}>Заработано</ThemedText>
         <View style={styles.heroRow}>
@@ -307,17 +524,15 @@ export default function StatisticsScreen() {
         <BarChart data={chartData} color={theme.accent} bgColor={theme.accentLight} />
       </View>
 
+      <WeeklyComparison thisWeek={weeklyStats.thisWeek} lastWeek={weeklyStats.lastWeek} />
+
+      {(shiftTypeStats.dayShifts + shiftTypeStats.nightShifts > 0) && (
+        <ShiftTypeDistribution {...shiftTypeStats} />
+      )}
+
       {activeGoals.length > 0 && (
         <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-          <View style={styles.cardHeader}>
-            <ThemedText style={styles.cardTitle}>Цели</ThemedText>
-            {closestGoalId && (
-              <View style={styles.closestHint}>
-                <Feather name="star" size={10} color={theme.success} />
-                <ThemedText style={[styles.closestHintText, { color: theme.success }]}>ближайшая</ThemedText>
-              </View>
-            )}
-          </View>
+          <ThemedText style={styles.cardTitle}>Цели</ThemedText>
           {activeGoals.map((goal) => (
             <GoalProgress
               key={goal.id}
@@ -325,7 +540,6 @@ export default function StatisticsScreen() {
               current={parseFloat(String(goal.currentAmount)) || 0}
               target={parseFloat(String(goal.targetAmount)) || 0}
               color={goal.iconColor || theme.accent}
-              isClosest={goal.id === closestGoalId}
             />
           ))}
         </View>
@@ -445,12 +659,6 @@ const styles = StyleSheet.create({
   chartCard: {
     paddingTop: Spacing.sm,
   },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: Spacing.sm,
-  },
   cardTitle: {
     fontSize: 11,
     textTransform: "uppercase",
@@ -542,22 +750,6 @@ const styles = StyleSheet.create({
   goalAmount: {
     fontSize: 10,
   },
-  closestBadge: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 6,
-  },
-  closestHint: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  closestHintText: {
-    fontSize: 10,
-    marginLeft: 3,
-  },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -600,5 +792,115 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: 8,
     borderRadius: 8,
+  },
+  shiftCard: {
+    padding: Spacing.md,
+    borderRadius: 12,
+    marginBottom: Spacing.md,
+  },
+  shiftCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  shiftTypeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shiftCardInfo: {
+    flex: 1,
+    marginLeft: Spacing.sm,
+  },
+  shiftCardTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  shiftCardDate: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  liveIndicator: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  liveText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  shiftCardDetails: {
+    flexDirection: "row",
+    marginTop: Spacing.sm,
+    gap: 8,
+  },
+  shiftDetailBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 4,
+  },
+  shiftDetailText: {
+    fontSize: 11,
+  },
+  weeklyCompRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  weeklyCol: {
+    flex: 1,
+  },
+  weeklyLabel: {
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  weeklyAmount: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  weeklyDivider: {
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+  },
+  weeklyDiff: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  distRow: {
+    gap: Spacing.md,
+  },
+  distItem: {
+    marginBottom: Spacing.xs,
+  },
+  distHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  distLabel: {
+    fontSize: 11,
+  },
+  distBar: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  distFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  distCounts: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 3,
+  },
+  distCount: {
+    fontSize: 11,
+    fontWeight: "600",
   },
 });
