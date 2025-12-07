@@ -75,6 +75,13 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Statistics Screen UI/UX Redesign (Dec 7, 2025):**
+  - Daily Income chart: Added dates under each bar for better readability
+  - Goals Timeline: Redesigned as horizontal scrollable cards with progress bars
+  - Shift Type Profitability: Clean monochrome design with horizontal bar charts
+  - Records section: Horizontal scrollable card layout with emoji icons
+  - Added 60+ new styles for modern, Dribbble-quality design
+  - All sections follow consistent theme colors (no hardcoded colors)
 - **Statistics Screen Enhancement (Dec 7, 2025):**
   - Added GoalForecastCard with estimated completion dates
   - Added GoalsTimelineCard with visual timeline for goal forecasts
