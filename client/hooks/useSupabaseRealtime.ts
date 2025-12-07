@@ -1,97 +1,243 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useCallback } from 'react';
+import { useQueryClient, useIsFetching } from '@tanstack/react-query';
 import { supabase, DEFAULT_USER_ID } from '../lib/supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-export function useSupabaseRealtime() {
+type TableName = 'goals' | 'shifts' | 'goal_allocations' | 'users';
+type EventType = 'INSERT' | 'UPDATE' | 'DELETE';
+
+interface RealtimeConfig {
+  maxRetries: number;
+  baseDelay: number;
+  maxDelay: number;
+  debounceMs: number;
+}
+
+const DEFAULT_CONFIG: RealtimeConfig = {
+  maxRetries: 5,
+  baseDelay: 1000,
+  maxDelay: 30000,
+  debounceMs: 100,
+};
+
+const TABLE_QUERY_MAP: Record<TableName, string[]> = {
+  goals: ['goals', 'earnings', 'user'],
+  shifts: ['shifts', 'earnings', 'user'],
+  goal_allocations: ['goals', 'earnings', 'balance'],
+  users: ['user'],
+};
+
+export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
   const queryClient = useQueryClient();
+  const isFetching = useIsFetching();
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const [shouldConnect, setShouldConnect] = useState(false);
+  const retryCountRef = useRef(0);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceMapRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const isReadyRef = useRef(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShouldConnect(true);
-    }, 3000);
+  const { maxRetries, baseDelay, maxDelay, debounceMs } = {
+    ...DEFAULT_CONFIG,
+    ...config,
+  };
 
-    return () => clearTimeout(timer);
-  }, []);
+  const calculateBackoff = useCallback((attempt: number): number => {
+    const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+    const jitter = delay * 0.1 * Math.random();
+    return delay + jitter;
+  }, [baseDelay, maxDelay]);
 
-  useEffect(() => {
-    if (!shouldConnect) return;
+  const invalidateWithDebounce = useCallback((queryKeys: string[]) => {
+    queryKeys.forEach((key) => {
+      const existingTimeout = debounceMapRef.current.get(key);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+      }
+
+      const timeout = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: [key] });
+        debounceMapRef.current.delete(key);
+      }, debounceMs);
+
+      debounceMapRef.current.set(key, timeout);
+    });
+  }, [queryClient, debounceMs]);
+
+  const handleChange = useCallback(
+    (table: TableName, event: EventType, payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+      const queryKeys = TABLE_QUERY_MAP[table];
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Realtime] ${event} on ${table}`, payload);
+      }
+
+      invalidateWithDebounce(queryKeys);
+    },
+    [invalidateWithDebounce]
+  );
+
+  const setupChannel = useCallback(() => {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
 
     const channel = supabase
-      .channel('db-changes')
+      .channel('db-changes', {
+        config: {
+          broadcast: { self: true },
+          presence: { key: DEFAULT_USER_ID },
+        },
+      })
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'goals',
           filter: `user_id=eq.${DEFAULT_USER_ID}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['goals'] });
-          queryClient.invalidateQueries({ queryKey: ['earnings', 'stats'] });
-          queryClient.invalidateQueries({ queryKey: ['user'] });
-        }
+        (payload) => handleChange('goals', 'INSERT', payload)
       )
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'goals',
+          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+        },
+        (payload) => handleChange('goals', 'UPDATE', payload)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'goals',
+          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+        },
+        (payload) => handleChange('goals', 'DELETE', payload)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
           schema: 'public',
           table: 'shifts',
           filter: `user_id=eq.${DEFAULT_USER_ID}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['shifts'] });
-          queryClient.invalidateQueries({ queryKey: ['earnings', 'stats'] });
-          queryClient.invalidateQueries({ queryKey: ['user'] });
-        }
+        (payload) => handleChange('shifts', 'INSERT', payload)
       )
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'shifts',
+          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+        },
+        (payload) => handleChange('shifts', 'UPDATE', payload)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'shifts',
+          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+        },
+        (payload) => handleChange('shifts', 'DELETE', payload)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
           schema: 'public',
           table: 'goal_allocations',
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['goals'] });
-          queryClient.invalidateQueries({ queryKey: ['earnings', 'stats'] });
-          queryClient.invalidateQueries({ queryKey: ['balance', 'history'] });
-        }
+        (payload) => handleChange('goal_allocations', 'INSERT', payload)
       )
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'goal_allocations',
+        },
+        (payload) => handleChange('goal_allocations', 'UPDATE', payload)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'goal_allocations',
+        },
+        (payload) => handleChange('goal_allocations', 'DELETE', payload)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'users',
           filter: `id=eq.${DEFAULT_USER_ID}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['user'] });
-        }
+        (payload) => handleChange('users', 'UPDATE', payload)
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] Connected to Supabase Realtime');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('[Realtime] Channel error - check Supabase Realtime configuration');
-        } else if (status === 'TIMED_OUT') {
-          console.warn('[Realtime] Connection timed out');
+          console.log('[Realtime] Connected successfully');
+          retryCountRef.current = 0;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('[Realtime] Connection error:', err?.message || status);
+          scheduleReconnect();
         } else if (status === 'CLOSED') {
           console.log('[Realtime] Channel closed');
+          scheduleReconnect();
         }
       });
 
     channelRef.current = channel;
+  }, [handleChange]);
 
+  const scheduleReconnect = useCallback(() => {
+    if (retryCountRef.current >= maxRetries) {
+      console.error('[Realtime] Max retries reached, giving up');
+      return;
+    }
+
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+    }
+
+    const delay = calculateBackoff(retryCountRef.current);
+    console.log(`[Realtime] Reconnecting in ${Math.round(delay)}ms (attempt ${retryCountRef.current + 1}/${maxRetries})`);
+
+    retryTimeoutRef.current = setTimeout(() => {
+      retryCountRef.current++;
+      setupChannel();
+    }, delay);
+  }, [calculateBackoff, maxRetries, setupChannel]);
+
+  useEffect(() => {
+    if (isFetching === 0 && !isReadyRef.current) {
+      isReadyRef.current = true;
+      console.log('[Realtime] Initial queries loaded, connecting...');
+      setupChannel();
+    }
+  }, [isFetching, setupChannel]);
+
+  useEffect(() => {
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
       }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+      debounceMapRef.current.forEach((timeout) => clearTimeout(timeout));
+      debounceMapRef.current.clear();
     };
-  }, [queryClient, shouldConnect]);
+  }, []);
 }
