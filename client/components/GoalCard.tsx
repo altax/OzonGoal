@@ -41,20 +41,27 @@ interface GoalCardProps {
   onHide?: (goalId: string) => void;
   onDelete?: (goalId: string) => void;
   onPin?: (goalId: string) => void;
+  compact?: boolean;
 }
 
 function formatAmount(amount: number): string {
+  return new Intl.NumberFormat("ru-RU").format(Math.round(amount));
+}
+
+function formatShortAmount(amount: number): string {
   if (amount >= 1000000) {
-    return (amount / 1000000).toFixed(1).replace('.0', '') + 'М';
+    const val = amount / 1000000;
+    return val % 1 === 0 ? val.toFixed(0) + 'М' : val.toFixed(1).replace('.0', '') + 'М';
   }
-  if (amount >= 1000) {
-    return (amount / 1000).toFixed(0) + 'К';
+  if (amount >= 10000) {
+    const val = amount / 1000;
+    return val % 1 === 0 ? val.toFixed(0) + 'К' : val.toFixed(1).replace('.0', '') + 'К';
   }
-  return new Intl.NumberFormat("ru-RU").format(amount);
+  return new Intl.NumberFormat("ru-RU").format(Math.round(amount));
 }
 
 function formatFullAmount(amount: number): string {
-  return new Intl.NumberFormat("ru-RU").format(amount) + " ₽";
+  return new Intl.NumberFormat("ru-RU").format(Math.round(amount)) + " ₽";
 }
 
 function getMotivationalPhrase(progressPercent: number, isCompleted: boolean): string {
@@ -98,22 +105,25 @@ const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
   watch: "watch",
 };
 
-const MILESTONES = [25, 50, 75, 100];
+const MILESTONES = [0, 25, 50, 75, 100];
 const ACTION_BUTTON_WIDTH = 70;
 const SWIPE_THRESHOLD = 80;
 
-export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, onPin }: GoalCardProps) {
+export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, onPin, compact = false }: GoalCardProps) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const actionsVisible = useSharedValue(false);
   
-  const currentAmount = parseFloat(String(goal.currentAmount));
-  const targetAmount = parseFloat(String(goal.targetAmount));
-  const progress = Math.min((currentAmount / targetAmount) * 100, 100);
-  const progressPercent = Math.round(progress);
+  const currentAmount = parseFloat(String(goal.currentAmount)) || 0;
+  const targetAmount = parseFloat(String(goal.targetAmount)) || 1;
+  
+  const rawProgress = (currentAmount / targetAmount) * 100;
+  const progress = Math.min(rawProgress, 100);
+  const progressPercent = Math.floor(progress * 10) / 10;
+  
+  const isCompleted = goal.status === "completed" || currentAmount >= targetAmount;
   const iconName = iconMap[goal.iconKey] || "target";
-  const isCompleted = goal.status === "completed" || progressPercent >= 100;
 
   const handleHide = () => {
     if (onHide && goal.status !== "completed") {
@@ -195,16 +205,101 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
     ? ['#10B981', '#34D399'] 
     : ['#3B82F6', '#8B5CF6'];
 
-  const getCurrentMilestone = () => {
-    for (let i = MILESTONES.length - 1; i >= 0; i--) {
-      if (progressPercent >= MILESTONES[i]) {
-        return MILESTONES[i];
-      }
-    }
-    return 0;
+  const getMilestoneAmount = (milestone: number) => {
+    return (targetAmount * milestone) / 100;
   };
 
-  const currentMilestone = getCurrentMilestone();
+  const isMilestoneReached = (milestone: number) => {
+    return progressPercent >= milestone;
+  };
+
+  if (compact) {
+    return (
+      <View style={styles.swipeContainer}>
+        <Animated.View style={[styles.hideIndicator, { backgroundColor: theme.warning }, hideIndicatorStyle]}>
+          <Feather name="eye-off" size={16} color="#FFFFFF" />
+        </Animated.View>
+
+        <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
+          <Pressable
+            style={[styles.actionButtonCompact, { backgroundColor: theme.accent }]}
+            onPress={handlePin}
+          >
+            <Feather name="star" size={16} color="#FFFFFF" />
+          </Pressable>
+          <Pressable
+            style={[styles.actionButtonCompact, { backgroundColor: theme.error }]}
+            onPress={handleDelete}
+          >
+            <Feather name="trash-2" size={16} color="#FFFFFF" />
+          </Pressable>
+        </Animated.View>
+
+        <GestureDetector gesture={panGesture}>
+          <AnimatedPressable
+            style={[
+              styles.containerCompact,
+              { 
+                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+                borderColor: isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 0.8)',
+              },
+              cardAnimatedStyle,
+            ]}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+          >
+            {showPrimaryBadge && goal.isPrimary && (
+              <View style={styles.primaryBadgeCompact}>
+                <Feather name="star" size={8} color="#F59E0B" />
+              </View>
+            )}
+
+            <View style={styles.compactRow}>
+              <View
+                style={[
+                  styles.iconContainerCompact,
+                  { backgroundColor: goal.iconBgColor || theme.accentLight },
+                ]}
+              >
+                <Feather name={iconName} size={16} color={goal.iconColor || theme.accent} />
+              </View>
+              
+              <View style={styles.compactContent}>
+                <View style={styles.compactHeader}>
+                  <ThemedText style={[styles.titleCompact, { color: theme.text }]} numberOfLines={1}>
+                    {goal.name}
+                  </ThemedText>
+                  <ThemedText style={[
+                    styles.percentageCompact, 
+                    { color: isCompleted ? theme.success : theme.accent }
+                  ]}>
+                    {Math.floor(progressPercent)}%
+                  </ThemedText>
+                </View>
+                
+                <View style={[styles.progressTrackCompact, { backgroundColor: isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 0.6)' }]}>
+                  <LinearGradient
+                    colors={gradientColors as [string, string]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.progressFillCompact, { width: `${progress}%` }]}
+                  />
+                </View>
+                
+                <View style={styles.compactFooter}>
+                  <ThemedText style={[styles.amountCompact, { color: theme.textSecondary }]}>
+                    {formatAmount(currentAmount)} / {formatAmount(targetAmount)} ₽
+                  </ThemedText>
+                </View>
+              </View>
+            </View>
+          </AnimatedPressable>
+        </GestureDetector>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.swipeContainer}>
@@ -266,7 +361,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                   { backgroundColor: goal.iconBgColor || theme.accentLight },
                 ]}
               >
-                <Feather name={iconName} size={22} color={goal.iconColor || theme.accent} />
+                <Feather name={iconName} size={20} color={goal.iconColor || theme.accent} />
               </View>
               <View style={styles.titleContainer}>
                 <ThemedText style={[styles.title, { color: theme.text }]}>
@@ -283,7 +378,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                 styles.percentageValue, 
                 { color: isCompleted ? theme.success : theme.accent }
               ]}>
-                {progressPercent}
+                {Math.floor(progressPercent)}
               </ThemedText>
               <ThemedText style={[styles.percentageSign, { color: theme.textSecondary }]}>
                 %
@@ -301,9 +396,8 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
               />
               
               <View style={styles.milestonesContainer}>
-                {MILESTONES.map((milestone, index) => {
-                  const isReached = progressPercent >= milestone;
-                  const isActive = milestone === currentMilestone && !isCompleted;
+                {MILESTONES.map((milestone) => {
+                  const isReached = isMilestoneReached(milestone);
                   
                   return (
                     <View
@@ -315,14 +409,12 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                           backgroundColor: isReached 
                             ? (isCompleted ? '#10B981' : '#3B82F6')
                             : (isDark ? 'rgba(71, 85, 105, 0.8)' : 'rgba(203, 213, 225, 1)'),
-                          transform: [{ translateX: -6 }],
-                          borderWidth: isActive ? 2 : 0,
-                          borderColor: isActive ? '#FFFFFF' : 'transparent',
+                          transform: [{ translateX: -5 }],
                         },
                       ]}
                     >
-                      {isReached && (
-                        <Feather name="check" size={7} color="#FFFFFF" />
+                      {isReached && milestone > 0 && (
+                        <Feather name="check" size={6} color="#FFFFFF" />
                       )}
                     </View>
                   );
@@ -332,8 +424,8 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
             
             <View style={styles.milestoneLabels}>
               {MILESTONES.map((milestone) => {
-                const amount = (targetAmount * milestone) / 100;
-                const isReached = progressPercent >= milestone;
+                const amount = getMilestoneAmount(milestone);
+                const isReached = isMilestoneReached(milestone);
                 
                 return (
                   <View key={milestone} style={[styles.milestoneLabelContainer, { left: `${milestone}%` }]}>
@@ -343,10 +435,10 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                         color: isReached 
                           ? (isCompleted ? theme.success : theme.accent)
                           : theme.textSecondary,
-                        opacity: isReached ? 1 : 0.6,
+                        opacity: isReached ? 1 : 0.7,
                       }
                     ]}>
-                      {formatAmount(amount)}
+                      {formatShortAmount(amount)}
                     </ThemedText>
                   </View>
                 );
@@ -377,7 +469,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
             ) : (
               <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}>
                 <ThemedText style={[styles.remainingText, { color: theme.accent }]}>
-                  {formatFullAmount(targetAmount - currentAmount)}
+                  ещё {formatFullAmount(targetAmount - currentAmount)}
                 </ThemedText>
               </View>
             )}
@@ -390,20 +482,32 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
 
 const styles = StyleSheet.create({
   swipeContainer: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     position: "relative",
   },
   container: {
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
     position: "relative",
     zIndex: 2,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 24,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  containerCompact: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    position: "relative",
+    zIndex: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
   hideIndicator: {
     position: "absolute",
@@ -411,7 +515,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: SWIPE_THRESHOLD + 30,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.md,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -435,7 +539,14 @@ const styles = StyleSheet.create({
     width: ACTION_BUTTON_WIDTH,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.md,
+    marginLeft: 4,
+  },
+  actionButtonCompact: {
+    width: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.sm,
     marginLeft: 4,
   },
   actionText: {
@@ -448,6 +559,18 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -6,
     right: -6,
+    zIndex: 3,
+  },
+  primaryBadgeCompact: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 3,
   },
   primaryBadgeGradient: {
@@ -465,7 +588,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   headerLeft: {
     flexDirection: "row",
@@ -473,24 +596,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.md,
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.md,
+  },
+  iconContainerCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.sm,
   },
   titleContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
     letterSpacing: -0.3,
     marginBottom: 2,
   },
+  titleCompact: {
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: -0.2,
+    flex: 1,
+  },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
     letterSpacing: 0.1,
   },
@@ -499,61 +636,71 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
   },
   percentageValue: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "800",
     letterSpacing: -1,
   },
   percentageSign: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
     marginLeft: 1,
   },
+  percentageCompact: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginLeft: Spacing.sm,
+  },
   progressSection: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   progressTrack: {
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     overflow: "visible",
     position: "relative",
   },
+  progressTrackCompact: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+    marginTop: Spacing.xs,
+  },
   progressFill: {
     height: "100%",
-    borderRadius: 4,
+    borderRadius: 3,
+  },
+  progressFillCompact: {
+    height: "100%",
+    borderRadius: 2,
   },
   milestonesContainer: {
     position: "absolute",
     top: -2,
     left: 0,
     right: 0,
-    height: 12,
+    height: 10,
   },
   milestonePoint: {
     position: "absolute",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
   },
   milestoneLabels: {
     position: "relative",
-    height: 20,
-    marginTop: Spacing.sm,
+    height: 18,
+    marginTop: Spacing.xs,
   },
   milestoneLabelContainer: {
     position: "absolute",
-    transform: [{ translateX: -20 }],
-    width: 40,
+    transform: [{ translateX: -18 }],
+    width: 36,
     alignItems: "center",
   },
   milestoneLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "600",
     textAlign: "center",
   },
@@ -567,32 +714,51 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
   },
   currentAmount: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     letterSpacing: -0.2,
   },
   amountDivider: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "400",
   },
   targetAmount: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  amountCompact: {
+    fontSize: 11,
     fontWeight: "500",
   },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
     gap: 4,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
   },
   remainingText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
+  },
+  compactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  compactContent: {
+    flex: 1,
+  },
+  compactHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  compactFooter: {
+    marginTop: Spacing.xs,
   },
 });
