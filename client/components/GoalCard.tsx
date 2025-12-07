@@ -207,12 +207,14 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   if (compact) {
     return (
       <View style={styles.swipeContainer}>
-        <Animated.View style={[styles.hideIndicator, { backgroundColor: '#64748B' }, hideIndicatorStyle]}>
-          <ThemedText style={styles.swipeActionText}>Скрыть</ThemedText>
+        <Animated.View style={[styles.hideIndicator, hideIndicatorStyle]}>
+          <Feather name="eye-off" size={20} color={theme.textSecondary} style={styles.swipeIcon} />
+          <ThemedText style={[styles.swipeActionTextPlain, { color: theme.textSecondary }]}>Скрыть</ThemedText>
         </Animated.View>
 
-        <Animated.View style={[styles.deleteIndicator, { backgroundColor: '#EF4444' }, actionsContainerStyle]}>
-          <ThemedText style={styles.swipeActionText}>Удалить</ThemedText>
+        <Animated.View style={[styles.deleteIndicator, actionsContainerStyle]}>
+          <ThemedText style={[styles.swipeActionTextPlain, { color: theme.textSecondary }]}>Удалить</ThemedText>
+          <Feather name="trash-2" size={20} color={theme.textSecondary} style={styles.swipeIcon} />
         </Animated.View>
 
         <GestureDetector gesture={panGesture}>
@@ -288,12 +290,14 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
 
   return (
     <View style={styles.swipeContainer}>
-      <Animated.View style={[styles.hideIndicator, { backgroundColor: '#64748B' }, hideIndicatorStyle]}>
-        <ThemedText style={styles.swipeActionText}>Скрыть</ThemedText>
+      <Animated.View style={[styles.hideIndicator, hideIndicatorStyle]}>
+        <Feather name="eye-off" size={22} color={theme.textSecondary} style={styles.swipeIcon} />
+        <ThemedText style={[styles.swipeActionTextPlain, { color: theme.textSecondary }]}>Скрыть</ThemedText>
       </Animated.View>
 
-      <Animated.View style={[styles.deleteIndicator, { backgroundColor: '#EF4444' }, actionsContainerStyle]}>
-        <ThemedText style={styles.swipeActionText}>Удалить</ThemedText>
+      <Animated.View style={[styles.deleteIndicator, actionsContainerStyle]}>
+        <ThemedText style={[styles.swipeActionTextPlain, { color: theme.textSecondary }]}>Удалить</ThemedText>
+        <Feather name="trash-2" size={22} color={theme.textSecondary} style={styles.swipeIcon} />
       </Animated.View>
 
       <GestureDetector gesture={panGesture}>
@@ -492,6 +496,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SWIPE_THRESHOLD + 40,
     borderRadius: BorderRadius.md,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
@@ -503,6 +508,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SWIPE_THRESHOLD + 40,
     borderRadius: BorderRadius.md,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
@@ -512,6 +518,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 15,
     letterSpacing: 0.5,
+  },
+  swipeActionTextPlain: {
+    fontWeight: "600",
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
+  swipeIcon: {
+    marginHorizontal: 6,
   },
   primaryBadge: {
     position: "absolute",
