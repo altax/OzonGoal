@@ -381,7 +381,6 @@ export function useShifts() {
       if (error) throw new Error(error.message);
       return (data as SupabaseShift[]).map(toClientShift);
     },
-    refetchInterval: 30000,
   });
 }
 
@@ -418,7 +417,6 @@ export function useShiftsSummary() {
         current: currentData?.[0] ? toClientShift(currentData[0] as SupabaseShift) : null,
       };
     },
-    refetchInterval: 30000,
   });
 }
 
