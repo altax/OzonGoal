@@ -68,16 +68,17 @@ export default function ShiftsScreen() {
 
   useEffect(() => {
     if (!shifts || shifts.length === 0) return;
+    if (selectedShiftForEarnings) return;
     
     const checkAutoEarnings = async () => {
       const shownIdsStr = await AsyncStorage.getItem(AUTO_EARNINGS_SHOWN_KEY).catch(() => null);
-      const shownIds = new Set(shownIdsStr ? JSON.parse(shownIdsStr) : []);
+      const shownIds = new Set<string>(shownIdsStr ? JSON.parse(shownIdsStr) : []);
       
       const completedWithoutEarnings = shifts.find(
         (s) => s.status === "completed" && !s.earnings && !shownIds.has(s.id)
       );
       
-      if (completedWithoutEarnings && !selectedShiftForEarnings) {
+      if (completedWithoutEarnings) {
         shownIds.add(completedWithoutEarnings.id);
         await AsyncStorage.setItem(AUTO_EARNINGS_SHOWN_KEY, JSON.stringify([...shownIds])).catch(() => {});
         setSelectedShiftForEarnings(completedWithoutEarnings as ShiftType);

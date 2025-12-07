@@ -295,15 +295,31 @@ export function useSetPrimaryGoal() {
 async function autoUpdateShiftStatuses() {
   const now = new Date().toISOString();
   
-  const { data: expiredShifts } = await supabase
+  const { data: expiredInProgressShifts } = await supabase
     .from('shifts')
     .select('id')
     .eq('user_id', DEFAULT_USER_ID)
     .eq('status', 'in_progress')
     .lt('scheduled_end', now);
   
-  if (expiredShifts && expiredShifts.length > 0) {
-    for (const shift of expiredShifts) {
+  if (expiredInProgressShifts && expiredInProgressShifts.length > 0) {
+    for (const shift of expiredInProgressShifts) {
+      await supabase
+        .from('shifts')
+        .update({ status: 'completed' })
+        .eq('id', shift.id);
+    }
+  }
+  
+  const { data: missedScheduledShifts } = await supabase
+    .from('shifts')
+    .select('id')
+    .eq('user_id', DEFAULT_USER_ID)
+    .eq('status', 'scheduled')
+    .lt('scheduled_end', now);
+  
+  if (missedScheduledShifts && missedScheduledShifts.length > 0) {
+    for (const shift of missedScheduledShifts) {
       await supabase
         .from('shifts')
         .update({ status: 'completed' })
@@ -329,6 +345,27 @@ async function autoUpdateShiftStatuses() {
   }
 }
 
+export function useCompleteShift() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from('shifts')
+        .update({ status: 'completed' })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw new Error(error.message);
+      return toClientShift(data as SupabaseShift);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+    },
+  });
+}
+
 export function useShifts() {
   return useQuery<Shift[]>({
     queryKey: ["shifts"],
@@ -344,6 +381,7 @@ export function useShifts() {
       if (error) throw new Error(error.message);
       return (data as SupabaseShift[]).map(toClientShift);
     },
+    refetchInterval: 30000,
   });
 }
 
@@ -380,6 +418,7 @@ export function useShiftsSummary() {
         current: currentData?.[0] ? toClientShift(currentData[0] as SupabaseShift) : null,
       };
     },
+    refetchInterval: 30000,
   });
 }
 
