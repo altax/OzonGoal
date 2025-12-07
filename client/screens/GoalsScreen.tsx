@@ -168,6 +168,7 @@ export default function GoalsScreen() {
               onHide={handleHideGoal}
               onDelete={handleDeleteGoal}
               onPin={handlePinGoal}
+              compact
             />
           ))
         ) : (
