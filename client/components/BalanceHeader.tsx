@@ -113,7 +113,25 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
         const parts = [];
         if (tabInfo.past > 0) parts.push(`${tabInfo.past} прошло`);
         if (tabInfo.scheduled > 0) parts.push(`${tabInfo.scheduled} будет`);
-        if (tabInfo.hasCurrent) parts.push("сейчас");
+        
+        if (tabInfo.currentShift) {
+          return (
+            <View style={styles.infoTagContainer}>
+              {parts.length > 0 && (
+                <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+                  <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+                    {parts.join(" • ")}
+                  </ThemedText>
+                </View>
+              )}
+              <View style={[styles.infoTag, { backgroundColor: theme.successLight, marginTop: parts.length > 0 ? Spacing.xs : 0 }]}>
+                <ThemedText style={[styles.infoText, { color: theme.success }]}>
+                  {getTimeRemaining(tabInfo.currentShift.scheduledEnd)}
+                </ThemedText>
+              </View>
+            </View>
+          );
+        }
         
         if (parts.length === 0) return null;
         
