@@ -190,7 +190,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
           console.log('[Realtime] Connected successfully');
           retryCountRef.current = 0;
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('[Realtime] Connection error:', err?.message || status);
+          console.log('[Realtime] Connection issue, will retry:', status);
           scheduleReconnect();
         } else if (status === 'CLOSED') {
           console.log('[Realtime] Channel closed');
@@ -203,7 +203,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
 
   const scheduleReconnect = useCallback(() => {
     if (retryCountRef.current >= maxRetries) {
-      console.error('[Realtime] Max retries reached, giving up');
+      console.log('[Realtime] Max retries reached, will use regular API calls');
       return;
     }
 
