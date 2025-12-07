@@ -105,24 +105,32 @@ function BarChart({
   const avg = data.length > 0 ? total / data.filter(d => d.value > 0).length : 0;
   
   return (
-    <View>
+    <View style={styles.chartWrapper}>
+      <View style={styles.chartValuesRow}>
+        {data.map((item, i) => {
+          const isLast = i === data.length - 1;
+          return (
+            <View key={i} style={styles.chartValueCell}>
+              {item.value > 0 && (
+                <ThemedText style={[styles.barValue, { color: isLast ? color : theme.textSecondary }]}>
+                  {formatK(item.value)}
+                </ThemedText>
+              )}
+            </View>
+          );
+        })}
+      </View>
       <View style={styles.barChart}>
         {data.map((item, i) => {
-          const heightPct = Math.max((item.value / max) * 100, 6);
+          const heightPct = max > 0 ? Math.max((item.value / max) * 100, item.value > 0 ? 8 : 4) : 4;
           const isLast = i === data.length - 1;
           const isMax = item.value === max && item.value > 0;
-          const dateNum = item.date ? formatDayDate(item.date) : '';
           return (
             <Pressable 
               key={i} 
               style={styles.barCol}
               onPress={() => onBarPress?.(i)}
             >
-              {item.value > 0 && (
-                <ThemedText style={[styles.barValue, { color: isLast ? color : theme.textSecondary }]}>
-                  {formatK(item.value)}
-                </ThemedText>
-              )}
               <View 
                 style={[
                   styles.bar,
@@ -132,13 +140,22 @@ function BarChart({
                   }
                 ]} 
               />
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.chartLabelsRow}>
+        {data.map((item, i) => {
+          const dateNum = item.date ? formatDayDate(item.date) : '';
+          return (
+            <View key={i} style={styles.chartLabelCell}>
               <ThemedText style={[styles.barLabel, { color: theme.textSecondary }]}>
                 {item.label}
               </ThemedText>
               <ThemedText style={[styles.barDate, { color: theme.textSecondary }]}>
                 {dateNum}
               </ThemedText>
-            </Pressable>
+            </View>
           );
         })}
       </View>
@@ -983,32 +1000,52 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: Spacing.sm,
   },
+  chartWrapper: {
+    marginTop: Spacing.sm,
+  },
+  chartValuesRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    height: 20,
+    marginBottom: 4,
+  },
+  chartValueCell: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
   barChart: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-around",
-    height: 120,
-    marginTop: Spacing.xl,
+    height: 80,
   },
   barCol: {
+    flex: 1,
     alignItems: "center",
     height: "100%",
     justifyContent: "flex-end",
-    paddingHorizontal: 2,
   },
   barValue: {
     fontSize: 9,
     fontWeight: "600",
-    marginBottom: 2,
   },
   bar: {
-    width: 24,
-    borderRadius: 5,
+    width: 28,
+    borderRadius: 6,
     minHeight: 4,
+  },
+  chartLabelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 6,
+  },
+  chartLabelCell: {
+    flex: 1,
+    alignItems: "center",
   },
   barLabel: {
     fontSize: 10,
-    marginTop: 3,
   },
   avgRow: {
     flexDirection: "row",
