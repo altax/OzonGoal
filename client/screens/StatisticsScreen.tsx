@@ -12,7 +12,7 @@ import Animated, {
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useEarningsStats, type StatsPeriod } from "@/api";
+import { useEarningsStats, useGoals, type StatsPeriod } from "@/api";
 
 function formatK(amount: number): string {
   if (amount >= 1000) {
@@ -42,41 +42,109 @@ function BarChart({
   data, 
   color,
   bgColor,
+  onBarPress,
 }: { 
-  data: { label: string; value: number }[];
+  data: { label: string; value: number; date: string }[];
   color: string;
   bgColor: string;
+  onBarPress?: (index: number) => void;
 }) {
   const { theme } = useTheme();
   const max = Math.max(...data.map(d => d.value), 1);
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const avg = data.length > 0 ? total / data.filter(d => d.value > 0).length : 0;
   
   return (
-    <View style={styles.barChart}>
-      {data.map((item, i) => {
-        const heightPct = Math.max((item.value / max) * 100, 6);
-        const isLast = i === data.length - 1;
-        return (
-          <View key={i} style={styles.barCol}>
-            {item.value > 0 && (
-              <ThemedText style={[styles.barValue, { color: isLast ? color : theme.textSecondary }]}>
-                {formatK(item.value)}
+    <View>
+      <View style={styles.barChart}>
+        {data.map((item, i) => {
+          const heightPct = Math.max((item.value / max) * 100, 6);
+          const isLast = i === data.length - 1;
+          const isMax = item.value === max && item.value > 0;
+          const isAboveAvg = item.value > avg;
+          return (
+            <Pressable 
+              key={i} 
+              style={styles.barCol}
+              onPress={() => onBarPress?.(i)}
+            >
+              {item.value > 0 && (
+                <ThemedText style={[styles.barValue, { color: isLast ? color : theme.textSecondary }]}>
+                  {formatK(item.value)}
+                </ThemedText>
+              )}
+              <View 
+                style={[
+                  styles.bar,
+                  { 
+                    height: `${heightPct}%`,
+                    backgroundColor: isMax ? theme.success : isLast ? color : bgColor,
+                  }
+                ]} 
+              />
+              <ThemedText style={[styles.barLabel, { color: theme.textSecondary }]}>
+                {item.label}
               </ThemedText>
-            )}
-            <View 
-              style={[
-                styles.bar,
-                { 
-                  height: `${heightPct}%`,
-                  backgroundColor: isLast ? color : bgColor,
-                }
-              ]} 
-            />
-            <ThemedText style={[styles.barLabel, { color: theme.textSecondary }]}>
-              {item.label}
-            </ThemedText>
+              {isAboveAvg && item.value > 0 && (
+                <View style={[styles.barDot, { backgroundColor: theme.success }]} />
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+      {avg > 0 && (
+        <View style={styles.avgRow}>
+          <View style={[styles.avgLine, { backgroundColor: theme.border }]} />
+          <ThemedText style={[styles.avgText, { color: theme.textSecondary }]}>
+            Ср: {formatK(avg)} ₽
+          </ThemedText>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function GoalProgress({ 
+  name, 
+  current, 
+  target,
+  color,
+  isClosest,
+}: { 
+  name: string;
+  current: number;
+  target: number;
+  color: string;
+  isClosest: boolean;
+}) {
+  const { theme } = useTheme();
+  const pct = target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
+  
+  return (
+    <View style={[styles.goalItem, isClosest && { backgroundColor: theme.successLight, borderRadius: 8, padding: 8, margin: -8, marginBottom: 4 }]}>
+      <View style={styles.goalHeader}>
+        <View style={[styles.goalDot, { backgroundColor: color }]} />
+        <ThemedText style={styles.goalName} numberOfLines={1}>{name}</ThemedText>
+        {isClosest && (
+          <View style={[styles.closestBadge, { backgroundColor: theme.success }]}>
+            <Feather name="star" size={8} color="#FFF" />
           </View>
-        );
-      })}
+        )}
+        <ThemedText style={[styles.goalPct, { color: pct >= 100 ? theme.success : theme.textSecondary }]}>
+          {pct}%
+        </ThemedText>
+      </View>
+      <View style={[styles.goalBar, { backgroundColor: theme.backgroundSecondary }]}>
+        <View style={[styles.goalFill, { width: `${pct}%`, backgroundColor: color }]} />
+      </View>
+      <View style={styles.goalAmounts}>
+        <ThemedText style={[styles.goalAmount, { color: theme.textSecondary }]}>
+          {formatK(current)} ₽
+        </ThemedText>
+        <ThemedText style={[styles.goalAmount, { color: theme.textSecondary }]}>
+          {formatK(target)} ₽
+        </ThemedText>
+      </View>
     </View>
   );
 }
@@ -112,6 +180,7 @@ export default function StatisticsScreen() {
   const { theme } = useTheme();
   const [period, setPeriod] = useState<StatsPeriod>("month");
   const { data: stats, isLoading, error, refetch } = useEarningsStats(period);
+  const { data: goals } = useGoals();
   
   const activeIndex = PERIOD_OPTIONS.findIndex(p => p.key === period);
   const indicatorX = useSharedValue(activeIndex);
@@ -127,14 +196,33 @@ export default function StatisticsScreen() {
 
   const chartData = useMemo(() => {
     if (!stats?.dailyEarningsHistory) {
-      return Array(7).fill(null).map((_, i) => ({ label: '', value: 0 }));
+      return Array(7).fill(null).map(() => ({ label: '', value: 0, date: '' }));
     }
     const last7 = stats.dailyEarningsHistory.slice(-7);
     while (last7.length < 7) last7.unshift({ date: new Date().toISOString(), amount: 0 });
-    return last7.map(d => ({ label: formatDay(d.date), value: d.amount }));
+    return last7.map(d => ({ label: formatDay(d.date), value: d.amount, date: d.date }));
   }, [stats?.dailyEarningsHistory]);
 
-  const progressPct = stats?.goalsProgressPercent || 0;
+  const activeGoals = useMemo(() => {
+    if (!goals) return [];
+    return goals.filter(g => g.status === 'active').slice(0, 5);
+  }, [goals]);
+
+  const closestGoalId = useMemo(() => {
+    if (!activeGoals.length) return null;
+    let closest = activeGoals[0];
+    let closestPct = 0;
+    for (const g of activeGoals) {
+      const current = parseFloat(String(g.currentAmount)) || 0;
+      const target = parseFloat(String(g.targetAmount)) || 1;
+      const pct = current / target;
+      if (pct > closestPct && pct < 1) {
+        closestPct = pct;
+        closest = g;
+      }
+    }
+    return closest?.id;
+  }, [activeGoals]);
 
   if (isLoading) {
     return (
@@ -214,22 +302,34 @@ export default function StatisticsScreen() {
         </View>
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+      <View style={[styles.card, styles.chartCard, { backgroundColor: theme.backgroundDefault }]}>
+        <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>Доход по дням</ThemedText>
         <BarChart data={chartData} color={theme.accent} bgColor={theme.accentLight} />
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-        <View style={styles.progressRow}>
-          <View style={[styles.progressIcon, { backgroundColor: theme.successLight }]}>
-            <Feather name="target" size={14} color={theme.success} />
+      {activeGoals.length > 0 && (
+        <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+          <View style={styles.cardHeader}>
+            <ThemedText style={styles.cardTitle}>Цели</ThemedText>
+            {closestGoalId && (
+              <View style={styles.closestHint}>
+                <Feather name="star" size={10} color={theme.success} />
+                <ThemedText style={[styles.closestHintText, { color: theme.success }]}>ближайшая</ThemedText>
+              </View>
+            )}
           </View>
-          <ThemedText style={styles.progressLabel}>Прогресс целей</ThemedText>
-          <ThemedText style={[styles.progressPct, { color: theme.success }]}>{progressPct}%</ThemedText>
+          {activeGoals.map((goal) => (
+            <GoalProgress
+              key={goal.id}
+              name={goal.name}
+              current={parseFloat(String(goal.currentAmount)) || 0}
+              target={parseFloat(String(goal.targetAmount)) || 0}
+              color={goal.iconColor || theme.accent}
+              isClosest={goal.id === closestGoalId}
+            />
+          ))}
         </View>
-        <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
-          <View style={[styles.progressFill, { width: `${Math.min(progressPct, 100)}%`, backgroundColor: theme.success }]} />
-        </View>
-      </View>
+      )}
 
       <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
         <StatItem
@@ -310,7 +410,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   heroSection: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   heroLabel: {
     fontSize: 11,
@@ -342,11 +442,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: Spacing.sm,
   },
+  chartCard: {
+    paddingTop: Spacing.sm,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.sm,
+  },
+  cardTitle: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
+  },
   barChart: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    height: 90,
+    height: 80,
+    marginTop: Spacing.md,
   },
   barCol: {
     flex: 1,
@@ -360,43 +476,87 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   bar: {
-    width: 20,
+    width: 18,
     borderRadius: 4,
     minHeight: 4,
   },
   barLabel: {
     fontSize: 10,
-    marginTop: 4,
+    marginTop: 3,
   },
-  progressRow: {
+  barDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 2,
+  },
+  avgRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginTop: Spacing.sm,
+  },
+  avgLine: {
+    flex: 1,
+    height: 1,
+  },
+  avgText: {
+    fontSize: 10,
+    marginLeft: Spacing.sm,
+  },
+  goalItem: {
     marginBottom: Spacing.sm,
   },
-  progressIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
+  goalHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginRight: Spacing.sm,
+    marginBottom: 4,
   },
-  progressLabel: {
+  goalDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  goalName: {
     flex: 1,
     fontSize: 13,
   },
-  progressPct: {
-    fontSize: 14,
+  goalPct: {
+    fontSize: 12,
     fontWeight: "600",
   },
-  progressBar: {
-    height: 6,
+  goalBar: {
+    height: 5,
     borderRadius: 3,
     overflow: "hidden",
   },
-  progressFill: {
+  goalFill: {
     height: "100%",
     borderRadius: 3,
+  },
+  goalAmounts: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 2,
+  },
+  goalAmount: {
+    fontSize: 10,
+  },
+  closestBadge: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
+  },
+  closestHint: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  closestHintText: {
+    fontSize: 10,
+    marginLeft: 3,
   },
   statItem: {
     flexDirection: "row",

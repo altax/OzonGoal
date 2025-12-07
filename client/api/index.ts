@@ -42,6 +42,7 @@ export function useUser() {
 export function useGoals() {
   return useQuery<Goal[]>({
     queryKey: ["goals"],
+    refetchInterval: 5000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('goals')
@@ -807,6 +808,7 @@ export type EarningsStats = {
 export function useEarningsStats(period: StatsPeriod = 'month') {
   return useQuery<EarningsStats>({
     queryKey: ["earnings", "stats", period],
+    refetchInterval: 5000,
     queryFn: async () => {
       const { start, end } = getDateRange(period);
       
