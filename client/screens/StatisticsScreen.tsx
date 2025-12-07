@@ -677,12 +677,19 @@ export default function StatisticsScreen() {
     const result: { label: string; value: number; date: string }[] = [];
     const today = new Date();
     
+    const earningsMap = new Map<string, number>();
+    if (stats?.dailyEarningsHistory) {
+      for (const item of stats.dailyEarningsHistory) {
+        const dateKey = item.date.split('T')[0];
+        earningsMap.set(dateKey, item.amount);
+      }
+    }
+    
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      
-      // TODO: ТЕСТОВЫЕ ДАННЫЕ - УДАЛИТЬ ПОТОМ
-      const amount = 7000;
+      const dateKey = d.toISOString().split('T')[0];
+      const amount = earningsMap.get(dateKey) || 0;
       
       result.push({
         label: days[d.getDay()],
