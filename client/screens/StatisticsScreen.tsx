@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -84,7 +84,6 @@ type PeriodOption = { key: StatsPeriod; label: string };
 const PERIOD_OPTIONS: PeriodOption[] = [
   { key: "week", label: "Неделя" },
   { key: "month", label: "Месяц" },
-  { key: "year", label: "Год" },
 ];
 
 function BarChart({ 
@@ -198,6 +197,15 @@ function GoalForecastCard({
   );
 }
 
+function pluralizeShifts(count: number): string {
+  const lastTwo = count % 100;
+  const lastOne = count % 10;
+  if (lastTwo >= 11 && lastTwo <= 19) return "смен";
+  if (lastOne === 1) return "смена";
+  if (lastOne >= 2 && lastOne <= 4) return "смены";
+  return "смен";
+}
+
 function StreakBanner({
   streak,
 }: {
@@ -208,19 +216,11 @@ function StreakBanner({
   if (!streak || streak <= 0) return null;
   
   return (
-    <View style={[styles.streakCard, { backgroundColor: theme.accent }]}>
-      <View style={styles.streakIconContainer}>
-        <Feather name="activity" size={18} color="#FFF" />
-      </View>
-      <View style={styles.streakContent}>
-        <ThemedText style={styles.streakValue}>
-          {streak} {streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}
-        </ThemedText>
-        <ThemedText style={styles.streakLabel}>
-          подряд работаете
-        </ThemedText>
-      </View>
-      <Feather name="trending-up" size={24} color="rgba(255,255,255,0.6)" />
+    <View style={[styles.streakBadge, { backgroundColor: theme.backgroundDefault }]}>
+      <Feather name="zap" size={14} color={theme.accent} />
+      <ThemedText style={[styles.streakBadgeText, { color: theme.text }]}>
+        {streak} {pluralizeShifts(streak)} подряд
+      </ThemedText>
     </View>
   );
 }
@@ -258,12 +258,21 @@ function StatItem({
   );
 }
 
+function formatCountdown(seconds: number): string {
+  if (seconds <= 0) return "0:00:00";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
 function CurrentShiftCard({ 
   shift,
   isCurrentShift,
 }: { 
   shift: { 
     scheduledDate: Date;
+    scheduledStart?: Date;
     shiftType: 'day' | 'night';
     operationType: 'returns' | 'receiving';
     status: string;
@@ -274,6 +283,39 @@ function CurrentShiftCard({
   const isNight = shift.shiftType === "night";
   const isReturns = shift.operationType === "returns";
   
+  const [countdown, setCountdown] = useState<number>(0);
+  
+  useEffect(() => {
+    if (!isCurrentShift) return;
+    
+    const calculateRemaining = () => {
+      const now = new Date();
+      let endTime: Date;
+      
+      if (shift.scheduledStart) {
+        const startTime = new Date(shift.scheduledStart);
+        endTime = new Date(startTime.getTime() + 12 * 60 * 60 * 1000);
+      } else {
+        const shiftDate = new Date(shift.scheduledDate);
+        if (shift.shiftType === 'day') {
+          endTime = new Date(shiftDate);
+          endTime.setHours(20, 0, 0, 0);
+        } else {
+          endTime = new Date(shiftDate);
+          endTime.setDate(endTime.getDate() + 1);
+          endTime.setHours(8, 0, 0, 0);
+        }
+      }
+      
+      const remaining = Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
+      setCountdown(remaining);
+    };
+    
+    calculateRemaining();
+    const interval = setInterval(calculateRemaining, 1000);
+    return () => clearInterval(interval);
+  }, [isCurrentShift, shift.scheduledDate, shift.scheduledStart, shift.shiftType]);
+  
   return (
     <View style={[styles.shiftCard, { backgroundColor: theme.backgroundDefault }]}>
       <View style={styles.shiftCardHeader}>
@@ -281,18 +323,25 @@ function CurrentShiftCard({
           <Feather name={isNight ? "moon" : "sun"} size={16} color={isNight ? theme.accent : theme.warning} />
         </View>
         <View style={styles.shiftCardInfo}>
-          <ThemedText style={styles.shiftCardTitle}>
-            {isCurrentShift ? "Текущая смена" : "Следующая смена"}
-          </ThemedText>
+          <View style={styles.shiftTitleRow}>
+            <ThemedText style={styles.shiftCardTitle}>
+              {isCurrentShift ? "Текущая смена" : "Следующая смена"}
+            </ThemedText>
+            {isCurrentShift && (
+              <ThemedText style={[styles.liveNowText, { color: theme.accent }]}>
+                идёт сейчас
+              </ThemedText>
+            )}
+          </View>
           <ThemedText style={[styles.shiftCardDate, { color: theme.textSecondary }]}>
             {formatShiftDate(shift.scheduledDate)} • {formatShiftTime(shift.shiftType)}
           </ThemedText>
+          {isCurrentShift && countdown > 0 && (
+            <ThemedText style={[styles.countdownText, { color: theme.textSecondary }]}>
+              до конца: {formatCountdown(countdown)}
+            </ThemedText>
+          )}
         </View>
-        {isCurrentShift && (
-          <View style={[styles.liveIndicator, { backgroundColor: theme.success }]}>
-            <ThemedText style={styles.liveText}>LIVE</ThemedText>
-          </View>
-        )}
       </View>
       <View style={styles.shiftCardDetails}>
         <View style={[styles.shiftDetailBadge, { backgroundColor: theme.backgroundSecondary }]}>
@@ -609,16 +658,33 @@ export default function StatisticsScreen() {
   };
   
   const animatedIndicatorStyle = useAnimatedStyle(() => ({
-    left: `${(indicatorX.value / 3) * 100}%`,
+    left: `${(indicatorX.value / 2) * 100}%`,
   }));
 
   const chartData = useMemo(() => {
-    if (!stats?.dailyEarningsHistory) {
-      return Array(7).fill(null).map(() => ({ label: '', value: 0, date: '' }));
+    const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    const result: { label: string; value: number; date: string }[] = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      
+      let amount = 0;
+      if (stats?.dailyEarningsHistory) {
+        const found = stats.dailyEarningsHistory.find(h => h.date.split('T')[0] === dateStr);
+        if (found) amount = found.amount;
+      }
+      
+      result.push({
+        label: days[d.getDay()],
+        value: amount,
+        date: d.toISOString(),
+      });
     }
-    const last7 = stats.dailyEarningsHistory.slice(-7);
-    while (last7.length < 7) last7.unshift({ date: new Date().toISOString(), amount: 0 });
-    return last7.map(d => ({ label: formatDay(d.date), value: d.amount, date: d.date }));
+    
+    return result;
   }, [stats?.dailyEarningsHistory]);
 
   const nextScheduledShift = useMemo(() => {
@@ -825,7 +891,6 @@ export default function StatisticsScreen() {
           value={formatK(stats?.freeBalance || 0) + " ₽"}
           color={theme.accent}
           bgColor={theme.accentLight}
-          subtitle="Не распределён на цели"
         />
       </View>
     </ScrollView>
@@ -851,7 +916,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 2,
     bottom: 2,
-    width: "33.33%",
+    width: "50%",
     borderRadius: 6,
   },
   periodTab: {
@@ -1478,6 +1543,33 @@ const styles = StyleSheet.create({
   streakLabel: {
     fontSize: 12,
     color: "rgba(255,255,255,0.8)",
+  },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: Spacing.sm,
+    gap: 6,
+  },
+  streakBadgeText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  shiftTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  liveNowText: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  countdownText: {
+    fontSize: 11,
+    marginTop: 2,
   },
   combinedProfitGrid: {
     gap: Spacing.md,

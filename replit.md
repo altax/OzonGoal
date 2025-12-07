@@ -75,6 +75,13 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Statistics Screen UI Polish (Dec 7, 2025):**
+  - Removed "Не распределён на цели" subtitle from Free Balance stat
+  - Fixed daily income chart to show real calendar (last 7 days with correct dates)
+  - Compact streak badge: "X смен подряд" instead of large banner
+  - Removed yearly statistics option (only Week/Month now)
+  - Replaced "LIVE" badge with "идёт сейчас" + countdown timer showing HH:MM:SS until shift end
+  - Countdown uses scheduledStart + 12h for accurate end time calculation
 - **Statistics Screen Major Redesign (Dec 7, 2025):**
   - Enhanced Goal Achievement Forecast with average earnings badge (shows "Avg ₽X/shift")
   - Combined Shift Profitability: 4 categories (Day Returns, Night Returns, Day Receiving, Night Receiving)
