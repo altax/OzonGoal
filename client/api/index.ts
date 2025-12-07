@@ -134,7 +134,7 @@ export function useUpdateGoal() {
       iconKey: string;
       iconColor: string;
       iconBgColor: string;
-      status: 'active' | 'completed';
+      status: 'active' | 'completed' | 'hidden';
       isPrimary: boolean;
       orderIndex: number;
     }>) => {
@@ -187,6 +187,63 @@ export function useDeleteGoal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
       queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}
+
+export function useHiddenGoals() {
+  return useQuery<Goal[]>({
+    queryKey: ["goals", "hidden"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .eq('status', 'hidden')
+        .order('updated_at', { ascending: false });
+      
+      if (error) throw new Error(error.message);
+      return (data as SupabaseGoal[]).map(toClientGoal);
+    },
+  });
+}
+
+export function useDeleteAllHiddenGoals() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('goals')
+        .delete()
+        .eq('user_id', DEFAULT_USER_ID)
+        .eq('status', 'hidden');
+      
+      if (error) throw new Error(error.message);
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
+}
+
+export function useDeleteAllHiddenShifts() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('shifts')
+        .delete()
+        .eq('user_id', DEFAULT_USER_ID)
+        .eq('status', 'canceled');
+      
+      if (error) throw new Error(error.message);
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
     },
   });
 }
@@ -419,40 +476,48 @@ export function useUpdateShift() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, scheduledDate }: { id: string; scheduledDate: string }) => {
-      const date = new Date(scheduledDate);
+    mutationFn: async ({ id, scheduledDate, status }: { id: string; scheduledDate?: string; status?: string }) => {
+      const updateData: Record<string, unknown> = {};
       
-      const { data: shift } = await supabase
-        .from('shifts')
-        .select('shift_type')
-        .eq('id', id)
-        .single();
+      if (status !== undefined) {
+        updateData.status = status;
+      }
       
-      if (!shift) throw new Error('Shift not found');
-      
-      let scheduledStart: Date;
-      let scheduledEnd: Date;
-      
-      if (shift.shift_type === "day") {
-        scheduledStart = new Date(date);
-        scheduledStart.setHours(8, 0, 0, 0);
-        scheduledEnd = new Date(date);
-        scheduledEnd.setHours(20, 0, 0, 0);
-      } else {
-        scheduledStart = new Date(date);
-        scheduledStart.setHours(20, 0, 0, 0);
-        scheduledEnd = new Date(date);
-        scheduledEnd.setDate(scheduledEnd.getDate() + 1);
-        scheduledEnd.setHours(8, 0, 0, 0);
+      if (scheduledDate !== undefined) {
+        const date = new Date(scheduledDate);
+        
+        const { data: shift } = await supabase
+          .from('shifts')
+          .select('shift_type')
+          .eq('id', id)
+          .single();
+        
+        if (!shift) throw new Error('Shift not found');
+        
+        let scheduledStart: Date;
+        let scheduledEnd: Date;
+        
+        if (shift.shift_type === "day") {
+          scheduledStart = new Date(date);
+          scheduledStart.setHours(8, 0, 0, 0);
+          scheduledEnd = new Date(date);
+          scheduledEnd.setHours(20, 0, 0, 0);
+        } else {
+          scheduledStart = new Date(date);
+          scheduledStart.setHours(20, 0, 0, 0);
+          scheduledEnd = new Date(date);
+          scheduledEnd.setDate(scheduledEnd.getDate() + 1);
+          scheduledEnd.setHours(8, 0, 0, 0);
+        }
+        
+        updateData.scheduled_date = date.toISOString();
+        updateData.scheduled_start = scheduledStart.toISOString();
+        updateData.scheduled_end = scheduledEnd.toISOString();
       }
       
       const { data, error } = await supabase
         .from('shifts')
-        .update({
-          scheduled_date: date.toISOString(),
-          scheduled_start: scheduledStart.toISOString(),
-          scheduled_end: scheduledEnd.toISOString(),
-        })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();

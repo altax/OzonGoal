@@ -14,7 +14,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { GoalCard } from "@/components/GoalCard";
 import { AddGoalModal } from "@/components/AddGoalModal";
 import { EditGoalModal } from "@/components/EditGoalModal";
-import { useGoals, useDeleteGoal, useUpdateGoal, useSetPrimaryGoal } from "@/api";
+import { useGoals, useDeleteGoal, useUpdateGoal } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const BUTTON_AREA_HEIGHT = 72;
@@ -44,7 +44,6 @@ export default function GoalsScreen() {
   const { data: goals, isLoading } = useGoals();
   const deleteGoal = useDeleteGoal();
   const updateGoal = useUpdateGoal();
-  const setPrimaryGoal = useSetPrimaryGoal();
   
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorPosition = useSharedValue(0);
@@ -86,20 +85,11 @@ export default function GoalsScreen() {
   const hasAnyGoals = goals && goals.length > 0;
 
   const handleHideGoal = (goalId: string) => {
-    updateGoal.mutate({ id: goalId, status: "completed" });
+    updateGoal.mutate({ id: goalId, status: "hidden" });
   };
 
   const handleDeleteGoal = (goalId: string) => {
     deleteGoal.mutate(goalId);
-  };
-
-  const handlePinGoal = (goalId: string) => {
-    const goal = goals?.find(g => g.id === goalId);
-    if (goal?.isPrimary) {
-      updateGoal.mutate({ id: goalId, isPrimary: false });
-    } else {
-      setPrimaryGoal.mutate(goalId);
-    }
   };
 
   return (
@@ -181,7 +171,6 @@ export default function GoalsScreen() {
               showPrimaryBadge
               onHide={handleHideGoal}
               onDelete={handleDeleteGoal}
-              onPin={handlePinGoal}
               compact={viewMode === "compact"}
             />
           ))

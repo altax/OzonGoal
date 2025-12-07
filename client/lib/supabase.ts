@@ -24,7 +24,7 @@ export type Goal = {
   icon_bg_color: string;
   target_amount: string;
   current_amount: string;
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'hidden';
   is_primary: boolean;
   order_index: number;
   completed_at: string | null;
@@ -72,7 +72,7 @@ export function toClientGoal(goal: Goal): {
   iconBgColor: string;
   targetAmount: string;
   currentAmount: string;
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'hidden';
   isPrimary: boolean;
   orderIndex: number;
   completedAt: Date | null;

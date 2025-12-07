@@ -9,7 +9,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { Card } from "@/components/Card";
-import { useShifts, useUpdateShift } from "@/api";
+import { useShifts, useUpdateShift, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals } from "@/api";
 
 interface SettingsItemProps {
   icon: keyof typeof Feather.glyphMap;
@@ -68,6 +68,7 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
   const { theme, isDark } = useTheme();
   const { data: shifts = [] } = useShifts();
   const updateShift = useUpdateShift();
+  const deleteAllHiddenShifts = useDeleteAllHiddenShifts();
 
   const hiddenShifts = useMemo(() => {
     return shifts.filter(s => s.status === "canceled").sort((a, b) => 
@@ -84,6 +85,28 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
     } catch (error) {
       Alert.alert("Ошибка", "Не удалось восстановить смену");
     }
+  };
+
+  const handleDeleteAll = () => {
+    Alert.alert(
+      "Удалить все",
+      "Вы уверены, что хотите удалить все скрытые смены? Это действие нельзя отменить.",
+      [
+        { text: "Отмена", style: "cancel" },
+        { 
+          text: "Удалить", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAllHiddenShifts.mutateAsync();
+              onClose();
+            } catch (error) {
+              Alert.alert("Ошибка", "Не удалось удалить смены");
+            }
+          }
+        },
+      ]
+    );
   };
 
   const formatDate = (date: Date) => {
@@ -136,46 +159,61 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
               </ThemedText>
             </View>
           ) : (
-            hiddenShifts.map((shift) => (
-              <View
-                key={shift.id}
-                style={[
-                  hiddenShiftsStyles.shiftItem,
-                  { 
-                    backgroundColor: theme.backgroundSecondary,
-                    borderColor: theme.border,
-                  },
-                ]}
-              >
-                <View style={hiddenShiftsStyles.shiftItemLeft}>
-                  <View style={[hiddenShiftsStyles.shiftTypeIcon, { backgroundColor: theme.accentLight }]}>
-                    <Feather
-                      name={shift.shiftType === "day" ? "sun" : "moon"}
-                      size={18}
-                      color={theme.accent}
-                    />
-                  </View>
-                  <View>
-                    <ThemedText type="body" style={{ fontWeight: "500" }}>
-                      {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                      {formatDate(shift.scheduledDate)} • {shift.shiftType === "day" ? "08:00 - 20:00" : "20:00 - 08:00"}
-                    </ThemedText>
-                  </View>
-                </View>
-                <Pressable
-                  style={({ pressed }) => [
-                    hiddenShiftsStyles.restoreButton,
-                    { backgroundColor: theme.accentLight },
-                    pressed && { opacity: 0.7 },
+            <>
+              {hiddenShifts.map((shift) => (
+                <View
+                  key={shift.id}
+                  style={[
+                    hiddenShiftsStyles.shiftItem,
+                    { 
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: theme.border,
+                    },
                   ]}
-                  onPress={() => handleRestoreShift(shift.id)}
                 >
-                  <Feather name="rotate-ccw" size={16} color={theme.accent} />
-                </Pressable>
-              </View>
-            ))
+                  <View style={hiddenShiftsStyles.shiftItemLeft}>
+                    <View style={[hiddenShiftsStyles.shiftTypeIcon, { backgroundColor: theme.accentLight }]}>
+                      <Feather
+                        name={shift.shiftType === "day" ? "sun" : "moon"}
+                        size={18}
+                        color={theme.accent}
+                      />
+                    </View>
+                    <View>
+                      <ThemedText type="body" style={{ fontWeight: "500" }}>
+                        {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                        {formatDate(shift.scheduledDate)} • {shift.shiftType === "day" ? "08:00 - 20:00" : "20:00 - 08:00"}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      hiddenShiftsStyles.restoreButton,
+                      { backgroundColor: theme.accentLight },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                    onPress={() => handleRestoreShift(shift.id)}
+                  >
+                    <Feather name="rotate-ccw" size={16} color={theme.accent} />
+                  </Pressable>
+                </View>
+              ))}
+              <Pressable
+                style={({ pressed }) => [
+                  hiddenShiftsStyles.deleteAllButton,
+                  { backgroundColor: "#FEE2E2" },
+                  pressed && { opacity: 0.7 },
+                ]}
+                onPress={handleDeleteAll}
+              >
+                <Feather name="trash-2" size={18} color="#EF4444" />
+                <ThemedText type="body" style={{ color: "#EF4444", marginLeft: Spacing.sm }}>
+                  Удалить все
+                </ThemedText>
+              </Pressable>
+            </>
           )}
         </ScrollView>
       </View>
@@ -263,13 +301,185 @@ const hiddenShiftsStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  deleteAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.md,
+  },
 });
+
+function HiddenGoalsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <ThemeProvider>
+        <HiddenGoalsModalContent onClose={onClose} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const { data: hiddenGoals = [] } = useHiddenGoals();
+  const updateGoal = useUpdateGoal();
+  const deleteAllHiddenGoals = useDeleteAllHiddenGoals();
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const handleRestoreGoal = async (goalId: string) => {
+    if (restoringId) return;
+    setRestoringId(goalId);
+    try {
+      await updateGoal.mutateAsync({
+        id: goalId,
+        status: "active",
+      });
+    } catch (error) {
+      Alert.alert("Ошибка", "Не удалось восстановить цель");
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const handleDeleteAll = () => {
+    Alert.alert(
+      "Удалить все",
+      "Вы уверены, что хотите удалить все скрытые цели? Это действие нельзя отменить.",
+      [
+        { text: "Отмена", style: "cancel" },
+        { 
+          text: "Удалить", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAllHiddenGoals.mutateAsync();
+              onClose();
+            } catch (error) {
+              Alert.alert("Ошибка", "Не удалось удалить цели");
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  return (
+    <BlurView
+      intensity={20}
+      tint={isDark ? "dark" : "light"}
+      style={hiddenShiftsStyles.blurContainer}
+    >
+      <Pressable style={hiddenShiftsStyles.overlay} onPress={onClose} />
+      
+      <View
+        style={[
+          hiddenShiftsStyles.modalContent,
+          {
+            backgroundColor: theme.backgroundContent,
+            paddingBottom: insets.bottom + Spacing.xl,
+          },
+        ]}
+      >
+        <View style={hiddenShiftsStyles.handle} />
+        
+        <View style={hiddenShiftsStyles.header}>
+          <ThemedText type="h4" style={hiddenShiftsStyles.title}>
+            Скрытые цели
+          </ThemedText>
+          <Pressable onPress={onClose} style={hiddenShiftsStyles.closeButton}>
+            <Feather name="x" size={24} color={theme.text} />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          style={hiddenShiftsStyles.listContainer}
+          contentContainerStyle={hiddenShiftsStyles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {hiddenGoals.length === 0 ? (
+            <View style={hiddenShiftsStyles.emptyState}>
+              <View style={[hiddenShiftsStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
+                <Feather name="eye-off" size={32} color={theme.accent} />
+              </View>
+              <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg, textAlign: "center" }}>
+                Нет скрытых целей
+              </ThemedText>
+            </View>
+          ) : (
+            <>
+              {hiddenGoals.map((goal) => (
+                <View
+                  key={goal.id}
+                  style={[
+                    hiddenShiftsStyles.shiftItem,
+                    { 
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <View style={hiddenShiftsStyles.shiftItemLeft}>
+                    <View style={[hiddenShiftsStyles.shiftTypeIcon, { backgroundColor: goal.iconBgColor || theme.accentLight }]}>
+                      <Feather
+                        name={(goal.iconKey || "target") as keyof typeof Feather.glyphMap}
+                        size={18}
+                        color={goal.iconColor || theme.accent}
+                      />
+                    </View>
+                    <View>
+                      <ThemedText type="body" style={{ fontWeight: "500" }}>
+                        {goal.name}
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                        {Math.round((goal.currentAmount / goal.targetAmount) * 100)}% выполнено
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      hiddenShiftsStyles.restoreButton,
+                      { backgroundColor: theme.accentLight },
+                      (pressed || restoringId === goal.id) && { opacity: 0.5 },
+                    ]}
+                    onPress={() => handleRestoreGoal(goal.id)}
+                    disabled={restoringId !== null}
+                  >
+                    <Feather name="rotate-ccw" size={16} color={theme.accent} />
+                  </Pressable>
+                </View>
+              ))}
+              <Pressable
+                style={({ pressed }) => [
+                  hiddenShiftsStyles.deleteAllButton,
+                  { backgroundColor: "#FEE2E2" },
+                  (pressed || deleteAllHiddenGoals.isPending) && { opacity: 0.5 },
+                ]}
+                onPress={handleDeleteAll}
+                disabled={deleteAllHiddenGoals.isPending}
+              >
+                <Feather name="trash-2" size={18} color="#EF4444" />
+                <ThemedText type="body" style={{ color: "#EF4444", marginLeft: Spacing.sm }}>
+                  Удалить все
+                </ThemedText>
+              </Pressable>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </BlurView>
+  );
+}
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
+  const [showHiddenGoals, setShowHiddenGoals] = useState(false);
   const { data: shifts = [] } = useShifts();
+  const { data: hiddenGoals = [] } = useHiddenGoals();
 
   const hiddenShiftsCount = useMemo(() => {
     return shifts.filter(s => s.status === "canceled").length;
@@ -335,6 +545,18 @@ export default function SettingsScreen() {
         </Card>
 
         <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          ЦЕЛИ
+        </ThemedText>
+        <Card style={styles.settingsGroup}>
+          <SettingsItem 
+            icon="eye-off" 
+            title="Скрытые цели" 
+            value={hiddenGoals.length > 0 ? `${hiddenGoals.length}` : undefined}
+            onPress={() => setShowHiddenGoals(true)}
+          />
+        </Card>
+
+        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
           ДАННЫЕ
         </ThemedText>
         <Card style={styles.settingsGroup}>
@@ -354,6 +576,11 @@ export default function SettingsScreen() {
       <HiddenShiftsModal
         visible={showHiddenShifts}
         onClose={() => setShowHiddenShifts(false)}
+      />
+
+      <HiddenGoalsModal
+        visible={showHiddenGoals}
+        onClose={() => setShowHiddenGoals(false)}
       />
     </View>
   );

@@ -25,7 +25,7 @@ type Goal = {
   iconBgColor: string;
   targetAmount: string | number;
   currentAmount: string | number;
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'hidden';
   isPrimary: boolean;
   orderIndex: number;
   completedAt: Date | null;
@@ -40,8 +40,8 @@ interface GoalCardProps {
   showPrimaryBadge?: boolean;
   onHide?: (goalId: string) => void;
   onDelete?: (goalId: string) => void;
-  onPin?: (goalId: string) => void;
   compact?: boolean;
+  averageEarningsPerShift?: number;
 }
 
 function formatAmount(amount: number): string {
@@ -109,7 +109,7 @@ const MILESTONES = [0, 25, 50, 75, 100];
 const ACTION_BUTTON_WIDTH = 70;
 const SWIPE_THRESHOLD = 80;
 
-export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, onPin, compact = false }: GoalCardProps) {
+export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, compact = false, averageEarningsPerShift = 3200 }: GoalCardProps) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -124,6 +124,9 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   
   const isCompleted = goal.status === "completed" || currentAmount >= targetAmount;
   const iconName = iconMap[goal.iconKey] || "target";
+  
+  const remaining = targetAmount - currentAmount;
+  const shiftsNeeded = remaining > 0 ? Math.ceil(remaining / averageEarningsPerShift) : 0;
 
   const handleHide = () => {
     if (onHide && goal.status !== "completed") {
@@ -139,14 +142,6 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
     }
   };
 
-  const handlePin = () => {
-    if (onPin) {
-      onPin(goal.id);
-    }
-    translateX.value = withSpring(0);
-    actionsVisible.value = false;
-  };
-
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
     .failOffsetY([-10, 10])
@@ -158,7 +153,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
           translateX.value = Math.min(newX, SWIPE_THRESHOLD + 20);
         }
       } else {
-        translateX.value = Math.max(newX, -(ACTION_BUTTON_WIDTH * 2 + 20));
+        translateX.value = Math.max(newX, -(ACTION_BUTTON_WIDTH + 10));
       }
     })
     .onEnd((event) => {
@@ -167,7 +162,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
           runOnJS(handleHide)();
         });
       } else if (event.translationX < -SWIPE_THRESHOLD) {
-        translateX.value = withSpring(-(ACTION_BUTTON_WIDTH * 2));
+        translateX.value = withSpring(-ACTION_BUTTON_WIDTH);
         actionsVisible.value = true;
       } else {
         translateX.value = withSpring(0);
@@ -216,19 +211,13 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   if (compact) {
     return (
       <View style={styles.swipeContainer}>
-        <Animated.View style={[styles.hideIndicator, { backgroundColor: theme.warning }, hideIndicatorStyle]}>
+        <Animated.View style={[styles.hideIndicator, { backgroundColor: '#64748B' }, hideIndicatorStyle]}>
           <Feather name="eye-off" size={16} color="#FFFFFF" />
         </Animated.View>
 
         <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
           <Pressable
-            style={[styles.actionButtonCompact, { backgroundColor: theme.accent }]}
-            onPress={handlePin}
-          >
-            <Feather name="star" size={16} color="#FFFFFF" />
-          </Pressable>
-          <Pressable
-            style={[styles.actionButtonCompact, { backgroundColor: theme.error }]}
+            style={[styles.actionButtonCompact, { backgroundColor: '#94A3B8' }]}
             onPress={handleDelete}
           >
             <Feather name="trash-2" size={16} color="#FFFFFF" />
@@ -271,6 +260,11 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                   <ThemedText style={[styles.titleCompact, { color: theme.text }]} numberOfLines={1}>
                     {goal.name}
                   </ThemedText>
+                  {!isCompleted && shiftsNeeded > 0 && (
+                    <ThemedText style={[styles.shiftsTextCompact, { color: theme.textSecondary }]}>
+                      ~{shiftsNeeded} смен
+                    </ThemedText>
+                  )}
                   <ThemedText style={[
                     styles.percentageCompact, 
                     { color: isCompleted ? theme.success : theme.accent }
@@ -303,23 +297,14 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
 
   return (
     <View style={styles.swipeContainer}>
-      <Animated.View style={[styles.hideIndicator, { backgroundColor: theme.warning }, hideIndicatorStyle]}>
+      <Animated.View style={[styles.hideIndicator, { backgroundColor: '#64748B' }, hideIndicatorStyle]}>
         <Feather name="eye-off" size={20} color="#FFFFFF" />
         <ThemedText style={styles.hideText}>Скрыть</ThemedText>
       </Animated.View>
 
       <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
         <Pressable
-          style={[styles.actionButton, { backgroundColor: theme.accent }]}
-          onPress={handlePin}
-        >
-          <Feather name="star" size={20} color="#FFFFFF" />
-          <ThemedText style={styles.actionText}>
-            {goal.isPrimary ? "Убрать" : "В топ"}
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          style={[styles.actionButton, { backgroundColor: theme.error }]}
+          style={[styles.actionButton, { backgroundColor: '#94A3B8' }]}
           onPress={handleDelete}
         >
           <Feather name="trash-2" size={20} color="#FFFFFF" />
@@ -364,9 +349,16 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                 <Feather name={iconName} size={20} color={goal.iconColor || theme.accent} />
               </View>
               <View style={styles.titleContainer}>
-                <ThemedText style={[styles.title, { color: theme.text }]}>
-                  {goal.name}
-                </ThemedText>
+                <View style={styles.titleRow}>
+                  <ThemedText style={[styles.title, { color: theme.text }]}>
+                    {goal.name}
+                  </ThemedText>
+                  {!isCompleted && shiftsNeeded > 0 && (
+                    <ThemedText style={[styles.shiftsText, { color: theme.textSecondary }]}>
+                      ~{shiftsNeeded} смен
+                    </ThemedText>
+                  )}
+                </View>
                 <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
                   {getMotivationalPhrase(progressPercent, isCompleted)}
                 </ThemedText>
@@ -614,17 +606,32 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: 2,
+  },
   title: {
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: -0.3,
-    marginBottom: 2,
   },
   titleCompact: {
     fontSize: 14,
     fontWeight: "600",
     letterSpacing: -0.2,
     flex: 1,
+  },
+  shiftsText: {
+    fontSize: 12,
+    fontWeight: "400",
+    letterSpacing: 0,
+  },
+  shiftsTextCompact: {
+    fontSize: 11,
+    fontWeight: "400",
+    marginLeft: Spacing.xs,
   },
   subtitle: {
     fontSize: 12,
