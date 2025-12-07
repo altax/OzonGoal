@@ -12,9 +12,13 @@ import { queryClient } from "@/lib/query-client";
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useThemeContext } from "@/contexts/ThemeContext";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 
 function AppContent() {
   const { isDark } = useThemeContext();
+  
+  // Enable Supabase Realtime subscriptions (with 3s delay to avoid race conditions)
+  useSupabaseRealtime();
   
   return (
     <SafeAreaProvider>
