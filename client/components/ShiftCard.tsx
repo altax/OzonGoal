@@ -295,16 +295,16 @@ export function ShiftCard({
               />
             </View>
             <View style={styles.shiftInfo}>
-              <ThemedText type="body" style={{ fontWeight: "600" }}>
+              <ThemedText type="body" style={{ fontWeight: "600" }} numberOfLines={1}>
                 {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
               </ThemedText>
-              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
                 {getSmartDateLabel(new Date(shift.scheduledDate))} • {formatShiftTime(shift.shiftType)}
               </ThemedText>
             </View>
             {!isCurrentShift && (
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
-                <ThemedText type="caption" style={{ color: getStatusColor(shift.status, theme), fontWeight: "500" }}>
+              <View style={[styles.statusBadge, styles.statusBadgeFixed, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
+                <ThemedText type="caption" style={{ color: getStatusColor(shift.status, theme), fontWeight: "500" }} numberOfLines={1}>
                   {getStatusLabel(shift.status)}
                 </ThemedText>
               </View>
@@ -442,11 +442,17 @@ const styles = StyleSheet.create({
   },
   shiftInfo: {
     flex: 1,
+    flexShrink: 1,
+    marginRight: Spacing.sm,
   },
   statusBadge: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.xs,
+  },
+  statusBadgeFixed: {
+    flexShrink: 0,
+    maxWidth: 120,
   },
   statusBadgeCompact: {
     paddingHorizontal: Spacing.sm,

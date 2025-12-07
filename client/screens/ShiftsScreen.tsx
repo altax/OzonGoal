@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -19,6 +19,8 @@ import { ShiftCard } from "@/components/ShiftCard";
 import { RescheduleShiftModal } from "@/components/RescheduleShiftModal";
 import { useShifts, useCancelShift } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
+
+const AUTO_EARNINGS_SHOWN_KEY = "auto_earnings_shown_shifts";
 
 const BUTTON_AREA_HEIGHT = 72;
 const SHIFT_VIEW_MODE_KEY = "shift_view_mode";
@@ -51,6 +53,7 @@ export default function ShiftsScreen() {
   
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorPosition = useSharedValue(0);
+  const previousShiftsRef = useRef<ShiftType[]>([]);
 
   useEffect(() => {
     AsyncStorage.getItem(SHIFT_VIEW_MODE_KEY).then((stored) => {
@@ -63,6 +66,27 @@ export default function ShiftsScreen() {
   useEffect(() => {
     AsyncStorage.setItem(SHIFT_VIEW_MODE_KEY, viewMode).catch(() => {});
   }, [viewMode]);
+
+  useEffect(() => {
+    if (!shifts || shifts.length === 0) return;
+    
+    const checkAutoEarnings = async () => {
+      const shownIdsStr = await AsyncStorage.getItem(AUTO_EARNINGS_SHOWN_KEY).catch(() => null);
+      const shownIds = new Set(shownIdsStr ? JSON.parse(shownIdsStr) : []);
+      
+      const completedWithoutEarnings = shifts.find(
+        (s) => s.status === "completed" && !s.earnings && !shownIds.has(s.id)
+      );
+      
+      if (completedWithoutEarnings && !selectedShiftForEarnings) {
+        shownIds.add(completedWithoutEarnings.id);
+        await AsyncStorage.setItem(AUTO_EARNINGS_SHOWN_KEY, JSON.stringify([...shownIds])).catch(() => {});
+        setSelectedShiftForEarnings(completedWithoutEarnings as ShiftType);
+      }
+    };
+    
+    checkAutoEarnings();
+  }, [shifts, selectedShiftForEarnings]);
   
   const handleFilterChange = (newFilter: ShiftFilter) => {
     indicatorPosition.value = withTiming(newFilter === "scheduled" ? 0 : 1, {
