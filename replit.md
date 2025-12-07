@@ -75,22 +75,21 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
-- **Statistics Screen UI/UX Redesign (Dec 7, 2025):**
+- **Statistics Screen Major Redesign (Dec 7, 2025):**
+  - Enhanced Goal Achievement Forecast with average earnings badge (shows "Avg ₽X/shift")
+  - Combined Shift Profitability: 4 categories (Day Returns, Night Returns, Day Receiving, Night Receiving)
+  - Compact Records section with inline layout and emoji icons
+  - Dynamic Amount Forecast showing real average daily earnings
+  - Unified icon styling - all stat icons now use theme accent color
+  - Removed "Until all goals" banner at bottom
+  - Added StreakBanner at top showing work days streak with new styling
+  - Removed GoalsTimelineCard in favor of enhanced forecast section
+  - Added CombinedShiftStats API type for combined shift analytics
+- **Previous Statistics Screen Enhancement (Dec 7, 2025):**
   - Daily Income chart: Added dates under each bar for better readability
-  - Goals Timeline: Redesigned as horizontal scrollable cards with progress bars
   - Shift Type Profitability: Clean monochrome design with horizontal bar charts
   - Records section: Horizontal scrollable card layout with emoji icons
-  - Added 60+ new styles for modern, Dribbble-quality design
   - All sections follow consistent theme colors (no hardcoded colors)
-- **Statistics Screen Enhancement (Dec 7, 2025):**
-  - Added GoalForecastCard with estimated completion dates
-  - Added GoalsTimelineCard with visual timeline for goal forecasts
-  - Added ShiftTypeProfitability comparing Day/Night and Returns/Receiving shifts
-  - Added RecordsCard showing best week, month, and single shift earnings with emojis
-  - Added AmountForecastCard for custom amount forecasts (50K, 100K, 200K, 500K)
-  - Balance header now right-aligned for better visual hierarchy
-  - Fixed TypeScript config for proper JSX support
-  - Fixed Date serialization for React Query compatibility
 - **Design Overhaul (Dec 2025):** Dribbble-quality aesthetic applied
   - Soft shadows (#F1F5F9, 10-15% opacity)
   - Blue accent system (#3B82F6 primary, pastel variants)
