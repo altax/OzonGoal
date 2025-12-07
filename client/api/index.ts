@@ -805,6 +805,12 @@ export type GoalForecast = {
   color: string;
 };
 
+export type CombinedShiftStats = {
+  count: number;
+  totalEarnings: number;
+  averageEarnings: number;
+};
+
 export type EarningsStats = {
   totalEarnings: number;
   averagePerShift: number;
@@ -824,6 +830,10 @@ export type EarningsStats = {
   nightShiftStats: ShiftTypeStats;
   returnsShiftStats: ShiftTypeStats;
   receivingShiftStats: ShiftTypeStats;
+  dayReturnsStats: CombinedShiftStats;
+  nightReturnsStats: CombinedShiftStats;
+  dayReceivingStats: CombinedShiftStats;
+  nightReceivingStats: CombinedShiftStats;
   recordShiftEarnings: number;
   recordShiftDate: string | null;
   recordShiftType: string | null;
@@ -1043,6 +1053,35 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
         averageEarnings: receivingShifts.length > 0 ? receivingShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / receivingShifts.length : 0,
       };
       
+      const dayReturnsShifts = shifts.filter(s => s.shift_type === 'day' && s.operation_type === 'returns');
+      const nightReturnsShifts = shifts.filter(s => s.shift_type === 'night' && s.operation_type === 'returns');
+      const dayReceivingShifts = shifts.filter(s => s.shift_type === 'day' && s.operation_type === 'receiving');
+      const nightReceivingShifts = shifts.filter(s => s.shift_type === 'night' && s.operation_type === 'receiving');
+      
+      const dayReturnsStats = {
+        count: dayReturnsShifts.length,
+        totalEarnings: dayReturnsShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0),
+        averageEarnings: dayReturnsShifts.length > 0 ? dayReturnsShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / dayReturnsShifts.length : 0,
+      };
+      
+      const nightReturnsStats = {
+        count: nightReturnsShifts.length,
+        totalEarnings: nightReturnsShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0),
+        averageEarnings: nightReturnsShifts.length > 0 ? nightReturnsShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / nightReturnsShifts.length : 0,
+      };
+      
+      const dayReceivingStats = {
+        count: dayReceivingShifts.length,
+        totalEarnings: dayReceivingShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0),
+        averageEarnings: dayReceivingShifts.length > 0 ? dayReceivingShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / dayReceivingShifts.length : 0,
+      };
+      
+      const nightReceivingStats = {
+        count: nightReceivingShifts.length,
+        totalEarnings: nightReceivingShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0),
+        averageEarnings: nightReceivingShifts.length > 0 ? nightReceivingShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / nightReceivingShifts.length : 0,
+      };
+      
       const { data: allCompletedShifts } = await supabase
         .from('shifts')
         .select('*')
@@ -1132,6 +1171,10 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
         nightShiftStats,
         returnsShiftStats,
         receivingShiftStats,
+        dayReturnsStats,
+        nightReturnsStats,
+        dayReceivingStats,
+        nightReceivingStats,
         recordShiftEarnings,
         recordShiftDate,
         recordShiftType,

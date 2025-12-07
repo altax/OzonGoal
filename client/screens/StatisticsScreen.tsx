@@ -12,7 +12,7 @@ import Animated, {
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useEarningsStats, useGoals, useShiftsSummary, useShifts, type StatsPeriod, type GoalForecast } from "@/api";
+import { useEarningsStats, useGoals, useShiftsSummary, useShifts, type StatsPeriod, type GoalForecast, type CombinedShiftStats } from "@/api";
 
 function formatK(amount: number): string {
   if (amount >= 1000) {
@@ -198,70 +198,29 @@ function GoalForecastCard({
   );
 }
 
-function GoalsTimelineCard({
-  goalForecasts,
+function StreakBanner({
+  streak,
 }: {
-  goalForecasts: GoalForecast[];
+  streak: number;
 }) {
   const { theme } = useTheme();
-  const sortedForecasts = useMemo(() => {
-    return [...goalForecasts]
-      .filter(g => g.estimatedDate && g.remainingAmount > 0)
-      .sort((a, b) => new Date(a.estimatedDate || 0).getTime() - new Date(b.estimatedDate || 0).getTime());
-  }, [goalForecasts]);
   
-  if (sortedForecasts.length === 0) return null;
+  if (!streak || streak <= 0) return null;
   
   return (
-    <View style={styles.timelineSection}>
-      <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-        Таймлайн целей
-      </ThemedText>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.timelineHorizontal}
-      >
-        {sortedForecasts.map((forecast, index) => {
-          const pct = forecast.targetAmount > 0 
-            ? Math.min(Math.round((forecast.currentAmount / forecast.targetAmount) * 100), 100) 
-            : 0;
-          return (
-            <View key={forecast.goalId} style={styles.timelineHorizontalItem}>
-              <View 
-                style={[
-                  styles.timelineCardH, 
-                  { backgroundColor: theme.backgroundDefault }
-                ]}
-              >
-                <View style={styles.timelineCardHeader}>
-                  <View style={[styles.timelineIndicator, { backgroundColor: theme.accent }]}>
-                    <ThemedText style={styles.timelineIndicatorText}>{index + 1}</ThemedText>
-                  </View>
-                  <ThemedText style={[styles.timelineDaysLeft, { color: theme.accent }]}>
-                    {forecast.estimatedDays} {pluralizeDays(forecast.estimatedDays || 0)}
-                  </ThemedText>
-                </View>
-                <ThemedText style={styles.timelineGoalNameH} numberOfLines={2}>
-                  {forecast.goalName}
-                </ThemedText>
-                <View style={[styles.timelineProgressBg, { backgroundColor: theme.backgroundSecondary }]}>
-                  <View style={[styles.timelineProgressFill, { width: `${pct}%`, backgroundColor: theme.accent }]} />
-                </View>
-                <ThemedText style={[styles.timelineDateH, { color: theme.textSecondary }]}>
-                  {formatFullDate(forecast.estimatedDate)}
-                </ThemedText>
-                <ThemedText style={[styles.timelineRemainingH, { color: theme.text }]}>
-                  {formatK(forecast.remainingAmount)} ₽
-                </ThemedText>
-              </View>
-              {index < sortedForecasts.length - 1 && (
-                <View style={[styles.timelineConnector, { backgroundColor: theme.border }]} />
-              )}
-            </View>
-          );
-        })}
-      </ScrollView>
+    <View style={[styles.streakCard, { backgroundColor: theme.accent }]}>
+      <View style={styles.streakIconContainer}>
+        <Feather name="activity" size={18} color="#FFF" />
+      </View>
+      <View style={styles.streakContent}>
+        <ThemedText style={styles.streakValue}>
+          {streak} {streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}
+        </ThemedText>
+        <ThemedText style={styles.streakLabel}>
+          подряд работаете
+        </ThemedText>
+      </View>
+      <Feather name="trending-up" size={24} color="rgba(255,255,255,0.6)" />
     </View>
   );
 }
@@ -395,55 +354,56 @@ function WeeklyComparison({
 }
 
 function ShiftTypeProfitability({
-  dayStats,
-  nightStats,
-  returnsStats,
-  receivingStats,
+  dayReturnsStats,
+  nightReturnsStats,
+  dayReceivingStats,
+  nightReceivingStats,
 }: {
-  dayStats: { count: number; totalEarnings: number; averageEarnings: number };
-  nightStats: { count: number; totalEarnings: number; averageEarnings: number };
-  returnsStats: { count: number; totalEarnings: number; averageEarnings: number };
-  receivingStats: { count: number; totalEarnings: number; averageEarnings: number };
+  dayReturnsStats: CombinedShiftStats;
+  nightReturnsStats: CombinedShiftStats;
+  dayReceivingStats: CombinedShiftStats;
+  nightReceivingStats: CombinedShiftStats;
 }) {
   const { theme } = useTheme();
   
-  const dayVsNightWinner = dayStats.averageEarnings > nightStats.averageEarnings ? 'day' : 
-                           nightStats.averageEarnings > dayStats.averageEarnings ? 'night' : null;
-  const returnsVsReceivingWinner = returnsStats.averageEarnings > receivingStats.averageEarnings ? 'returns' :
-                                   receivingStats.averageEarnings > returnsStats.averageEarnings ? 'receiving' : null;
+  const allStats = [dayReturnsStats, nightReturnsStats, dayReceivingStats, nightReceivingStats];
+  const hasData = allStats.some(s => s.count > 0);
   
-  if (dayStats.count === 0 && nightStats.count === 0 && returnsStats.count === 0 && receivingStats.count === 0) {
-    return null;
-  }
+  if (!hasData) return null;
 
   const maxAvg = Math.max(
-    dayStats.averageEarnings, 
-    nightStats.averageEarnings, 
-    returnsStats.averageEarnings, 
-    receivingStats.averageEarnings,
+    ...allStats.map(s => s.averageEarnings),
     1
   );
   
-  const renderComparisonBar = (
+  const bestAvg = Math.max(...allStats.map(s => s.averageEarnings));
+  
+  const renderCombinedBar = (
     label: string, 
-    icon: string, 
-    stats: { count: number; totalEarnings: number; averageEarnings: number },
-    isWinner: boolean
+    shiftIcon: string,
+    opIcon: string,
+    stats: CombinedShiftStats,
+    bgColor: string
   ) => {
     const barWidth = stats.averageEarnings > 0 ? Math.max((stats.averageEarnings / maxAvg) * 100, 5) : 0;
+    const isWinner = stats.averageEarnings === bestAvg && stats.count > 0;
+    
     return (
-      <View style={styles.profitBarItem}>
-        <View style={styles.profitBarHeader}>
-          <View style={styles.profitBarLabel}>
-            <Feather name={icon as any} size={14} color={theme.textSecondary} />
-            <ThemedText style={[styles.profitBarLabelText, { color: theme.text }]}>{label}</ThemedText>
-            {isWinner && stats.count > 0 && (
+      <View style={styles.combinedProfitItem}>
+        <View style={styles.combinedProfitHeader}>
+          <View style={[styles.combinedIconContainer, { backgroundColor: bgColor }]}>
+            <Feather name={shiftIcon as any} size={12} color={theme.text} />
+            <Feather name={opIcon as any} size={10} color={theme.textSecondary} style={{ marginLeft: 2 }} />
+          </View>
+          <View style={styles.combinedProfitLabel}>
+            <ThemedText style={[styles.combinedProfitLabelText, { color: theme.text }]}>{label}</ThemedText>
+            {isWinner && (
               <View style={[styles.winnerTag, { backgroundColor: theme.success }]}>
-                <Feather name="check" size={10} color="#FFF" />
+                <Feather name="star" size={8} color="#FFF" />
               </View>
             )}
           </View>
-          <ThemedText style={[styles.profitBarValue, { color: theme.text }]}>
+          <ThemedText style={[styles.combinedProfitValue, { color: isWinner ? theme.accent : theme.text }]}>
             {formatK(stats.averageEarnings)} ₽
           </ThemedText>
         </View>
@@ -458,12 +418,12 @@ function ShiftTypeProfitability({
             ]} 
           />
         </View>
-        <View style={styles.profitBarMeta}>
+        <View style={styles.combinedProfitMeta}>
           <ThemedText style={[styles.profitBarMetaText, { color: theme.textSecondary }]}>
             {stats.count} смен
           </ThemedText>
           <ThemedText style={[styles.profitBarMetaText, { color: theme.textSecondary }]}>
-            {formatK(stats.totalEarnings)} ₽
+            {formatK(stats.totalEarnings)} ₽ всего
           </ThemedText>
         </View>
       </View>
@@ -476,22 +436,11 @@ function ShiftTypeProfitability({
         Анализ доходности
       </ThemedText>
       
-      <View style={styles.profitComparisonSection}>
-        <ThemedText style={[styles.profitComparisonTitle, { color: theme.text }]}>
-          По времени смены
-        </ThemedText>
-        {renderComparisonBar('Дневные', 'sun', dayStats, dayVsNightWinner === 'day')}
-        {renderComparisonBar('Ночные', 'moon', nightStats, dayVsNightWinner === 'night')}
-      </View>
-      
-      <View style={[styles.profitDivider, { backgroundColor: theme.border }]} />
-      
-      <View style={styles.profitComparisonSection}>
-        <ThemedText style={[styles.profitComparisonTitle, { color: theme.text }]}>
-          По типу операции
-        </ThemedText>
-        {renderComparisonBar('Возвраты', 'rotate-ccw', returnsStats, returnsVsReceivingWinner === 'returns')}
-        {renderComparisonBar('Приёмка', 'package', receivingStats, returnsVsReceivingWinner === 'receiving')}
+      <View style={styles.combinedProfitGrid}>
+        {renderCombinedBar('Дневные возвраты', 'sun', 'rotate-ccw', dayReturnsStats, theme.warningLight)}
+        {renderCombinedBar('Ночные возвраты', 'moon', 'rotate-ccw', nightReturnsStats, theme.accentLight)}
+        {renderCombinedBar('Дневная приёмка', 'sun', 'package', dayReceivingStats, theme.warningLight)}
+        {renderCombinedBar('Ночная приёмка', 'moon', 'package', nightReceivingStats, theme.accentLight)}
       </View>
     </View>
   );
@@ -500,7 +449,6 @@ function ShiftTypeProfitability({
 function RecordsCard({
   recordShiftEarnings,
   recordShiftDate,
-  recordShiftType,
   bestWeekEarnings,
   bestWeekDate,
   bestMonthEarnings,
@@ -508,7 +456,6 @@ function RecordsCard({
 }: {
   recordShiftEarnings: number;
   recordShiftDate: string | null;
-  recordShiftType: string | null;
   bestWeekEarnings: number;
   bestWeekDate: string | null;
   bestMonthEarnings: number;
@@ -516,91 +463,98 @@ function RecordsCard({
 }) {
   const { theme } = useTheme();
   
-  const records = [];
+  const hasRecords = recordShiftEarnings > 0 || bestWeekEarnings > 0 || bestMonthEarnings > 0;
   
-  if (recordShiftEarnings > 0) {
-    records.push({
-      id: 'shift',
-      icon: 'zap',
-      label: 'Лучшая смена',
-      value: formatFullCurrency(recordShiftEarnings),
-      meta: formatFullDate(recordShiftDate),
-    });
-  }
-  
-  if (bestWeekEarnings > 0) {
-    records.push({
-      id: 'week',
-      icon: 'trending-up',
-      label: 'Лучшая неделя',
-      value: formatFullCurrency(bestWeekEarnings),
-      meta: formatFullDate(bestWeekDate),
-    });
-  }
-  
-  if (bestMonthEarnings > 0) {
-    records.push({
-      id: 'month',
-      icon: 'award',
-      label: 'Лучший месяц',
-      value: formatFullCurrency(bestMonthEarnings),
-      meta: formatMonthYear(bestMonthDate),
-    });
-  }
-  
-  if (records.length === 0) return null;
+  if (!hasRecords) return null;
   
   return (
-    <View style={styles.recordsSection}>
-      <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-        Ваши рекорды
+    <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
+        Рекорды
       </ThemedText>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.recordsHorizontal}
-      >
-        {records.map((record) => (
-          <View 
-            key={record.id} 
-            style={[styles.recordCardH, { backgroundColor: theme.backgroundDefault }]}
-          >
-            <View style={[styles.recordIconH, { backgroundColor: theme.backgroundSecondary }]}>
-              <Feather name={record.icon as any} size={18} color={theme.accent} />
+      <View style={styles.recordsCompactGrid}>
+        {recordShiftEarnings > 0 && (
+          <View style={styles.recordCompactItem}>
+            <View style={[styles.recordCompactIcon, { backgroundColor: theme.successLight }]}>
+              <Feather name="zap" size={14} color={theme.success} />
             </View>
-            <ThemedText style={[styles.recordLabelH, { color: theme.textSecondary }]}>
-              {record.label}
-            </ThemedText>
-            <ThemedText style={[styles.recordValueH, { color: theme.text }]}>
-              {record.value}
-            </ThemedText>
-            <ThemedText style={[styles.recordMetaH, { color: theme.textSecondary }]}>
-              {record.meta}
-            </ThemedText>
+            <View style={styles.recordCompactContent}>
+              <ThemedText style={[styles.recordCompactLabel, { color: theme.textSecondary }]}>
+                Лучшая смена
+              </ThemedText>
+              <ThemedText style={[styles.recordCompactValue, { color: theme.text }]}>
+                {formatFullCurrency(recordShiftEarnings)}
+              </ThemedText>
+            </View>
           </View>
-        ))}
-      </ScrollView>
+        )}
+        {bestWeekEarnings > 0 && (
+          <View style={styles.recordCompactItem}>
+            <View style={[styles.recordCompactIcon, { backgroundColor: theme.accentLight }]}>
+              <Feather name="calendar" size={14} color={theme.accent} />
+            </View>
+            <View style={styles.recordCompactContent}>
+              <ThemedText style={[styles.recordCompactLabel, { color: theme.textSecondary }]}>
+                Лучшая неделя
+              </ThemedText>
+              <ThemedText style={[styles.recordCompactValue, { color: theme.text }]}>
+                {formatFullCurrency(bestWeekEarnings)}
+              </ThemedText>
+            </View>
+          </View>
+        )}
+        {bestMonthEarnings > 0 && (
+          <View style={styles.recordCompactItem}>
+            <View style={[styles.recordCompactIcon, { backgroundColor: theme.warningLight }]}>
+              <Feather name="award" size={14} color={theme.warning} />
+            </View>
+            <View style={styles.recordCompactContent}>
+              <ThemedText style={[styles.recordCompactLabel, { color: theme.textSecondary }]}>
+                Лучший месяц
+              </ThemedText>
+              <ThemedText style={[styles.recordCompactValue, { color: theme.text }]}>
+                {formatFullCurrency(bestMonthEarnings)}
+              </ThemedText>
+            </View>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
 function AmountForecastCard({
   dailyAverage,
+  averagePerShift,
 }: {
   dailyAverage: number;
+  averagePerShift: number;
 }) {
   const { theme } = useTheme();
   const [targetAmount, setTargetAmount] = useState(100000);
   
   const amounts = [50000, 100000, 200000, 500000];
   
-  if (dailyAverage <= 0) return null;
+  const hasData = dailyAverage > 0 || averagePerShift > 0;
+  const effectiveAverage = dailyAverage > 0 ? dailyAverage : averagePerShift;
+  
+  if (!hasData) return null;
+  
+  const daysNeeded = Math.ceil(targetAmount / effectiveAverage);
+  const targetDate = new Date(Date.now() + daysNeeded * 24 * 60 * 60 * 1000);
   
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
-        Прогноз достижения суммы
-      </ThemedText>
+      <View style={styles.forecastHeader}>
+        <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
+          Прогноз заработка
+        </ThemedText>
+        <View style={[styles.avgIndicator, { backgroundColor: theme.backgroundSecondary }]}>
+          <ThemedText style={[styles.avgIndicatorText, { color: theme.textSecondary }]}>
+            ~{formatK(effectiveAverage)} ₽/день
+          </ThemedText>
+        </View>
+      </View>
       <View style={styles.forecastButtonsRow}>
         {amounts.map(amount => (
           <Pressable
@@ -620,19 +574,18 @@ function AmountForecastCard({
           </Pressable>
         ))}
       </View>
-      <View style={styles.forecastResult}>
-        <ThemedText style={[styles.forecastTargetText, { color: theme.textSecondary }]}>
-          Чтобы заработать {formatFullCurrency(targetAmount)}:
-        </ThemedText>
-        <View style={styles.forecastDays}>
-          <Feather name="trending-up" size={28} color={theme.accent} />
-          <ThemedText style={[styles.forecastDaysValue, { color: theme.accent }]}>
-            ~{Math.ceil(targetAmount / dailyAverage)} {pluralizeDays(Math.ceil(targetAmount / dailyAverage))}
-          </ThemedText>
+      <View style={styles.forecastResultCompact}>
+        <View style={styles.forecastMainInfo}>
+          <Feather name="target" size={24} color={theme.accent} />
+          <View style={styles.forecastMainText}>
+            <ThemedText style={[styles.forecastDaysValueCompact, { color: theme.accent }]}>
+              ~{daysNeeded} {pluralizeDays(daysNeeded)}
+            </ThemedText>
+            <ThemedText style={[styles.forecastDateCompact, { color: theme.success }]}>
+              {formatFullDate(targetDate)}
+            </ThemedText>
+          </View>
         </View>
-        <ThemedText style={[styles.forecastDateResult, { color: theme.success }]}>
-          ~{formatFullDate(new Date(Date.now() + Math.ceil(targetAmount / dailyAverage) * 24 * 60 * 60 * 1000))}
-        </ThemedText>
       </View>
     </View>
   );
@@ -749,6 +702,8 @@ export default function StatisticsScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
+      <StreakBanner streak={stats?.streak || 0} />
+
       <View style={[styles.periodTabs, { backgroundColor: theme.backgroundSecondary }]}>
         <Animated.View 
           style={[
@@ -808,41 +763,48 @@ export default function StatisticsScreen() {
 
       {stats?.goalForecasts && stats.goalForecasts.length > 0 && (
         <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-          <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
-            Прогноз достижения целей
-          </ThemedText>
+          <View style={styles.goalSectionHeader}>
+            <ThemedText style={[styles.cardTitle, { color: theme.textSecondary, marginBottom: 0 }]}>
+              Прогноз достижения целей
+            </ThemedText>
+            {stats.averagePerShift > 0 && (
+              <View style={[styles.avgBadge, { backgroundColor: theme.backgroundSecondary }]}>
+                <ThemedText style={[styles.avgBadgeText, { color: theme.textSecondary }]}>
+                  ~{formatK(stats.averagePerShift)} ₽/смену
+                </ThemedText>
+              </View>
+            )}
+          </View>
           {stats.goalForecasts.map((forecast) => (
             <GoalForecastCard key={forecast.goalId} forecast={forecast} />
           ))}
         </View>
       )}
 
-      {stats?.goalForecasts && (
-        <GoalsTimelineCard goalForecasts={stats.goalForecasts} />
-      )}
-
       <ShiftTypeProfitability
-        dayStats={stats?.dayShiftStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
-        nightStats={stats?.nightShiftStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
-        returnsStats={stats?.returnsShiftStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
-        receivingStats={stats?.receivingShiftStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
+        dayReturnsStats={stats?.dayReturnsStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
+        nightReturnsStats={stats?.nightReturnsStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
+        dayReceivingStats={stats?.dayReceivingStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
+        nightReceivingStats={stats?.nightReceivingStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
       />
 
       <RecordsCard
         recordShiftEarnings={stats?.recordShiftEarnings || 0}
         recordShiftDate={stats?.recordShiftDate || null}
-        recordShiftType={stats?.recordShiftType || null}
         bestWeekEarnings={stats?.bestWeekEarnings || 0}
         bestWeekDate={stats?.bestWeekDate || null}
         bestMonthEarnings={stats?.bestMonthEarnings || 0}
         bestMonthDate={stats?.bestMonthDate || null}
       />
 
-      <AmountForecastCard dailyAverage={stats?.dailyAverageEarnings || 0} />
+      <AmountForecastCard 
+        dailyAverage={stats?.dailyAverageEarnings || 0} 
+        averagePerShift={stats?.averagePerShift || 0}
+      />
 
       <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
         <StatItem
-          icon="bar-chart-2"
+          icon="trending-up"
           label="Средний за смену"
           value={formatK(stats?.averagePerShift || 0) + " ₽"}
           color={theme.accent}
@@ -850,40 +812,22 @@ export default function StatisticsScreen() {
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <StatItem
-          icon="calendar"
+          icon="clock"
           label="Запланировано"
           value={String(stats?.shiftsByType.future || 0)}
-          color={theme.warning}
-          bgColor={theme.warningLight}
+          color={theme.accent}
+          bgColor={theme.accentLight}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <StatItem
-          icon="credit-card"
+          icon="dollar-sign"
           label="Свободный баланс"
           value={formatK(stats?.freeBalance || 0) + " ₽"}
-          color={theme.success}
-          bgColor={theme.successLight}
+          color={theme.accent}
+          bgColor={theme.accentLight}
           subtitle="Не распределён на цели"
         />
       </View>
-
-      {stats?.streak && stats.streak > 0 ? (
-        <View style={[styles.banner, { backgroundColor: theme.warningLight }]}>
-          <Feather name="zap" size={14} color={theme.warning} />
-          <ThemedText style={[styles.bannerText, { color: theme.warning }]}>
-            {stats.streak} {stats.streak === 1 ? 'день' : stats.streak < 5 ? 'дня' : 'дней'} подряд работаете!
-          </ThemedText>
-        </View>
-      ) : null}
-
-      {stats?.daysToGoalForecast && stats.daysToGoalForecast > 0 ? (
-        <View style={[styles.banner, { backgroundColor: theme.accentLight }]}>
-          <Feather name="flag" size={14} color={theme.accent} />
-          <ThemedText style={[styles.bannerText, { color: theme.accent }]}>
-            До всех целей ~{stats.daysToGoalForecast} {pluralizeDays(stats.daysToGoalForecast)}
-          </ThemedText>
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
@@ -1506,5 +1450,148 @@ const styles = StyleSheet.create({
   recordMetaH: {
     fontSize: 9,
     textAlign: "center",
+  },
+  streakCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: 12,
+    marginBottom: Spacing.md,
+  },
+  streakIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.sm,
+  },
+  streakContent: {
+    flex: 1,
+  },
+  streakValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  streakLabel: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.8)",
+  },
+  combinedProfitGrid: {
+    gap: Spacing.md,
+  },
+  combinedProfitItem: {
+    marginBottom: Spacing.xs,
+  },
+  combinedProfitHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  combinedIconContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: Spacing.sm,
+  },
+  combinedProfitLabel: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  combinedProfitLabelText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  combinedProfitValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  combinedProfitMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  recordsCompactGrid: {
+    gap: Spacing.sm,
+  },
+  recordCompactItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  recordCompactIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.sm,
+  },
+  recordCompactContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  recordCompactLabel: {
+    fontSize: 13,
+  },
+  recordCompactValue: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  forecastHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.sm,
+  },
+  avgIndicator: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  avgIndicatorText: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  forecastResultCompact: {
+    paddingVertical: Spacing.sm,
+  },
+  forecastMainInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  forecastMainText: {
+    flex: 1,
+  },
+  forecastDaysValueCompact: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  forecastDateCompact: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  goalSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.md,
+  },
+  avgBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  avgBadgeText: {
+    fontSize: 10,
+    fontWeight: "500",
   },
 });
