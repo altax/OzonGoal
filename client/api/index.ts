@@ -757,3 +757,265 @@ export function useRecordEarnings() {
     },
   });
 }
+
+export type StatsPeriod = 'week' | 'month' | 'year';
+
+function safeParseNumber(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  const num = typeof value === 'number' ? value : parseFloat(String(value));
+  return isNaN(num) ? 0 : num;
+}
+
+function getDateRange(period: StatsPeriod): { start: Date; end: Date } {
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  const start = new Date();
+  
+  switch (period) {
+    case 'week':
+      start.setDate(start.getDate() - 7);
+      break;
+    case 'month':
+      start.setMonth(start.getMonth() - 1);
+      break;
+    case 'year':
+      start.setFullYear(start.getFullYear() - 1);
+      break;
+  }
+  start.setHours(0, 0, 0, 0);
+  
+  return { start, end };
+}
+
+export type EarningsStats = {
+  totalEarnings: number;
+  averagePerShift: number;
+  completedShiftsCount: number;
+  goalsProgressPercent: number;
+  freeBalance: number;
+  dailyEarningsHistory: { date: string; amount: number }[];
+  goalDistribution: { goalId: string; goalName: string; amount: number; color: string }[];
+  monthlyTrend: { month: string; amount: number }[];
+  shiftsByType: { future: number; current: number; past: number };
+  topShifts: { id: string; date: string; earnings: number; type: string }[];
+  overdueGoals: { id: string; name: string; progress: number; daysOverdue: number }[];
+  streak: number;
+  previousPeriodAverage: number;
+  daysToGoalForecast: number | null;
+};
+
+export function useEarningsStats(period: StatsPeriod = 'month') {
+  return useQuery<EarningsStats>({
+    queryKey: ["earnings", "stats", period],
+    queryFn: async () => {
+      const { start, end } = getDateRange(period);
+      
+      const { data: completedShifts, error: shiftsError } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .eq('status', 'completed')
+        .not('earnings', 'is', null)
+        .gte('earnings_recorded_at', start.toISOString())
+        .lte('earnings_recorded_at', end.toISOString())
+        .order('earnings_recorded_at', { ascending: true });
+      
+      if (shiftsError) throw new Error(shiftsError.message);
+      
+      const shifts = completedShifts || [];
+      const totalEarnings = shifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0);
+      const averagePerShift = shifts.length > 0 ? totalEarnings / shifts.length : 0;
+      
+      const { data: goals, error: goalsError } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .eq('status', 'active');
+      
+      if (goalsError) throw new Error(goalsError.message);
+      
+      const totalTarget = (goals || []).reduce((sum, g) => sum + safeParseNumber(g.target_amount), 0);
+      const totalCurrent = (goals || []).reduce((sum, g) => sum + safeParseNumber(g.current_amount), 0);
+      const goalsProgressPercent = totalTarget > 0 ? Math.round((totalCurrent / totalTarget) * 100) : 0;
+      
+      const { data: user } = await supabase
+        .from('users')
+        .select('balance')
+        .eq('id', DEFAULT_USER_ID)
+        .single();
+      
+      const freeBalance = safeParseNumber(user?.balance);
+      
+      const dailyEarningsMap = new Map<string, number>();
+      for (const shift of shifts) {
+        const date = new Date(shift.earnings_recorded_at!).toISOString().split('T')[0];
+        dailyEarningsMap.set(date, (dailyEarningsMap.get(date) || 0) + safeParseNumber(shift.earnings));
+      }
+      const dailyEarningsHistory = Array.from(dailyEarningsMap.entries())
+        .map(([date, amount]) => ({ date, amount }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      
+      const { data: allocations } = await supabase
+        .from('goal_allocations')
+        .select('goal_id, amount')
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString());
+      
+      const goalAllocMap = new Map<string, number>();
+      for (const alloc of (allocations || [])) {
+        goalAllocMap.set(alloc.goal_id, (goalAllocMap.get(alloc.goal_id) || 0) + safeParseNumber(alloc.amount));
+      }
+      
+      const goalDistribution = (goals || []).map(g => ({
+        goalId: g.id,
+        goalName: g.name,
+        amount: goalAllocMap.get(g.id) || 0,
+        color: g.icon_color || '#3B82F6',
+      })).filter(g => g.amount > 0);
+      
+      const monthlyMap = new Map<string, number>();
+      for (const shift of shifts) {
+        const date = new Date(shift.earnings_recorded_at!);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + safeParseNumber(shift.earnings));
+      }
+      const monthlyTrend = Array.from(monthlyMap.entries())
+        .map(([month, amount]) => ({ month, amount }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+      
+      const now = new Date();
+      const { data: allShifts } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .neq('status', 'canceled');
+      
+      const futureShifts = (allShifts || []).filter(s => 
+        s.status === 'scheduled' && new Date(s.scheduled_start) > now
+      ).length;
+      const currentShifts = (allShifts || []).filter(s => s.status === 'in_progress').length;
+      const pastShifts = (allShifts || []).filter(s => s.status === 'completed').length;
+      
+      const topShifts = [...shifts]
+        .sort((a, b) => safeParseNumber(b.earnings) - safeParseNumber(a.earnings))
+        .slice(0, 3)
+        .map(s => ({
+          id: s.id,
+          date: s.scheduled_date,
+          earnings: safeParseNumber(s.earnings),
+          type: s.shift_type === 'day' ? 'Дневная' : 'Ночная',
+        }));
+      
+      const overdueGoals = (goals || [])
+        .filter(g => {
+          const target = safeParseNumber(g.target_amount);
+          if (target <= 0) return false;
+          const progress = safeParseNumber(g.current_amount) / target;
+          return progress < 0.5;
+        })
+        .map(g => {
+          const target = safeParseNumber(g.target_amount) || 1;
+          const current = safeParseNumber(g.current_amount);
+          return {
+            id: g.id,
+            name: g.name,
+            progress: Math.round((current / target) * 100),
+            daysOverdue: 0,
+          };
+        });
+      
+      let streak = 0;
+      if (shifts.length > 0) {
+        const sortedShifts = [...shifts].sort((a, b) => 
+          new Date(b.earnings_recorded_at!).getTime() - new Date(a.earnings_recorded_at!).getTime()
+        );
+        let lastDate: Date | null = null;
+        for (const shift of sortedShifts) {
+          const shiftDate = new Date(shift.earnings_recorded_at!);
+          shiftDate.setHours(0, 0, 0, 0);
+          if (!lastDate) {
+            streak = 1;
+            lastDate = shiftDate;
+          } else {
+            const diff = (lastDate.getTime() - shiftDate.getTime()) / (1000 * 60 * 60 * 24);
+            if (diff <= 2) {
+              streak++;
+              lastDate = shiftDate;
+            } else {
+              break;
+            }
+          }
+        }
+      }
+      
+      const previousRange = getDateRange(period);
+      const prevStart = new Date(previousRange.start);
+      const prevEnd = new Date(previousRange.start);
+      switch (period) {
+        case 'week':
+          prevStart.setDate(prevStart.getDate() - 7);
+          break;
+        case 'month':
+          prevStart.setMonth(prevStart.getMonth() - 1);
+          break;
+        case 'year':
+          prevStart.setFullYear(prevStart.getFullYear() - 1);
+          break;
+      }
+      
+      const { data: prevShifts } = await supabase
+        .from('shifts')
+        .select('earnings')
+        .eq('user_id', DEFAULT_USER_ID)
+        .eq('status', 'completed')
+        .not('earnings', 'is', null)
+        .gte('earnings_recorded_at', prevStart.toISOString())
+        .lt('earnings_recorded_at', prevEnd.toISOString());
+      
+      const prevTotal = (prevShifts || []).reduce((sum, s) => sum + parseFloat(s.earnings || '0'), 0);
+      const previousPeriodAverage = (prevShifts || []).length > 0 ? prevTotal / (prevShifts || []).length : 0;
+      
+      const remainingGoalAmount = totalTarget - totalCurrent;
+      const daysInPeriod = period === 'week' ? 7 : period === 'month' ? 30 : 365;
+      const dailyAverage = dailyEarningsHistory.length > 0 
+        ? totalEarnings / dailyEarningsHistory.length 
+        : 0;
+      const daysToGoalForecast = dailyAverage > 0 && remainingGoalAmount > 0
+        ? Math.ceil(remainingGoalAmount / dailyAverage)
+        : null;
+      
+      return {
+        totalEarnings,
+        averagePerShift,
+        completedShiftsCount: shifts.length,
+        goalsProgressPercent,
+        freeBalance,
+        dailyEarningsHistory,
+        goalDistribution,
+        monthlyTrend,
+        shiftsByType: { future: futureShifts, current: currentShifts, past: pastShifts },
+        topShifts,
+        overdueGoals,
+        streak,
+        previousPeriodAverage,
+        daysToGoalForecast,
+      };
+    },
+  });
+}
+
+export function useGoalAllocations(goalId: string) {
+  return useQuery({
+    queryKey: ["goal", goalId, "allocations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('goal_allocations')
+        .select('*')
+        .eq('goal_id', goalId)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
+}
