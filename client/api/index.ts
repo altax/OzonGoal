@@ -54,6 +54,7 @@ export function useGoals() {
       if (error) throw new Error(error.message);
       return (data as SupabaseGoal[]).map(toClientGoal);
     },
+    refetchInterval: 5000,
   });
 }
 
@@ -1001,6 +1002,7 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
         daysToGoalForecast,
       };
     },
+    refetchInterval: 5000,
   });
 }
 
