@@ -52,6 +52,24 @@ function calculateShiftsRemaining(currentAmount: number, targetAmount: number, a
   return Math.ceil(remaining / avgEarningsPerShift);
 }
 
+function getMotivationalPhrase(progressPercent: number): string {
+  if (progressPercent >= 100) {
+    return "Цель достигнута! Отличная работа!";
+  } else if (progressPercent >= 75) {
+    return "Финишная прямая! Осталось совсем немного!";
+  } else if (progressPercent >= 50) {
+    return "Половина пути пройдена! Так держать!";
+  } else if (progressPercent >= 25) {
+    return "Отличный старт! Продолжай в том же духе!";
+  } else {
+    return "Каждый шаг приближает тебя к цели!";
+  }
+}
+
+function getMilestoneAmount(targetAmount: number, milestone: number): number {
+  return (targetAmount * milestone) / 100;
+}
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
@@ -230,7 +248,15 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
               <ThemedText type="body" style={styles.title}>
                 {goal.name}
               </ThemedText>
-              <View style={styles.progressBarContainer}>
+              
+              <ThemedText 
+                type="caption" 
+                style={[styles.motivationalPhrase, { color: theme.textSecondary }]}
+              >
+                {getMotivationalPhrase(progressPercent)}
+              </ThemedText>
+              
+              <View style={styles.milestoneProgressContainer}>
                 <View
                   style={[
                     styles.progressBar,
@@ -247,7 +273,60 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                     ]}
                   />
                 </View>
+                
+                <View style={styles.milestonesRow}>
+                  {[25, 50, 75, 100].map((milestone) => {
+                    const milestoneReached = progressPercent >= milestone;
+                    const isCurrent = progressPercent >= milestone - 25 && progressPercent < milestone;
+                    return (
+                      <View 
+                        key={milestone} 
+                        style={[
+                          styles.milestonePoint,
+                          { 
+                            backgroundColor: milestoneReached 
+                              ? (isCompleted ? theme.success : theme.progressFill)
+                              : theme.progressBackground,
+                            borderColor: milestoneReached 
+                              ? (isCompleted ? theme.success : theme.progressFill)
+                              : theme.border,
+                            opacity: milestoneReached && !isCurrent ? 0.6 : 1,
+                          },
+                        ]}
+                      >
+                        {milestoneReached && (
+                          <Feather name="check" size={8} color="#FFFFFF" />
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+                
+                <View style={styles.milestoneLabelsRow}>
+                  {[25, 50, 75, 100].map((milestone) => {
+                    const milestoneAmount = getMilestoneAmount(targetAmount, milestone);
+                    const milestoneReached = progressPercent >= milestone;
+                    return (
+                      <ThemedText 
+                        key={milestone}
+                        type="caption" 
+                        style={[
+                          styles.milestoneLabel,
+                          { 
+                            color: milestoneReached 
+                              ? (isCompleted ? theme.success : theme.accent)
+                              : theme.textSecondary,
+                            opacity: milestoneReached ? 1 : 0.7,
+                          },
+                        ]}
+                      >
+                        {formatAmount(milestoneAmount)}
+                      </ThemedText>
+                    );
+                  })}
+                </View>
               </View>
+              
               <View style={styles.amountRow}>
                 <ThemedText type="small" style={[styles.currentAmount, { color: theme.accent }]}>
                   {formatAmount(currentAmount)}
@@ -379,8 +458,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: Spacing.sm,
   },
-  progressBarContainer: {
+  motivationalPhrase: {
+    fontStyle: "italic",
+    fontSize: 11,
+    fontWeight: "300",
     marginBottom: Spacing.sm,
+  },
+  milestoneProgressContainer: {
+    marginBottom: Spacing.sm,
+    position: "relative",
   },
   progressBar: {
     height: 6,
@@ -390,6 +476,34 @@ const styles = StyleSheet.create({
   progressFill: {
     height: "100%",
     borderRadius: 3,
+  },
+  milestonesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    position: "absolute",
+    top: -3,
+    left: 0,
+    right: 0,
+  },
+  milestonePoint: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  milestoneLabelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: Spacing.xs,
+  },
+  milestoneLabel: {
+    fontSize: 9,
+    fontWeight: "500",
+    textAlign: "center",
+    width: 50,
+    marginLeft: -19,
   },
   amountRow: {
     flexDirection: "row",
