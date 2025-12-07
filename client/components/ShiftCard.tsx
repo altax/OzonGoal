@@ -85,6 +85,7 @@ function getStatusColor(status: string, theme: any): string {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const SWIPE_THRESHOLD = 100;
+const ACTION_BUTTON_WIDTH = 80;
 
 export function ShiftCard({ 
   shift, 
