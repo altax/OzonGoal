@@ -31,6 +31,11 @@ function formatDay(dateStr: string): string {
   return days[d.getDay()];
 }
 
+function formatDayDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getDate()}`;
+}
+
 function formatShiftDate(date: Date | string): string {
   const d = date instanceof Date ? date : new Date(date);
   const now = new Date();
@@ -105,6 +110,7 @@ function BarChart({
           const heightPct = Math.max((item.value / max) * 100, 6);
           const isLast = i === data.length - 1;
           const isMax = item.value === max && item.value > 0;
+          const dateNum = item.date ? formatDayDate(item.date) : '';
           return (
             <Pressable 
               key={i} 
@@ -127,6 +133,9 @@ function BarChart({
               />
               <ThemedText style={[styles.barLabel, { color: theme.textSecondary }]}>
                 {item.label}
+              </ThemedText>
+              <ThemedText style={[styles.barDate, { color: theme.textSecondary }]}>
+                {dateNum}
               </ThemedText>
             </Pressable>
           );
@@ -204,31 +213,55 @@ function GoalsTimelineCard({
   if (sortedForecasts.length === 0) return null;
   
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
-        Таймлайн достижения целей
+    <View style={styles.timelineSection}>
+      <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+        Таймлайн целей
       </ThemedText>
-      <View style={styles.timeline}>
-        {sortedForecasts.map((forecast, index) => (
-          <View key={forecast.goalId} style={styles.timelineItem}>
-            <View style={styles.timelineLeft}>
-              <View style={[styles.timelineDot, { backgroundColor: forecast.color }]} />
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.timelineHorizontal}
+      >
+        {sortedForecasts.map((forecast, index) => {
+          const pct = forecast.targetAmount > 0 
+            ? Math.min(Math.round((forecast.currentAmount / forecast.targetAmount) * 100), 100) 
+            : 0;
+          return (
+            <View key={forecast.goalId} style={styles.timelineHorizontalItem}>
+              <View 
+                style={[
+                  styles.timelineCardH, 
+                  { backgroundColor: theme.backgroundDefault }
+                ]}
+              >
+                <View style={styles.timelineCardHeader}>
+                  <View style={[styles.timelineIndicator, { backgroundColor: theme.accent }]}>
+                    <ThemedText style={styles.timelineIndicatorText}>{index + 1}</ThemedText>
+                  </View>
+                  <ThemedText style={[styles.timelineDaysLeft, { color: theme.accent }]}>
+                    {forecast.estimatedDays} {pluralizeDays(forecast.estimatedDays || 0)}
+                  </ThemedText>
+                </View>
+                <ThemedText style={styles.timelineGoalNameH} numberOfLines={2}>
+                  {forecast.goalName}
+                </ThemedText>
+                <View style={[styles.timelineProgressBg, { backgroundColor: theme.backgroundSecondary }]}>
+                  <View style={[styles.timelineProgressFill, { width: `${pct}%`, backgroundColor: theme.accent }]} />
+                </View>
+                <ThemedText style={[styles.timelineDateH, { color: theme.textSecondary }]}>
+                  {formatFullDate(forecast.estimatedDate)}
+                </ThemedText>
+                <ThemedText style={[styles.timelineRemainingH, { color: theme.text }]}>
+                  {formatK(forecast.remainingAmount)} ₽
+                </ThemedText>
+              </View>
               {index < sortedForecasts.length - 1 && (
-                <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+                <View style={[styles.timelineConnector, { backgroundColor: theme.border }]} />
               )}
             </View>
-            <View style={styles.timelineContent}>
-              <ThemedText style={styles.timelineGoalName}>{forecast.goalName}</ThemedText>
-              <ThemedText style={[styles.timelineDate, { color: theme.textSecondary }]}>
-                ~{formatFullDate(forecast.estimatedDate)} ({forecast.estimatedDays} {pluralizeDays(forecast.estimatedDays || 0)})
-              </ThemedText>
-              <ThemedText style={[styles.timelineAmount, { color: forecast.color }]}>
-                Осталось: {formatK(forecast.remainingAmount)} ₽
-              </ThemedText>
-            </View>
-          </View>
-        ))}
-      </View>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
@@ -382,83 +415,83 @@ function ShiftTypeProfitability({
   if (dayStats.count === 0 && nightStats.count === 0 && returnsStats.count === 0 && receivingStats.count === 0) {
     return null;
   }
+
+  const maxAvg = Math.max(
+    dayStats.averageEarnings, 
+    nightStats.averageEarnings, 
+    returnsStats.averageEarnings, 
+    receivingStats.averageEarnings,
+    1
+  );
+  
+  const renderComparisonBar = (
+    label: string, 
+    icon: string, 
+    stats: { count: number; totalEarnings: number; averageEarnings: number },
+    isWinner: boolean
+  ) => {
+    const barWidth = stats.averageEarnings > 0 ? Math.max((stats.averageEarnings / maxAvg) * 100, 5) : 0;
+    return (
+      <View style={styles.profitBarItem}>
+        <View style={styles.profitBarHeader}>
+          <View style={styles.profitBarLabel}>
+            <Feather name={icon as any} size={14} color={theme.textSecondary} />
+            <ThemedText style={[styles.profitBarLabelText, { color: theme.text }]}>{label}</ThemedText>
+            {isWinner && stats.count > 0 && (
+              <View style={[styles.winnerTag, { backgroundColor: theme.success }]}>
+                <Feather name="check" size={10} color="#FFF" />
+              </View>
+            )}
+          </View>
+          <ThemedText style={[styles.profitBarValue, { color: theme.text }]}>
+            {formatK(stats.averageEarnings)} ₽
+          </ThemedText>
+        </View>
+        <View style={[styles.profitBarBg, { backgroundColor: theme.backgroundSecondary }]}>
+          <View 
+            style={[
+              styles.profitBarFill, 
+              { 
+                width: `${barWidth}%`, 
+                backgroundColor: isWinner ? theme.accent : theme.textSecondary 
+              }
+            ]} 
+          />
+        </View>
+        <View style={styles.profitBarMeta}>
+          <ThemedText style={[styles.profitBarMetaText, { color: theme.textSecondary }]}>
+            {stats.count} смен
+          </ThemedText>
+          <ThemedText style={[styles.profitBarMetaText, { color: theme.textSecondary }]}>
+            {formatK(stats.totalEarnings)} ₽
+          </ThemedText>
+        </View>
+      </View>
+    );
+  };
   
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
       <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
-        Доходность по типам смен
+        Анализ доходности
       </ThemedText>
       
-      <View style={styles.profitSection}>
-        <ThemedText style={[styles.profitSectionTitle, { color: theme.text }]}>
-          День vs Ночь
+      <View style={styles.profitComparisonSection}>
+        <ThemedText style={[styles.profitComparisonTitle, { color: theme.text }]}>
+          По времени смены
         </ThemedText>
-        <View style={styles.profitRow}>
-          <View style={[styles.profitCard, dayVsNightWinner === 'day' && styles.profitCardWinner, { backgroundColor: theme.warningLight }]}>
-            <Feather name="sun" size={24} color={theme.warning} style={styles.profitIcon} />
-            <ThemedText style={[styles.profitType, { color: theme.warning }]}>Дневные</ThemedText>
-            <ThemedText style={styles.profitCount}>{dayStats.count} смен</ThemedText>
-            <ThemedText style={[styles.profitAvg, { color: theme.text }]}>
-              ~{formatK(dayStats.averageEarnings)} ₽/смена
-            </ThemedText>
-            <ThemedText style={[styles.profitTotal, { color: theme.textSecondary }]}>
-              Всего: {formatK(dayStats.totalEarnings)} ₽
-            </ThemedText>
-            {dayVsNightWinner === 'day' && (
-              <ThemedText style={[styles.winnerBadge, { color: theme.success }]}>Выгоднее</ThemedText>
-            )}
-          </View>
-          <View style={[styles.profitCard, dayVsNightWinner === 'night' && styles.profitCardWinner, { backgroundColor: theme.accentLight }]}>
-            <Feather name="moon" size={24} color={theme.accent} style={styles.profitIcon} />
-            <ThemedText style={[styles.profitType, { color: theme.accent }]}>Ночные</ThemedText>
-            <ThemedText style={styles.profitCount}>{nightStats.count} смен</ThemedText>
-            <ThemedText style={[styles.profitAvg, { color: theme.text }]}>
-              ~{formatK(nightStats.averageEarnings)} ₽/смена
-            </ThemedText>
-            <ThemedText style={[styles.profitTotal, { color: theme.textSecondary }]}>
-              Всего: {formatK(nightStats.totalEarnings)} ₽
-            </ThemedText>
-            {dayVsNightWinner === 'night' && (
-              <ThemedText style={[styles.winnerBadge, { color: theme.success }]}>Выгоднее</ThemedText>
-            )}
-          </View>
-        </View>
+        {renderComparisonBar('Дневные', 'sun', dayStats, dayVsNightWinner === 'day')}
+        {renderComparisonBar('Ночные', 'moon', nightStats, dayVsNightWinner === 'night')}
       </View>
       
-      <View style={styles.profitSection}>
-        <ThemedText style={[styles.profitSectionTitle, { color: theme.text }]}>
-          Возвраты vs Приёмка
+      <View style={[styles.profitDivider, { backgroundColor: theme.border }]} />
+      
+      <View style={styles.profitComparisonSection}>
+        <ThemedText style={[styles.profitComparisonTitle, { color: theme.text }]}>
+          По типу операции
         </ThemedText>
-        <View style={styles.profitRow}>
-          <View style={[styles.profitCard, returnsVsReceivingWinner === 'returns' && styles.profitCardWinner, { backgroundColor: theme.successLight }]}>
-            <Feather name="rotate-ccw" size={24} color={theme.success} style={styles.profitIcon} />
-            <ThemedText style={[styles.profitType, { color: theme.success }]}>Возвраты</ThemedText>
-            <ThemedText style={styles.profitCount}>{returnsStats.count} смен</ThemedText>
-            <ThemedText style={[styles.profitAvg, { color: theme.text }]}>
-              ~{formatK(returnsStats.averageEarnings)} ₽/смена
-            </ThemedText>
-            <ThemedText style={[styles.profitTotal, { color: theme.textSecondary }]}>
-              Всего: {formatK(returnsStats.totalEarnings)} ₽
-            </ThemedText>
-            {returnsVsReceivingWinner === 'returns' && (
-              <ThemedText style={[styles.winnerBadge, { color: theme.success }]}>Выгоднее</ThemedText>
-            )}
-          </View>
-          <View style={[styles.profitCard, returnsVsReceivingWinner === 'receiving' && styles.profitCardWinner, { backgroundColor: theme.errorLight || '#FEE2E2' }]}>
-            <Feather name="package" size={24} color={theme.error} style={styles.profitIcon} />
-            <ThemedText style={[styles.profitType, { color: theme.error }]}>Приёмка</ThemedText>
-            <ThemedText style={styles.profitCount}>{receivingStats.count} смен</ThemedText>
-            <ThemedText style={[styles.profitAvg, { color: theme.text }]}>
-              ~{formatK(receivingStats.averageEarnings)} ₽/смена
-            </ThemedText>
-            <ThemedText style={[styles.profitTotal, { color: theme.textSecondary }]}>
-              Всего: {formatK(receivingStats.totalEarnings)} ₽
-            </ThemedText>
-            {returnsVsReceivingWinner === 'receiving' && (
-              <ThemedText style={[styles.winnerBadge, { color: theme.success }]}>Выгоднее</ThemedText>
-            )}
-          </View>
-        </View>
+        {renderComparisonBar('Возвраты', 'rotate-ccw', returnsStats, returnsVsReceivingWinner === 'returns')}
+        {renderComparisonBar('Приёмка', 'package', receivingStats, returnsVsReceivingWinner === 'receiving')}
       </View>
     </View>
   );
@@ -483,66 +516,70 @@ function RecordsCard({
 }) {
   const { theme } = useTheme();
   
-  if (recordShiftEarnings === 0 && bestWeekEarnings === 0 && bestMonthEarnings === 0) {
-    return null;
+  const records = [];
+  
+  if (recordShiftEarnings > 0) {
+    records.push({
+      id: 'shift',
+      icon: 'zap',
+      label: 'Лучшая смена',
+      value: formatFullCurrency(recordShiftEarnings),
+      meta: formatFullDate(recordShiftDate),
+    });
   }
   
+  if (bestWeekEarnings > 0) {
+    records.push({
+      id: 'week',
+      icon: 'trending-up',
+      label: 'Лучшая неделя',
+      value: formatFullCurrency(bestWeekEarnings),
+      meta: formatFullDate(bestWeekDate),
+    });
+  }
+  
+  if (bestMonthEarnings > 0) {
+    records.push({
+      id: 'month',
+      icon: 'award',
+      label: 'Лучший месяц',
+      value: formatFullCurrency(bestMonthEarnings),
+      meta: formatMonthYear(bestMonthDate),
+    });
+  }
+  
+  if (records.length === 0) return null;
+  
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
+    <View style={styles.recordsSection}>
+      <ThemedText style={[styles.sectionTitle, { color: theme.textSecondary }]}>
         Ваши рекорды
       </ThemedText>
-      
-      {recordShiftEarnings > 0 && (
-        <View style={styles.recordItem}>
-          <View style={[styles.recordIcon, { backgroundColor: '#FFD700' + '20' }]}>
-            <Feather name="award" size={20} color="#FFD700" />
-          </View>
-          <View style={styles.recordContent}>
-            <ThemedText style={styles.recordLabel}>Рекорд за смену</ThemedText>
-            <ThemedText style={[styles.recordValue, { color: theme.success }]}>
-              {formatFullCurrency(recordShiftEarnings)}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.recordsHorizontal}
+      >
+        {records.map((record) => (
+          <View 
+            key={record.id} 
+            style={[styles.recordCardH, { backgroundColor: theme.backgroundDefault }]}
+          >
+            <View style={[styles.recordIconH, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name={record.icon as any} size={18} color={theme.accent} />
+            </View>
+            <ThemedText style={[styles.recordLabelH, { color: theme.textSecondary }]}>
+              {record.label}
             </ThemedText>
-            <ThemedText style={[styles.recordMeta, { color: theme.textSecondary }]}>
-              {recordShiftType} • {formatFullDate(recordShiftDate)}
+            <ThemedText style={[styles.recordValueH, { color: theme.text }]}>
+              {record.value}
             </ThemedText>
-          </View>
-        </View>
-      )}
-      
-      {bestWeekEarnings > 0 && (
-        <View style={styles.recordItem}>
-          <View style={[styles.recordIcon, { backgroundColor: theme.accentLight }]}>
-            <Feather name="calendar" size={20} color={theme.accent} />
-          </View>
-          <View style={styles.recordContent}>
-            <ThemedText style={styles.recordLabel}>Лучшая неделя</ThemedText>
-            <ThemedText style={[styles.recordValue, { color: theme.accent }]}>
-              {formatFullCurrency(bestWeekEarnings)}
-            </ThemedText>
-            <ThemedText style={[styles.recordMeta, { color: theme.textSecondary }]}>
-              Неделя с {formatFullDate(bestWeekDate)}
+            <ThemedText style={[styles.recordMetaH, { color: theme.textSecondary }]}>
+              {record.meta}
             </ThemedText>
           </View>
-        </View>
-      )}
-      
-      {bestMonthEarnings > 0 && (
-        <View style={styles.recordItem}>
-          <View style={[styles.recordIcon, { backgroundColor: theme.successLight }]}>
-            <Feather name="calendar" size={20} color={theme.success} />
-          </View>
-          <View style={styles.recordContent}>
-            <ThemedText style={styles.recordLabel}>Лучший месяц</ThemedText>
-            <ThemedText style={[styles.recordValue, { color: theme.success }]}>
-              {formatFullCurrency(bestMonthEarnings)}
-            </ThemedText>
-            <ThemedText style={[styles.recordMeta, { color: theme.textSecondary }]}>
-              {formatMonthYear(bestMonthDate)}
-            </ThemedText>
-          </View>
-        </View>
-      )}
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -1296,5 +1333,178 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginTop: Spacing.sm,
+  },
+  barDate: {
+    fontSize: 9,
+    marginTop: 1,
+    fontWeight: "500",
+  },
+  sectionTitle: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: Spacing.sm,
+    marginLeft: Spacing.xs,
+  },
+  timelineSection: {
+    marginBottom: Spacing.sm,
+  },
+  timelineHorizontal: {
+    paddingRight: Spacing.lg,
+    gap: 0,
+  },
+  timelineHorizontalItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  timelineCardH: {
+    width: 140,
+    padding: Spacing.md,
+    borderRadius: 12,
+  },
+  timelineCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
+  timelineIndicator: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  timelineIndicatorText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  timelineDaysLeft: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  timelineGoalNameH: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: Spacing.sm,
+    lineHeight: 17,
+  },
+  timelineProgressBg: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+    marginBottom: Spacing.sm,
+  },
+  timelineProgressFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+  timelineDateH: {
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  timelineRemainingH: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  timelineConnector: {
+    width: 16,
+    height: 2,
+    marginHorizontal: 4,
+  },
+  profitComparisonSection: {
+    marginBottom: Spacing.sm,
+  },
+  profitComparisonTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: Spacing.sm,
+  },
+  profitBarItem: {
+    marginBottom: Spacing.md,
+  },
+  profitBarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  profitBarLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  profitBarLabelText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  winnerTag: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profitBarValue: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  profitBarBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  profitBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  profitBarMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  profitBarMetaText: {
+    fontSize: 10,
+  },
+  profitDivider: {
+    height: 1,
+    marginVertical: Spacing.md,
+  },
+  recordsSection: {
+    marginBottom: Spacing.sm,
+  },
+  recordsHorizontal: {
+    paddingRight: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  recordCardH: {
+    width: 130,
+    padding: Spacing.md,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  recordIconH: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.sm,
+  },
+  recordLabelH: {
+    fontSize: 10,
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  recordValueH: {
+    fontSize: 15,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  recordMetaH: {
+    fontSize: 9,
+    textAlign: "center",
   },
 });
