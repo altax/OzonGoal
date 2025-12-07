@@ -980,8 +980,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-around",
-    height: 80,
-    marginTop: Spacing.lg,
+    height: 120,
+    marginTop: Spacing.xl,
   },
   barCol: {
     alignItems: "center",
