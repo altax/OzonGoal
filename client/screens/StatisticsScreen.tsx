@@ -983,15 +983,15 @@ const styles = StyleSheet.create({
   barChart: {
     flexDirection: "row",
     alignItems: "flex-end",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     height: 80,
     marginTop: Spacing.lg,
   },
   barCol: {
-    flex: 1,
     alignItems: "center",
     height: "100%",
     justifyContent: "flex-end",
+    paddingHorizontal: 2,
   },
   barValue: {
     fontSize: 9,
@@ -999,8 +999,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   bar: {
-    width: 18,
-    borderRadius: 4,
+    width: 24,
+    borderRadius: 5,
     minHeight: 4,
   },
   barLabel: {
