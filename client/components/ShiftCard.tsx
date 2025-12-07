@@ -181,13 +181,13 @@ export function ShiftCard({
         {canSwipe && (
           <>
             <Animated.View style={[styles.rescheduleIndicator, rescheduleIndicatorStyle]}>
-              <Feather name="calendar" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
+              <Feather name="calendar" size={16} color={theme.textSecondary} style={styles.swipeIcon} />
               <ThemedText style={[styles.swipeActionText, { color: theme.textSecondary }]}>Перенести</ThemedText>
             </Animated.View>
 
             <Animated.View style={[styles.cancelIndicator, cancelIndicatorStyle]}>
+              <Feather name="x-circle" size={16} color={theme.textSecondary} style={styles.swipeIcon} />
               <ThemedText style={[styles.swipeActionText, { color: theme.textSecondary }]}>Отменить</ThemedText>
-              <Feather name="x-circle" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
             </Animated.View>
           </>
         )}
@@ -253,13 +253,13 @@ export function ShiftCard({
       {canSwipe && (
         <>
           <Animated.View style={[styles.rescheduleIndicator, rescheduleIndicatorStyle]}>
-            <Feather name="calendar" size={20} color={theme.textSecondary} style={styles.swipeIcon} />
+            <Feather name="calendar" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
             <ThemedText style={[styles.swipeActionText, { color: theme.textSecondary }]}>Перенести</ThemedText>
           </Animated.View>
 
           <Animated.View style={[styles.cancelIndicator, cancelIndicatorStyle]}>
+            <Feather name="x-circle" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
             <ThemedText style={[styles.swipeActionText, { color: theme.textSecondary }]}>Отменить</ThemedText>
-            <Feather name="x-circle" size={20} color={theme.textSecondary} style={styles.swipeIcon} />
           </Animated.View>
         </>
       )}
@@ -375,10 +375,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SWIPE_THRESHOLD + 30,
     borderRadius: BorderRadius.sm,
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
+    paddingHorizontal: 4,
   },
   cancelIndicator: {
     position: "absolute",
@@ -387,18 +388,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SWIPE_THRESHOLD + 30,
     borderRadius: BorderRadius.sm,
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
+    paddingHorizontal: 4,
   },
   swipeActionText: {
     fontWeight: "600",
-    fontSize: 14,
-    letterSpacing: 0.3,
+    fontSize: 11,
+    letterSpacing: 0.2,
+    textAlign: "center",
   },
   swipeIcon: {
-    marginHorizontal: 6,
+    marginBottom: 4,
   },
   currentBadge: {
     alignSelf: "flex-start",

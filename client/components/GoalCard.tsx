@@ -218,13 +218,13 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
     return (
       <View style={styles.swipeContainer}>
         <Animated.View style={[styles.hideIndicator, hideIndicatorStyle]}>
-          <Feather name="eye-off" size={20} color={theme.textSecondary} style={styles.swipeIcon} />
+          <Feather name="eye-off" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
           <ThemedText style={[styles.swipeActionTextPlain, { color: theme.textSecondary }]}>Скрыть</ThemedText>
         </Animated.View>
 
         <Animated.View style={[styles.deleteIndicator, actionsContainerStyle]}>
+          <Feather name="trash-2" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
           <ThemedText style={[styles.swipeActionTextPlain, { color: theme.textSecondary }]}>Удалить</ThemedText>
-          <Feather name="trash-2" size={20} color={theme.textSecondary} style={styles.swipeIcon} />
         </Animated.View>
 
         <GestureDetector gesture={panGesture}>
@@ -301,13 +301,13 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   return (
     <View style={styles.swipeContainer}>
       <Animated.View style={[styles.hideIndicator, hideIndicatorStyle]}>
-        <Feather name="eye-off" size={22} color={theme.textSecondary} style={styles.swipeIcon} />
+        <Feather name="eye-off" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
         <ThemedText style={[styles.swipeActionTextPlain, { color: theme.textSecondary }]}>Скрыть</ThemedText>
       </Animated.View>
 
       <Animated.View style={[styles.deleteIndicator, actionsContainerStyle]}>
+        <Feather name="trash-2" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
         <ThemedText style={[styles.swipeActionTextPlain, { color: theme.textSecondary }]}>Удалить</ThemedText>
-        <Feather name="trash-2" size={22} color={theme.textSecondary} style={styles.swipeIcon} />
       </Animated.View>
 
       <GestureDetector gesture={panGesture}>
@@ -506,10 +506,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SWIPE_THRESHOLD + 30,
     borderRadius: BorderRadius.md,
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
+    paddingHorizontal: 4,
   },
   deleteIndicator: {
     position: "absolute",
@@ -518,10 +519,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SWIPE_THRESHOLD + 30,
     borderRadius: BorderRadius.md,
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
+    paddingHorizontal: 4,
   },
   swipeActionText: {
     color: "#FFFFFF",
@@ -531,11 +533,12 @@ const styles = StyleSheet.create({
   },
   swipeActionTextPlain: {
     fontWeight: "600",
-    fontSize: 14,
-    letterSpacing: 0.3,
+    fontSize: 11,
+    letterSpacing: 0.2,
+    textAlign: "center",
   },
   swipeIcon: {
-    marginHorizontal: 6,
+    marginBottom: 4,
   },
   primaryBadge: {
     position: "absolute",

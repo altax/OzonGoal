@@ -336,8 +336,8 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             style={({ pressed }) => [
               styles.actionButton,
               { 
-                backgroundColor: goal.isPrimary ? theme.warningLight : theme.backgroundSecondary,
-                borderColor: goal.isPrimary ? theme.warning : theme.border,
+                backgroundColor: goal.isPrimary ? theme.accentLight : theme.backgroundSecondary,
+                borderColor: goal.isPrimary ? theme.accent : theme.border,
               },
               pressed && { opacity: 0.8 },
             ]}
@@ -346,12 +346,12 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             <Feather
               name="star"
               size={18}
-              color={goal.isPrimary ? theme.warning : theme.textSecondary}
+              color={goal.isPrimary ? theme.accent : theme.textSecondary}
             />
             <ThemedText
               style={[
                 styles.actionButtonText,
-                { color: goal.isPrimary ? theme.warning : theme.textSecondary },
+                { color: goal.isPrimary ? theme.accent : theme.textSecondary },
               ]}
             >
               {goal.isPrimary ? "Открепить" : "Закрепить"}
@@ -466,6 +466,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.sm,
+    justifyContent: "center",
   },
   iconOption: {
     width: "18%",
