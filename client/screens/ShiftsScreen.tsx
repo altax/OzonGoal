@@ -185,7 +185,7 @@ export default function ShiftsScreen() {
                     { color: filter === "scheduled" ? theme.text : theme.textSecondary },
                   ]}
                 >
-                  Запланированные ({scheduledShifts.length})
+                  Будущие ({scheduledShifts.length})
                 </ThemedText>
               </Pressable>
               <Pressable
