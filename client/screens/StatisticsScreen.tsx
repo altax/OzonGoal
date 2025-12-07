@@ -680,13 +680,9 @@ export default function StatisticsScreen() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
       
-      let amount = 0;
-      if (stats?.dailyEarningsHistory) {
-        const found = stats.dailyEarningsHistory.find(h => h.date.split('T')[0] === dateStr);
-        if (found) amount = found.amount;
-      }
+      // TODO: ТЕСТОВЫЕ ДАННЫЕ - УДАЛИТЬ ПОТОМ
+      const amount = 7000;
       
       result.push({
         label: days[d.getDay()],
