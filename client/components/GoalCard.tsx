@@ -92,7 +92,7 @@ const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
   star: "star",
   gift: "gift",
   briefcase: "briefcase",
-  book: "book",
+  book: "book-open",
   camera: "camera",
   music: "music",
   shopping: "shopping-cart",
@@ -103,10 +103,20 @@ const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
   phone: "smartphone",
   laptop: "hard-drive",
   watch: "watch",
+  dollar: "dollar-sign",
+  credit: "credit-card",
+  smartphone: "smartphone",
+  coffee: "coffee",
+  globe: "globe",
+  umbrella: "umbrella",
+  map: "map-pin",
+  award: "award",
+  zap: "zap",
+  sun: "sun",
 };
 
 const MILESTONES = [0, 25, 50, 75, 100];
-const SWIPE_THRESHOLD = 100;
+const SWIPE_THRESHOLD = 60;
 
 export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, compact = false, averageEarningsPerShift = 3200 }: GoalCardProps) {
   const { theme, isDark } = useTheme();
@@ -141,24 +151,24 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   };
 
   const panGesture = Gesture.Pan()
-    .activeOffsetX([-15, 15])
+    .activeOffsetX([-10, 10])
     .failOffsetY([-5, 5])
     .onUpdate((event) => {
       const newX = event.translationX;
       
       if (newX > 0) {
-        translateX.value = Math.min(newX, SWIPE_THRESHOLD + 40);
+        translateX.value = Math.min(newX, SWIPE_THRESHOLD + 20);
       } else {
-        translateX.value = Math.max(newX, -(SWIPE_THRESHOLD + 40));
+        translateX.value = Math.max(newX, -(SWIPE_THRESHOLD + 20));
       }
     })
     .onEnd((event) => {
       if (event.translationX > SWIPE_THRESHOLD) {
-        translateX.value = withTiming(SWIPE_THRESHOLD + 60, { duration: 150 }, () => {
+        translateX.value = withTiming(SWIPE_THRESHOLD + 30, { duration: 150 }, () => {
           runOnJS(handleHide)();
         });
       } else if (event.translationX < -SWIPE_THRESHOLD) {
-        translateX.value = withTiming(-(SWIPE_THRESHOLD + 60), { duration: 150 }, () => {
+        translateX.value = withTiming(-(SWIPE_THRESHOLD + 30), { duration: 150 }, () => {
           runOnJS(handleDelete)();
         });
       } else {
@@ -494,7 +504,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: SWIPE_THRESHOLD + 40,
+    width: SWIPE_THRESHOLD + 30,
     borderRadius: BorderRadius.md,
     flexDirection: "row",
     alignItems: "center",
@@ -506,7 +516,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    width: SWIPE_THRESHOLD + 40,
+    width: SWIPE_THRESHOLD + 30,
     borderRadius: BorderRadius.md,
     flexDirection: "row",
     alignItems: "center",

@@ -33,6 +33,7 @@ interface ShiftCardProps {
   onRecordEarnings?: () => void;
   onCancel?: (shiftId: string) => void;
   onReschedule?: (shiftId: string) => void;
+  compact?: boolean;
 }
 
 function getSmartDateLabel(date: Date): string {
@@ -84,8 +85,7 @@ function getStatusColor(status: string, theme: any): string {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const SWIPE_THRESHOLD = 100;
-const ACTION_BUTTON_WIDTH = 80;
+const SWIPE_THRESHOLD = 60;
 
 export function ShiftCard({ 
   shift, 
@@ -94,14 +94,13 @@ export function ShiftCard({
   onRecordEarnings,
   onCancel,
   onReschedule,
+  compact = false,
 }: ShiftCardProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const translateX = useSharedValue(0);
-  const actionsVisible = useSharedValue(false);
   const scale = useSharedValue(1);
 
   const isCompleted = shift.status === "completed";
-  const isCanceled = shift.status === "canceled";
   const isScheduled = shift.status === "scheduled";
   const canRecordEarnings = isCompleted && !shift.earnings;
   const canSwipe = isScheduled && !isCurrentShift;
@@ -111,7 +110,6 @@ export function ShiftCard({
       onCancel(shift.id);
     }
     translateX.value = withSpring(0);
-    actionsVisible.value = false;
   };
 
   const handleReschedule = () => {
@@ -119,33 +117,32 @@ export function ShiftCard({
       onReschedule(shift.id);
     }
     translateX.value = withSpring(0);
-    actionsVisible.value = false;
   };
 
   const panGesture = Gesture.Pan()
     .enabled(canSwipe)
     .activeOffsetX([-10, 10])
-    .failOffsetY([-10, 10])
+    .failOffsetY([-5, 5])
     .onUpdate((event) => {
       const newX = event.translationX;
       
       if (newX > 0) {
         translateX.value = Math.min(newX, SWIPE_THRESHOLD + 20);
       } else {
-        translateX.value = Math.max(newX, -(ACTION_BUTTON_WIDTH + 20));
+        translateX.value = Math.max(newX, -(SWIPE_THRESHOLD + 20));
       }
     })
     .onEnd((event) => {
       if (event.translationX > SWIPE_THRESHOLD) {
-        translateX.value = withTiming(SWIPE_THRESHOLD + 50, { duration: 200 }, () => {
+        translateX.value = withTiming(SWIPE_THRESHOLD + 30, { duration: 150 }, () => {
           runOnJS(handleReschedule)();
         });
       } else if (event.translationX < -SWIPE_THRESHOLD) {
-        translateX.value = withSpring(-ACTION_BUTTON_WIDTH);
-        actionsVisible.value = true;
+        translateX.value = withTiming(-(SWIPE_THRESHOLD + 30), { duration: 150 }, () => {
+          runOnJS(handleCancel)();
+        });
       } else {
         translateX.value = withSpring(0);
-        actionsVisible.value = false;
       }
     });
 
@@ -163,8 +160,11 @@ export function ShiftCard({
     ],
   }));
 
-  const actionsContainerStyle = useAnimatedStyle(() => ({
+  const cancelIndicatorStyle = useAnimatedStyle(() => ({
     opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0], Extrapolation.CLAMP),
+    transform: [
+      { scale: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0.5], Extrapolation.CLAMP) },
+    ],
   }));
 
   const handlePressIn = () => {
@@ -175,23 +175,91 @@ export function ShiftCard({
     scale.value = withSpring(1, { damping: 20, stiffness: 200 });
   };
 
+  if (compact) {
+    return (
+      <View style={styles.swipeContainer}>
+        {canSwipe && (
+          <>
+            <Animated.View style={[styles.rescheduleIndicator, rescheduleIndicatorStyle]}>
+              <Feather name="calendar" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
+              <ThemedText style={[styles.swipeActionText, { color: theme.textSecondary }]}>Перенести</ThemedText>
+            </Animated.View>
+
+            <Animated.View style={[styles.cancelIndicator, cancelIndicatorStyle]}>
+              <ThemedText style={[styles.swipeActionText, { color: theme.textSecondary }]}>Отменить</ThemedText>
+              <Feather name="x-circle" size={18} color={theme.textSecondary} style={styles.swipeIcon} />
+            </Animated.View>
+          </>
+        )}
+
+        <GestureDetector gesture={panGesture}>
+          <AnimatedPressable
+            style={[
+              styles.shiftCardCompact,
+              { 
+                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+                borderColor: isCurrentShift ? theme.success : (isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 0.8)'),
+              },
+              isCurrentShift && { borderWidth: 2 },
+              cardAnimatedStyle,
+            ]}
+            onPress={onPress}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+          >
+            <View style={styles.compactRow}>
+              <View style={[styles.shiftTypeIconCompact, { backgroundColor: isCurrentShift ? theme.successLight : theme.accentLight }]}>
+                <Feather
+                  name={shift.shiftType === "day" ? "sun" : "moon"}
+                  size={14}
+                  color={isCurrentShift ? theme.success : theme.accent}
+                />
+              </View>
+              <View style={styles.compactContent}>
+                <View style={styles.compactHeader}>
+                  <ThemedText style={[styles.titleCompact, { color: theme.text }]} numberOfLines={1}>
+                    {shift.operationType === "returns" ? "Возвраты" : "Приёмка"}
+                  </ThemedText>
+                  <ThemedText style={[styles.dateCompact, { color: theme.textSecondary }]}>
+                    {getSmartDateLabel(new Date(shift.scheduledDate))}
+                  </ThemedText>
+                  {isCurrentShift ? (
+                    <View style={[styles.currentBadgeCompact, { backgroundColor: theme.success }]}>
+                      <ThemedText style={styles.currentBadgeText}>Сейчас</ThemedText>
+                    </View>
+                  ) : (
+                    <View style={[styles.statusBadgeCompact, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
+                      <ThemedText style={[styles.statusTextCompact, { color: getStatusColor(shift.status, theme) }]}>
+                        {getStatusLabel(shift.status)}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+                {shift.earnings && (
+                  <ThemedText style={[styles.earningsCompact, { color: theme.success }]}>
+                    {new Intl.NumberFormat("ru-RU").format(parseFloat(shift.earnings))} ₽
+                  </ThemedText>
+                )}
+              </View>
+            </View>
+          </AnimatedPressable>
+        </GestureDetector>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.swipeContainer}>
       {canSwipe && (
         <>
-          <Animated.View style={[styles.rescheduleIndicator, { backgroundColor: theme.accent }, rescheduleIndicatorStyle]}>
-            <Feather name="calendar" size={20} color="#FFFFFF" />
-            <ThemedText style={styles.indicatorText}>Перенести</ThemedText>
+          <Animated.View style={[styles.rescheduleIndicator, rescheduleIndicatorStyle]}>
+            <Feather name="calendar" size={20} color={theme.textSecondary} style={styles.swipeIcon} />
+            <ThemedText style={[styles.swipeActionText, { color: theme.textSecondary }]}>Перенести</ThemedText>
           </Animated.View>
 
-          <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
-            <Pressable
-              style={[styles.actionButton, { backgroundColor: theme.error }]}
-              onPress={handleCancel}
-            >
-              <Feather name="x-circle" size={20} color="#FFFFFF" />
-              <ThemedText style={styles.actionText}>Отменить</ThemedText>
-            </Pressable>
+          <Animated.View style={[styles.cancelIndicator, cancelIndicatorStyle]}>
+            <ThemedText style={[styles.swipeActionText, { color: theme.textSecondary }]}>Отменить</ThemedText>
+            <Feather name="x-circle" size={20} color={theme.textSecondary} style={styles.swipeIcon} />
           </Animated.View>
         </>
       )}
@@ -201,8 +269,8 @@ export function ShiftCard({
           style={[
             styles.shiftCard,
             { 
-              backgroundColor: theme.backgroundContent, 
-              borderColor: isCurrentShift ? theme.success : theme.border,
+              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+              borderColor: isCurrentShift ? theme.success : (isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(226, 232, 240, 0.8)'),
             },
             isCurrentShift && { borderWidth: 2 },
             cardAnimatedStyle,
@@ -275,7 +343,7 @@ export function ShiftCard({
 
 const styles = StyleSheet.create({
   swipeContainer: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     position: "relative",
   },
   shiftCard: {
@@ -283,6 +351,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: Spacing.xl,
     zIndex: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  shiftCardCompact: {
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    padding: Spacing.md,
+    zIndex: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
   rescheduleIndicator: {
     position: "absolute",
@@ -291,37 +375,30 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: SWIPE_THRESHOLD + 30,
     borderRadius: BorderRadius.sm,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: Spacing.sm,
     zIndex: 1,
   },
-  indicatorText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  actionsContainer: {
+  cancelIndicator: {
     position: "absolute",
     right: 0,
     top: 0,
     bottom: 0,
+    width: SWIPE_THRESHOLD + 30,
+    borderRadius: BorderRadius.sm,
     flexDirection: "row",
-    zIndex: 1,
-  },
-  actionButton: {
-    width: ACTION_BUTTON_WIDTH,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: BorderRadius.sm,
-    marginLeft: 4,
+    zIndex: 1,
   },
-  actionText: {
-    color: "#FFFFFF",
-    fontSize: 11,
+  swipeActionText: {
     fontWeight: "600",
-    marginTop: 4,
+    fontSize: 14,
+    letterSpacing: 0.3,
+  },
+  swipeIcon: {
+    marginHorizontal: 6,
   },
   currentBadge: {
     alignSelf: "flex-start",
@@ -329,6 +406,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.xs,
     marginBottom: Spacing.md,
+  },
+  currentBadgeCompact: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+  },
+  currentBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "600",
   },
   shiftHeader: {
     flexDirection: "row",
@@ -342,6 +429,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: Spacing.lg,
   },
+  shiftTypeIconCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.sm,
+  },
   shiftInfo: {
     flex: 1,
   },
@@ -349,6 +444,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.xs,
+  },
+  statusBadgeCompact: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+  },
+  statusTextCompact: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  compactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  compactContent: {
+    flex: 1,
+  },
+  compactHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  titleCompact: {
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: -0.2,
+  },
+  dateCompact: {
+    fontSize: 12,
+    flex: 1,
+  },
+  earningsCompact: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
   },
   recordEarningsButton: {
     flexDirection: "row",

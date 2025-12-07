@@ -1,7 +1,8 @@
 import { View, Pressable, StyleSheet, LayoutChangeEvent } from "react-native";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Animated, {
   useAnimatedStyle,
+  useSharedValue,
   withTiming,
   Easing,
 } from "react-native-reanimated";
@@ -37,22 +38,34 @@ interface TabLayout {
 export function SegmentedTabs({ activeTab, onTabChange }: SegmentedTabsProps) {
   const { theme } = useTheme();
   const [tabLayouts, setTabLayouts] = useState<Record<TabKey, TabLayout>>({} as Record<TabKey, TabLayout>);
+  const indicatorX = useSharedValue(0);
+  const indicatorWidth = useSharedValue(0);
+  const indicatorOpacity = useSharedValue(0);
+  const isInitialized = useRef(false);
 
-  const activeIndex = tabs.findIndex((t) => t.key === activeTab);
   const activeLayout = tabLayouts[activeTab];
 
   const timingConfig = { duration: 250, easing: Easing.out(Easing.cubic) };
 
-  const indicatorStyle = useAnimatedStyle(() => {
-    if (!activeLayout) {
-      return { opacity: 0 };
+  useEffect(() => {
+    if (activeLayout) {
+      if (!isInitialized.current) {
+        indicatorX.value = activeLayout.x;
+        indicatorWidth.value = activeLayout.width;
+        indicatorOpacity.value = 1;
+        isInitialized.current = true;
+      } else {
+        indicatorX.value = withTiming(activeLayout.x, timingConfig);
+        indicatorWidth.value = withTiming(activeLayout.width, timingConfig);
+      }
     }
-    return {
-      opacity: 1,
-      transform: [{ translateX: withTiming(activeLayout.x, timingConfig) }],
-      width: withTiming(activeLayout.width, timingConfig),
-    };
-  }, [activeLayout]);
+  }, [activeLayout, activeTab]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    opacity: indicatorOpacity.value,
+    transform: [{ translateX: indicatorX.value }],
+    width: indicatorWidth.value,
+  }));
 
   const handleTabLayout = (key: TabKey, event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;

@@ -13,7 +13,6 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -39,15 +38,29 @@ interface EditGoalModalProps {
 
 const iconOptions: { key: string; icon: keyof typeof Feather.glyphMap; label: string }[] = [
   { key: "target", icon: "target", label: "Цель" },
-  { key: "send", icon: "send", label: "Путешествие" },
+  { key: "send", icon: "send", label: "Поездка" },
   { key: "monitor", icon: "monitor", label: "Техника" },
   { key: "home", icon: "home", label: "Дом" },
   { key: "truck", icon: "truck", label: "Авто" },
   { key: "heart", icon: "heart", label: "Здоровье" },
   { key: "gift", icon: "gift", label: "Подарок" },
-  { key: "book", icon: "book-open", label: "Обучение" },
+  { key: "book", icon: "book-open", label: "Учёба" },
   { key: "briefcase", icon: "briefcase", label: "Работа" },
   { key: "star", icon: "star", label: "Мечта" },
+  { key: "dollar", icon: "dollar-sign", label: "Деньги" },
+  { key: "credit", icon: "credit-card", label: "Карта" },
+  { key: "shopping", icon: "shopping-cart", label: "Покупки" },
+  { key: "camera", icon: "camera", label: "Фото" },
+  { key: "music", icon: "music", label: "Музыка" },
+  { key: "smartphone", icon: "smartphone", label: "Телефон" },
+  { key: "watch", icon: "watch", label: "Часы" },
+  { key: "coffee", icon: "coffee", label: "Кофе" },
+  { key: "globe", icon: "globe", label: "Мир" },
+  { key: "umbrella", icon: "umbrella", label: "Зонт" },
+  { key: "map", icon: "map-pin", label: "Место" },
+  { key: "award", icon: "award", label: "Награда" },
+  { key: "zap", icon: "zap", label: "Энергия" },
+  { key: "sun", icon: "sun", label: "Солнце" },
 ];
 
 function formatAmountStatic(value: string | number): string {
@@ -59,18 +72,21 @@ function formatAmountStatic(value: string | number): string {
 }
 
 export function EditGoalModal({ visible, goal, onClose }: EditGoalModalProps) {
+  const { theme } = useTheme();
+  
   if (!goal) return null;
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="fullScreen"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <ThemeProvider>
+      <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
         <EditGoalModalContent goal={goal} onClose={onClose} />
-      </ThemeProvider>
+      </View>
     </Modal>
   );
 }
@@ -306,18 +322,9 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
                 >
                   <Feather
                     name={option.icon}
-                    size={24}
+                    size={18}
                     color={isSelected ? "#FFFFFF" : theme.accent}
                   />
-                  <ThemedText
-                    type="caption"
-                    style={[
-                      styles.iconLabel,
-                      { color: isSelected ? "#FFFFFF" : theme.textSecondary },
-                    ]}
-                  >
-                    {option.label}
-                  </ThemedText>
                 </Pressable>
               );
             })}
@@ -458,19 +465,19 @@ const styles = StyleSheet.create({
   iconGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   iconOption: {
-    width: "30%",
+    width: "18%",
     aspectRatio: 1,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.xs,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.sm,
   },
   iconLabel: {
-    fontSize: 11,
+    fontSize: 8,
+    marginTop: 2,
   },
   actionButtonsRow: {
     flexDirection: "row",

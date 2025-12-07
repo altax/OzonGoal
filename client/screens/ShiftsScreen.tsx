@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -20,8 +21,10 @@ import { useShifts, useCancelShift } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const BUTTON_AREA_HEIGHT = 72;
+const SHIFT_VIEW_MODE_KEY = "shift_view_mode";
 
 type ShiftFilter = "scheduled" | "completed";
+type ViewMode = "full" | "compact";
 
 type ShiftType = {
   id: string;
@@ -42,11 +45,24 @@ export default function ShiftsScreen() {
   const [selectedShiftForDetails, setSelectedShiftForDetails] = useState<ShiftType | null>(null);
   const [selectedShiftForReschedule, setSelectedShiftForReschedule] = useState<ShiftType | null>(null);
   const [filter, setFilter] = useState<ShiftFilter>("scheduled");
+  const [viewMode, setViewMode] = useState<ViewMode>("full");
   const { data: shifts, isLoading } = useShifts();
   const cancelShift = useCancelShift();
   
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorPosition = useSharedValue(0);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SHIFT_VIEW_MODE_KEY).then((stored) => {
+      if (stored === "full" || stored === "compact") {
+        setViewMode(stored);
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(SHIFT_VIEW_MODE_KEY, viewMode).catch(() => {});
+  }, [viewMode]);
   
   const handleFilterChange = (newFilter: ShiftFilter) => {
     indicatorPosition.value = withTiming(newFilter === "scheduled" ? 0 : 1, {
@@ -114,6 +130,7 @@ export default function ShiftsScreen() {
         onRecordEarnings={() => setSelectedShiftForEarnings(shiftData)}
         onCancel={handleCancelShift}
         onReschedule={handleRescheduleShift}
+        compact={viewMode === "compact"}
       />
     );
   };
@@ -122,42 +139,54 @@ export default function ShiftsScreen() {
     <View style={styles.container}>
       {hasAnyShifts && (
         <View style={[styles.filterContainer, { paddingHorizontal: Spacing["2xl"] }]}>
-          <View 
-            style={[styles.filterToggle, { backgroundColor: theme.backgroundSecondary }]}
-            onLayout={handleTabLayout}
-          >
-            <Animated.View 
-              style={[
-                styles.filterIndicator, 
-                { backgroundColor: theme.backgroundContent, width: tabWidth > 0 ? tabWidth : "48%" },
-                animatedIndicatorStyle,
-              ]} 
-            />
-            <Pressable
-              style={styles.filterButton}
-              onPress={() => handleFilterChange("scheduled")}
+          <View style={styles.filterRow}>
+            <View 
+              style={[styles.filterToggle, { backgroundColor: theme.backgroundSecondary, flex: 1 }]}
+              onLayout={handleTabLayout}
             >
-              <ThemedText
+              <Animated.View 
                 style={[
-                  styles.filterText,
-                  { color: filter === "scheduled" ? theme.text : theme.textSecondary },
-                ]}
+                  styles.filterIndicator, 
+                  { backgroundColor: theme.backgroundContent, width: tabWidth > 0 ? tabWidth : "48%" },
+                  animatedIndicatorStyle,
+                ]} 
+              />
+              <Pressable
+                style={styles.filterButton}
+                onPress={() => handleFilterChange("scheduled")}
               >
-                Запланированные ({scheduledShifts.length})
-              </ThemedText>
-            </Pressable>
+                <ThemedText
+                  style={[
+                    styles.filterText,
+                    { color: filter === "scheduled" ? theme.text : theme.textSecondary },
+                  ]}
+                >
+                  Запланированные ({scheduledShifts.length})
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.filterButton}
+                onPress={() => handleFilterChange("completed")}
+              >
+                <ThemedText
+                  style={[
+                    styles.filterText,
+                    { color: filter === "completed" ? theme.text : theme.textSecondary },
+                  ]}
+                >
+                  Прошедшие ({completedShifts.length})
+                </ThemedText>
+              </Pressable>
+            </View>
             <Pressable
-              style={styles.filterButton}
-              onPress={() => handleFilterChange("completed")}
+              style={[styles.viewModeButton, { backgroundColor: theme.backgroundSecondary }]}
+              onPress={() => setViewMode(viewMode === "full" ? "compact" : "full")}
             >
-              <ThemedText
-                style={[
-                  styles.filterText,
-                  { color: filter === "completed" ? theme.text : theme.textSecondary },
-                ]}
-              >
-                Прошедшие ({completedShifts.length})
-              </ThemedText>
+              <Feather 
+                name={viewMode === "compact" ? "list" : "grid"} 
+                size={18} 
+                color={theme.textSecondary} 
+              />
             </Pressable>
           </View>
         </View>
@@ -269,11 +298,23 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     paddingBottom: Spacing.xs,
   },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
   filterToggle: {
     flexDirection: "row",
     borderRadius: BorderRadius.xs,
     padding: 3,
     position: "relative",
+  },
+  viewModeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.xs,
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterIndicator: {
     position: "absolute",
