@@ -23,53 +23,6 @@ const BUTTON_AREA_HEIGHT = 72;
 
 type ShiftFilter = "scheduled" | "completed";
 
-function getSmartDateLabel(date: Date): string {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  
-  const shiftDate = new Date(date);
-  const shiftDay = new Date(shiftDate.getFullYear(), shiftDate.getMonth(), shiftDate.getDate());
-  
-  if (shiftDay.getTime() === today.getTime()) {
-    return "Сегодня";
-  }
-  if (shiftDay.getTime() === tomorrow.getTime()) {
-    return "Завтра";
-  }
-  
-  const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-  const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
-  return `${days[shiftDate.getDay()]}, ${shiftDate.getDate()} ${months[shiftDate.getMonth()]}`;
-}
-
-function formatShiftTime(shiftType: string): string {
-  return shiftType === "day" ? "08:00 - 20:00" : "20:00 - 08:00";
-}
-
-function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    scheduled: "Запланирована",
-    in_progress: "В процессе",
-    completed: "Завершена",
-    canceled: "Отменена",
-    no_show: "Неявка",
-  };
-  return labels[status] || status;
-}
-
-function getStatusColor(status: string, theme: any): string {
-  const colors: Record<string, string> = {
-    scheduled: theme.accent,
-    in_progress: theme.warning,
-    completed: theme.success,
-    canceled: theme.textSecondary,
-    no_show: theme.error,
-  };
-  return colors[status] || theme.textSecondary;
-}
-
 type ShiftType = {
   id: string;
   operationType: string;

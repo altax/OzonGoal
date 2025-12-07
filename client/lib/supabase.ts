@@ -4,13 +4,6 @@ import Constants from 'expo-constants';
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || '';
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || '';
 
-console.log('Supabase URL:', supabaseUrl ? 'set' : 'missing');
-console.log('Supabase Anon Key:', supabaseAnonKey ? 'set' : 'missing');
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials not found. Please set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.');
-}
-
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000001';

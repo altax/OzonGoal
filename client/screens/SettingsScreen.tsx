@@ -434,7 +434,7 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
                         {goal.name}
                       </ThemedText>
                       <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                        {Math.round((goal.currentAmount / goal.targetAmount) * 100)}% выполнено
+                        {Math.round((Number(goal.currentAmount) / Number(goal.targetAmount)) * 100)}% выполнено
                       </ThemedText>
                     </View>
                   </View>
