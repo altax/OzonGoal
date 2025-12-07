@@ -91,11 +91,13 @@ function BarChart({
   color,
   bgColor,
   onBarPress,
+  streak,
 }: { 
   data: { label: string; value: number; date: string }[];
   color: string;
   bgColor: string;
   onBarPress?: (index: number) => void;
+  streak?: number;
 }) {
   const { theme } = useTheme();
   const max = Math.max(...data.map(d => d.value), 1);
@@ -140,14 +142,23 @@ function BarChart({
           );
         })}
       </View>
-      {avg > 0 && (
-        <View style={styles.avgRow}>
-          <View style={[styles.avgLine, { backgroundColor: theme.border }]} />
-          <ThemedText style={[styles.avgText, { color: theme.textSecondary }]}>
-            Ср: {formatK(avg)} ₽
-          </ThemedText>
-        </View>
-      )}
+      <View style={styles.chartFooterRow}>
+        {streak && streak > 0 ? (
+          <View style={[styles.streakBadgeInline, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="zap" size={12} color={theme.accent} />
+            <ThemedText style={[styles.streakBadgeTextInline, { color: theme.text }]}>
+              {streak} {pluralizeShifts(streak)} подряд
+            </ThemedText>
+          </View>
+        ) : <View />}
+        {avg > 0 && (
+          <View style={styles.avgRowInline}>
+            <ThemedText style={[styles.avgText, { color: theme.textSecondary }]}>
+              Ср: {formatK(avg)} ₽
+            </ThemedText>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -795,17 +806,6 @@ export default function StatisticsScreen() {
         ))}
       </View>
 
-      {stats?.streak && stats.streak > 0 ? (
-        <View style={styles.streakRow}>
-          <View style={[styles.streakBadge, { backgroundColor: theme.backgroundDefault }]}>
-            <Feather name="zap" size={14} color={theme.accent} />
-            <ThemedText style={[styles.streakBadgeText, { color: theme.text }]}>
-              {stats.streak} {pluralizeShifts(stats.streak)} подряд
-            </ThemedText>
-          </View>
-        </View>
-      ) : null}
-
       {currentOrNextShift && (
         <CurrentShiftCard 
           shift={currentOrNextShift.shift} 
@@ -831,7 +831,7 @@ export default function StatisticsScreen() {
 
       <View style={[styles.card, styles.chartCard, { backgroundColor: theme.backgroundDefault }]}>
         <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>Доход по дням</ThemedText>
-        <BarChart data={chartData} color={theme.accent} bgColor={theme.accentLight} />
+        <BarChart data={chartData} color={theme.accent} bgColor={theme.accentLight} streak={stats?.streak} />
       </View>
 
       <WeeklyComparison thisWeek={weeklyStats.thisWeek} lastWeek={weeklyStats.lastWeek} />
@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   bar: {
-    width: 18,
+    width: 14,
     borderRadius: 4,
     minHeight: 4,
   },
@@ -1018,7 +1018,28 @@ const styles = StyleSheet.create({
   },
   avgText: {
     fontSize: 10,
-    marginLeft: Spacing.sm,
+  },
+  chartFooterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: Spacing.sm,
+  },
+  streakBadgeInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  streakBadgeTextInline: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  avgRowInline: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   goalForecastItem: {
     marginBottom: Spacing.md,
