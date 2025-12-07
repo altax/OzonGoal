@@ -985,7 +985,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "space-between",
     height: 80,
-    marginTop: Spacing.md,
+    marginTop: Spacing.lg,
   },
   barCol: {
     flex: 1,
