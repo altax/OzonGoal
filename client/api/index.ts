@@ -788,6 +788,23 @@ function getDateRange(period: StatsPeriod): { start: Date; end: Date } {
   return { start, end };
 }
 
+export type ShiftTypeStats = {
+  count: number;
+  totalEarnings: number;
+  averageEarnings: number;
+};
+
+export type GoalForecast = {
+  goalId: string;
+  goalName: string;
+  currentAmount: number;
+  targetAmount: number;
+  remainingAmount: number;
+  estimatedDays: number | null;
+  estimatedDate: string | null;
+  color: string;
+};
+
 export type EarningsStats = {
   totalEarnings: number;
   averagePerShift: number;
@@ -803,6 +820,19 @@ export type EarningsStats = {
   streak: number;
   previousPeriodAverage: number;
   daysToGoalForecast: number | null;
+  dayShiftStats: ShiftTypeStats;
+  nightShiftStats: ShiftTypeStats;
+  returnsShiftStats: ShiftTypeStats;
+  receivingShiftStats: ShiftTypeStats;
+  recordShiftEarnings: number;
+  recordShiftDate: string | null;
+  recordShiftType: string | null;
+  bestWeekEarnings: number;
+  bestWeekDate: string | null;
+  bestMonthEarnings: number;
+  bestMonthDate: string | null;
+  goalForecasts: GoalForecast[];
+  dailyAverageEarnings: number;
 };
 
 export function useEarningsStats(period: StatsPeriod = 'month') {
@@ -977,13 +1007,111 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
       const previousPeriodAverage = (prevShifts || []).length > 0 ? prevTotal / (prevShifts || []).length : 0;
       
       const remainingGoalAmount = totalTarget - totalCurrent;
-      const daysInPeriod = period === 'week' ? 7 : period === 'month' ? 30 : 365;
       const dailyAverage = dailyEarningsHistory.length > 0 
         ? totalEarnings / dailyEarningsHistory.length 
         : 0;
       const daysToGoalForecast = dailyAverage > 0 && remainingGoalAmount > 0
         ? Math.ceil(remainingGoalAmount / dailyAverage)
         : null;
+      
+      const dayShifts = shifts.filter(s => s.shift_type === 'day');
+      const nightShifts = shifts.filter(s => s.shift_type === 'night');
+      const returnsShifts = shifts.filter(s => s.operation_type === 'returns');
+      const receivingShifts = shifts.filter(s => s.operation_type === 'receiving');
+      
+      const dayShiftStats = {
+        count: dayShifts.length,
+        totalEarnings: dayShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0),
+        averageEarnings: dayShifts.length > 0 ? dayShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / dayShifts.length : 0,
+      };
+      
+      const nightShiftStats = {
+        count: nightShifts.length,
+        totalEarnings: nightShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0),
+        averageEarnings: nightShifts.length > 0 ? nightShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / nightShifts.length : 0,
+      };
+      
+      const returnsShiftStats = {
+        count: returnsShifts.length,
+        totalEarnings: returnsShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0),
+        averageEarnings: returnsShifts.length > 0 ? returnsShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / returnsShifts.length : 0,
+      };
+      
+      const receivingShiftStats = {
+        count: receivingShifts.length,
+        totalEarnings: receivingShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0),
+        averageEarnings: receivingShifts.length > 0 ? receivingShifts.reduce((sum, s) => sum + safeParseNumber(s.earnings), 0) / receivingShifts.length : 0,
+      };
+      
+      const { data: allCompletedShifts } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('user_id', DEFAULT_USER_ID)
+        .eq('status', 'completed')
+        .not('earnings', 'is', null)
+        .order('earnings', { ascending: false });
+      
+      const recordShift = allCompletedShifts?.[0];
+      const recordShiftEarnings = recordShift ? safeParseNumber(recordShift.earnings) : 0;
+      const recordShiftDate = recordShift?.scheduled_date || null;
+      const recordShiftType = recordShift ? (recordShift.shift_type === 'day' ? 'Дневная' : 'Ночная') : null;
+      
+      const weeklyEarningsMap = new Map<string, number>();
+      for (const shift of (allCompletedShifts || [])) {
+        const date = new Date(shift.earnings_recorded_at!);
+        const weekStart = new Date(date);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const weekKey = weekStart.toISOString().split('T')[0];
+        weeklyEarningsMap.set(weekKey, (weeklyEarningsMap.get(weekKey) || 0) + safeParseNumber(shift.earnings));
+      }
+      
+      let bestWeekEarnings = 0;
+      let bestWeekDate: string | null = null;
+      weeklyEarningsMap.forEach((earnings, weekDate) => {
+        if (earnings > bestWeekEarnings) {
+          bestWeekEarnings = earnings;
+          bestWeekDate = weekDate;
+        }
+      });
+      
+      const allMonthlyMap = new Map<string, number>();
+      for (const shift of (allCompletedShifts || [])) {
+        const date = new Date(shift.earnings_recorded_at!);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        allMonthlyMap.set(monthKey, (allMonthlyMap.get(monthKey) || 0) + safeParseNumber(shift.earnings));
+      }
+      
+      let bestMonthEarnings = 0;
+      let bestMonthDate: string | null = null;
+      allMonthlyMap.forEach((earnings, monthDate) => {
+        if (earnings > bestMonthEarnings) {
+          bestMonthEarnings = earnings;
+          bestMonthDate = monthDate;
+        }
+      });
+      
+      const goalForecasts: GoalForecast[] = (goals || []).map(g => {
+        const currentAmount = safeParseNumber(g.current_amount);
+        const targetAmount = safeParseNumber(g.target_amount);
+        const remainingAmount = Math.max(0, targetAmount - currentAmount);
+        const estimatedDays = dailyAverage > 0 && remainingAmount > 0 
+          ? Math.ceil(remainingAmount / dailyAverage)
+          : null;
+        const estimatedDate = estimatedDays !== null 
+          ? new Date(Date.now() + estimatedDays * 24 * 60 * 60 * 1000).toISOString()
+          : null;
+        
+        return {
+          goalId: g.id,
+          goalName: g.name,
+          currentAmount,
+          targetAmount,
+          remainingAmount,
+          estimatedDays,
+          estimatedDate,
+          color: g.icon_color || '#3B82F6',
+        };
+      });
       
       return {
         totalEarnings,
@@ -1000,6 +1128,19 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
         streak,
         previousPeriodAverage,
         daysToGoalForecast,
+        dayShiftStats,
+        nightShiftStats,
+        returnsShiftStats,
+        receivingShiftStats,
+        recordShiftEarnings,
+        recordShiftDate,
+        recordShiftType,
+        bestWeekEarnings,
+        bestWeekDate,
+        bestMonthEarnings,
+        bestMonthDate,
+        goalForecasts,
+        dailyAverageEarnings: dailyAverage,
       };
     },
     refetchInterval: 5000,

@@ -3,6 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "lib": ["dom", "dom.iterable", "esnext"],
     "paths": {
       "@/*": ["./client/*"],
       "@shared/*": ["./shared/*"]

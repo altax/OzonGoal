@@ -12,7 +12,7 @@ import Animated, {
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useEarningsStats, useGoals, useShiftsSummary, useShifts, type StatsPeriod } from "@/api";
+import { useEarningsStats, useGoals, useShiftsSummary, useShifts, type StatsPeriod, type GoalForecast } from "@/api";
 
 function formatK(amount: number): string {
   if (amount >= 1000) {
@@ -52,6 +52,29 @@ function formatShiftTime(shiftType: string): string {
   return shiftType === "day" ? "8:00 – 20:00" : "20:00 – 8:00";
 }
 
+function formatFullDate(date: Date | string | null): string {
+  if (!date) return "";
+  const d = date instanceof Date ? date : new Date(date);
+  const months = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatMonthYear(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const months = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+  const [year, month] = dateStr.split('-');
+  return `${months[parseInt(month) - 1]} ${year}`;
+}
+
+function pluralizeDays(count: number): string {
+  const lastTwo = count % 100;
+  const lastOne = count % 10;
+  if (lastTwo >= 11 && lastTwo <= 19) return "дней";
+  if (lastOne === 1) return "день";
+  if (lastOne >= 2 && lastOne <= 4) return "дня";
+  return "дней";
+}
+
 type PeriodOption = { key: StatsPeriod; label: string };
 const PERIOD_OPTIONS: PeriodOption[] = [
   { key: "week", label: "Неделя" },
@@ -82,7 +105,6 @@ function BarChart({
           const heightPct = Math.max((item.value / max) * 100, 6);
           const isLast = i === data.length - 1;
           const isMax = item.value === max && item.value > 0;
-          const isAboveAvg = item.value > avg;
           return (
             <Pressable 
               key={i} 
@@ -106,9 +128,6 @@ function BarChart({
               <ThemedText style={[styles.barLabel, { color: theme.textSecondary }]}>
                 {item.label}
               </ThemedText>
-              {isAboveAvg && item.value > 0 && (
-                <View style={[styles.barDot, { backgroundColor: theme.success }]} />
-              )}
             </Pressable>
           );
         })}
@@ -125,66 +144,124 @@ function BarChart({
   );
 }
 
-function GoalProgress({ 
-  name, 
-  current, 
-  target,
-  color,
+function GoalForecastCard({ 
+  forecast,
 }: { 
-  name: string;
-  current: number;
-  target: number;
-  color: string;
+  forecast: GoalForecast;
 }) {
   const { theme } = useTheme();
-  const pct = target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
+  const pct = forecast.targetAmount > 0 ? Math.min(Math.round((forecast.currentAmount / forecast.targetAmount) * 100), 100) : 0;
+  const isCompleted = pct >= 100;
   
   return (
-    <View style={styles.goalItem}>
-      <View style={styles.goalHeader}>
-        <View style={[styles.goalDot, { backgroundColor: color }]} />
-        <ThemedText style={styles.goalName} numberOfLines={1}>{name}</ThemedText>
-        <ThemedText style={[styles.goalPct, { color: pct >= 100 ? theme.success : theme.textSecondary }]}>
+    <View style={styles.goalForecastItem}>
+      <View style={styles.goalForecastHeader}>
+        <View style={[styles.goalDot, { backgroundColor: forecast.color }]} />
+        <ThemedText style={styles.goalName} numberOfLines={1}>{forecast.goalName}</ThemedText>
+        <ThemedText style={[styles.goalPct, { color: isCompleted ? theme.success : theme.textSecondary }]}>
           {pct}%
         </ThemedText>
       </View>
       <View style={[styles.goalBar, { backgroundColor: theme.backgroundSecondary }]}>
-        <View style={[styles.goalFill, { width: `${pct}%`, backgroundColor: color }]} />
+        <View style={[styles.goalFill, { width: `${pct}%`, backgroundColor: forecast.color }]} />
       </View>
-      <View style={styles.goalAmounts}>
+      <View style={styles.goalForecastFooter}>
         <ThemedText style={[styles.goalAmount, { color: theme.textSecondary }]}>
-          {formatK(current)} ₽
+          {formatK(forecast.currentAmount)} / {formatK(forecast.targetAmount)} ₽
         </ThemedText>
-        <ThemedText style={[styles.goalAmount, { color: theme.textSecondary }]}>
-          {formatK(target)} ₽
-        </ThemedText>
+        {forecast.estimatedDate && !isCompleted ? (
+          <View style={styles.forecastDateBadge}>
+            <ThemedText style={[styles.forecastDateText, { color: theme.accent }]}>
+              📅 ~{formatFullDate(forecast.estimatedDate)}
+            </ThemedText>
+          </View>
+        ) : isCompleted ? (
+          <ThemedText style={[styles.forecastDateText, { color: theme.success }]}>
+            ✅ Достигнута!
+          </ThemedText>
+        ) : (
+          <ThemedText style={[styles.forecastDateText, { color: theme.textSecondary }]}>
+            ⏳ Нет данных
+          </ThemedText>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function GoalsTimelineCard({
+  goalForecasts,
+}: {
+  goalForecasts: GoalForecast[];
+}) {
+  const { theme } = useTheme();
+  const sortedForecasts = useMemo(() => {
+    return [...goalForecasts]
+      .filter(g => g.estimatedDate && g.remainingAmount > 0)
+      .sort((a, b) => new Date(a.estimatedDate || 0).getTime() - new Date(b.estimatedDate || 0).getTime());
+  }, [goalForecasts]);
+  
+  if (sortedForecasts.length === 0) return null;
+  
+  return (
+    <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
+        📆 Таймлайн достижения целей
+      </ThemedText>
+      <View style={styles.timeline}>
+        {sortedForecasts.map((forecast, index) => (
+          <View key={forecast.goalId} style={styles.timelineItem}>
+            <View style={styles.timelineLeft}>
+              <View style={[styles.timelineDot, { backgroundColor: forecast.color }]} />
+              {index < sortedForecasts.length - 1 && (
+                <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+              )}
+            </View>
+            <View style={styles.timelineContent}>
+              <ThemedText style={styles.timelineGoalName}>{forecast.goalName}</ThemedText>
+              <ThemedText style={[styles.timelineDate, { color: theme.textSecondary }]}>
+                ~{formatFullDate(forecast.estimatedDate)} ({forecast.estimatedDays} {pluralizeDays(forecast.estimatedDays || 0)})
+              </ThemedText>
+              <ThemedText style={[styles.timelineAmount, { color: forecast.color }]}>
+                Осталось: {formatK(forecast.remainingAmount)} ₽
+              </ThemedText>
+            </View>
+          </View>
+        ))}
       </View>
     </View>
   );
 }
 
 function StatItem({ 
-  icon, 
+  emoji,
   label, 
   value, 
   color,
   bgColor,
+  subtitle,
 }: { 
-  icon: keyof typeof Feather.glyphMap;
+  emoji: string;
   label: string;
   value: string;
   color: string;
   bgColor: string;
+  subtitle?: string;
 }) {
   const { theme } = useTheme();
   
   return (
     <View style={styles.statItem}>
       <View style={[styles.statIcon, { backgroundColor: bgColor }]}>
-        <Feather name={icon} size={14} color={color} />
+        <ThemedText style={{ fontSize: 14 }}>{emoji}</ThemedText>
       </View>
-      <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
-      <ThemedText style={styles.statValue}>{value}</ThemedText>
+      <View style={styles.statTextContainer}>
+        <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
+        {subtitle && (
+          <ThemedText style={[styles.statSubtitle, { color: theme.textSecondary }]}>{subtitle}</ThemedText>
+        )}
+      </View>
+      <ThemedText style={[styles.statValue, { color }]}>{value}</ThemedText>
     </View>
   );
 }
@@ -257,7 +334,7 @@ function WeeklyComparison({
   
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>Сравнение недель</ThemedText>
+      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>📊 Сравнение недель</ThemedText>
       <View style={styles.weeklyCompRow}>
         <View style={styles.weeklyCol}>
           <ThemedText style={[styles.weeklyLabel, { color: theme.textSecondary }]}>Эта неделя</ThemedText>
@@ -284,58 +361,241 @@ function WeeklyComparison({
   );
 }
 
-function ShiftTypeDistribution({
-  dayShifts,
-  nightShifts,
-  returnsShifts,
-  receivingShifts,
+function ShiftTypeProfitability({
+  dayStats,
+  nightStats,
+  returnsStats,
+  receivingStats,
 }: {
-  dayShifts: number;
-  nightShifts: number;
-  returnsShifts: number;
-  receivingShifts: number;
+  dayStats: { count: number; totalEarnings: number; averageEarnings: number };
+  nightStats: { count: number; totalEarnings: number; averageEarnings: number };
+  returnsStats: { count: number; totalEarnings: number; averageEarnings: number };
+  receivingStats: { count: number; totalEarnings: number; averageEarnings: number };
 }) {
   const { theme } = useTheme();
-  const totalByTime = dayShifts + nightShifts;
-  const totalByType = returnsShifts + receivingShifts;
   
-  const dayPct = totalByTime > 0 ? Math.round((dayShifts / totalByTime) * 100) : 0;
-  const returnsPct = totalByType > 0 ? Math.round((returnsShifts / totalByType) * 100) : 0;
+  const dayVsNightWinner = dayStats.averageEarnings > nightStats.averageEarnings ? 'day' : 
+                           nightStats.averageEarnings > dayStats.averageEarnings ? 'night' : null;
+  const returnsVsReceivingWinner = returnsStats.averageEarnings > receivingStats.averageEarnings ? 'returns' :
+                                   receivingStats.averageEarnings > returnsStats.averageEarnings ? 'receiving' : null;
+  
+  if (dayStats.count === 0 && nightStats.count === 0 && returnsStats.count === 0 && receivingStats.count === 0) {
+    return null;
+  }
   
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>Распределение смен</ThemedText>
-      <View style={styles.distRow}>
-        <View style={styles.distItem}>
-          <View style={styles.distHeader}>
-            <Feather name="sun" size={14} color={theme.warning} />
-            <ThemedText style={styles.distLabel}> День / </ThemedText>
-            <Feather name="moon" size={14} color={theme.accent} />
-            <ThemedText style={styles.distLabel}> Ночь</ThemedText>
+      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
+        💰 Доходность по типам смен
+      </ThemedText>
+      
+      <View style={styles.profitSection}>
+        <ThemedText style={[styles.profitSectionTitle, { color: theme.text }]}>
+          ☀️ День vs 🌙 Ночь
+        </ThemedText>
+        <View style={styles.profitRow}>
+          <View style={[styles.profitCard, dayVsNightWinner === 'day' && styles.profitCardWinner, { backgroundColor: theme.warningLight }]}>
+            <ThemedText style={styles.profitEmoji}>☀️</ThemedText>
+            <ThemedText style={[styles.profitType, { color: theme.warning }]}>Дневные</ThemedText>
+            <ThemedText style={styles.profitCount}>{dayStats.count} смен</ThemedText>
+            <ThemedText style={[styles.profitAvg, { color: theme.text }]}>
+              ~{formatK(dayStats.averageEarnings)} ₽/смена
+            </ThemedText>
+            <ThemedText style={[styles.profitTotal, { color: theme.textSecondary }]}>
+              Всего: {formatK(dayStats.totalEarnings)} ₽
+            </ThemedText>
+            {dayVsNightWinner === 'day' && (
+              <ThemedText style={[styles.winnerBadge, { color: theme.success }]}>✅ Выгоднее</ThemedText>
+            )}
           </View>
-          <View style={[styles.distBar, { backgroundColor: theme.backgroundSecondary }]}>
-            <View style={[styles.distFill, { width: `${dayPct}%`, backgroundColor: theme.warning }]} />
-          </View>
-          <View style={styles.distCounts}>
-            <ThemedText style={[styles.distCount, { color: theme.warning }]}>{dayShifts}</ThemedText>
-            <ThemedText style={[styles.distCount, { color: theme.accent }]}>{nightShifts}</ThemedText>
+          <View style={[styles.profitCard, dayVsNightWinner === 'night' && styles.profitCardWinner, { backgroundColor: theme.accentLight }]}>
+            <ThemedText style={styles.profitEmoji}>🌙</ThemedText>
+            <ThemedText style={[styles.profitType, { color: theme.accent }]}>Ночные</ThemedText>
+            <ThemedText style={styles.profitCount}>{nightStats.count} смен</ThemedText>
+            <ThemedText style={[styles.profitAvg, { color: theme.text }]}>
+              ~{formatK(nightStats.averageEarnings)} ₽/смена
+            </ThemedText>
+            <ThemedText style={[styles.profitTotal, { color: theme.textSecondary }]}>
+              Всего: {formatK(nightStats.totalEarnings)} ₽
+            </ThemedText>
+            {dayVsNightWinner === 'night' && (
+              <ThemedText style={[styles.winnerBadge, { color: theme.success }]}>✅ Выгоднее</ThemedText>
+            )}
           </View>
         </View>
-        <View style={styles.distItem}>
-          <View style={styles.distHeader}>
-            <Feather name="rotate-ccw" size={14} color={theme.success} />
-            <ThemedText style={styles.distLabel}> Возвр / </ThemedText>
-            <Feather name="package" size={14} color={theme.error} />
-            <ThemedText style={styles.distLabel}> Приём</ThemedText>
+      </View>
+      
+      <View style={styles.profitSection}>
+        <ThemedText style={[styles.profitSectionTitle, { color: theme.text }]}>
+          🔄 Возвраты vs 📦 Приёмка
+        </ThemedText>
+        <View style={styles.profitRow}>
+          <View style={[styles.profitCard, returnsVsReceivingWinner === 'returns' && styles.profitCardWinner, { backgroundColor: theme.successLight }]}>
+            <ThemedText style={styles.profitEmoji}>🔄</ThemedText>
+            <ThemedText style={[styles.profitType, { color: theme.success }]}>Возвраты</ThemedText>
+            <ThemedText style={styles.profitCount}>{returnsStats.count} смен</ThemedText>
+            <ThemedText style={[styles.profitAvg, { color: theme.text }]}>
+              ~{formatK(returnsStats.averageEarnings)} ₽/смена
+            </ThemedText>
+            <ThemedText style={[styles.profitTotal, { color: theme.textSecondary }]}>
+              Всего: {formatK(returnsStats.totalEarnings)} ₽
+            </ThemedText>
+            {returnsVsReceivingWinner === 'returns' && (
+              <ThemedText style={[styles.winnerBadge, { color: theme.success }]}>✅ Выгоднее</ThemedText>
+            )}
           </View>
-          <View style={[styles.distBar, { backgroundColor: theme.backgroundSecondary }]}>
-            <View style={[styles.distFill, { width: `${returnsPct}%`, backgroundColor: theme.success }]} />
-          </View>
-          <View style={styles.distCounts}>
-            <ThemedText style={[styles.distCount, { color: theme.success }]}>{returnsShifts}</ThemedText>
-            <ThemedText style={[styles.distCount, { color: theme.error }]}>{receivingShifts}</ThemedText>
+          <View style={[styles.profitCard, returnsVsReceivingWinner === 'receiving' && styles.profitCardWinner, { backgroundColor: theme.errorLight || '#FEE2E2' }]}>
+            <ThemedText style={styles.profitEmoji}>📦</ThemedText>
+            <ThemedText style={[styles.profitType, { color: theme.error }]}>Приёмка</ThemedText>
+            <ThemedText style={styles.profitCount}>{receivingStats.count} смен</ThemedText>
+            <ThemedText style={[styles.profitAvg, { color: theme.text }]}>
+              ~{formatK(receivingStats.averageEarnings)} ₽/смена
+            </ThemedText>
+            <ThemedText style={[styles.profitTotal, { color: theme.textSecondary }]}>
+              Всего: {formatK(receivingStats.totalEarnings)} ₽
+            </ThemedText>
+            {returnsVsReceivingWinner === 'receiving' && (
+              <ThemedText style={[styles.winnerBadge, { color: theme.success }]}>✅ Выгоднее</ThemedText>
+            )}
           </View>
         </View>
+      </View>
+    </View>
+  );
+}
+
+function RecordsCard({
+  recordShiftEarnings,
+  recordShiftDate,
+  recordShiftType,
+  bestWeekEarnings,
+  bestWeekDate,
+  bestMonthEarnings,
+  bestMonthDate,
+}: {
+  recordShiftEarnings: number;
+  recordShiftDate: string | null;
+  recordShiftType: string | null;
+  bestWeekEarnings: number;
+  bestWeekDate: string | null;
+  bestMonthEarnings: number;
+  bestMonthDate: string | null;
+}) {
+  const { theme } = useTheme();
+  
+  if (recordShiftEarnings === 0 && bestWeekEarnings === 0 && bestMonthEarnings === 0) {
+    return null;
+  }
+  
+  return (
+    <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
+        🏆 Ваши рекорды
+      </ThemedText>
+      
+      {recordShiftEarnings > 0 && (
+        <View style={styles.recordItem}>
+          <View style={[styles.recordIcon, { backgroundColor: '#FFD700' + '20' }]}>
+            <ThemedText style={{ fontSize: 20 }}>🥇</ThemedText>
+          </View>
+          <View style={styles.recordContent}>
+            <ThemedText style={styles.recordLabel}>Рекорд за смену</ThemedText>
+            <ThemedText style={[styles.recordValue, { color: theme.success }]}>
+              {formatFullCurrency(recordShiftEarnings)}
+            </ThemedText>
+            <ThemedText style={[styles.recordMeta, { color: theme.textSecondary }]}>
+              {recordShiftType} • {formatFullDate(recordShiftDate)}
+            </ThemedText>
+          </View>
+        </View>
+      )}
+      
+      {bestWeekEarnings > 0 && (
+        <View style={styles.recordItem}>
+          <View style={[styles.recordIcon, { backgroundColor: theme.accentLight }]}>
+            <ThemedText style={{ fontSize: 20 }}>📅</ThemedText>
+          </View>
+          <View style={styles.recordContent}>
+            <ThemedText style={styles.recordLabel}>Лучшая неделя</ThemedText>
+            <ThemedText style={[styles.recordValue, { color: theme.accent }]}>
+              {formatFullCurrency(bestWeekEarnings)}
+            </ThemedText>
+            <ThemedText style={[styles.recordMeta, { color: theme.textSecondary }]}>
+              Неделя с {formatFullDate(bestWeekDate)}
+            </ThemedText>
+          </View>
+        </View>
+      )}
+      
+      {bestMonthEarnings > 0 && (
+        <View style={styles.recordItem}>
+          <View style={[styles.recordIcon, { backgroundColor: theme.successLight }]}>
+            <ThemedText style={{ fontSize: 20 }}>📆</ThemedText>
+          </View>
+          <View style={styles.recordContent}>
+            <ThemedText style={styles.recordLabel}>Лучший месяц</ThemedText>
+            <ThemedText style={[styles.recordValue, { color: theme.success }]}>
+              {formatFullCurrency(bestMonthEarnings)}
+            </ThemedText>
+            <ThemedText style={[styles.recordMeta, { color: theme.textSecondary }]}>
+              {formatMonthYear(bestMonthDate)}
+            </ThemedText>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function AmountForecastCard({
+  dailyAverage,
+}: {
+  dailyAverage: number;
+}) {
+  const { theme } = useTheme();
+  const [targetAmount, setTargetAmount] = useState(100000);
+  
+  const amounts = [50000, 100000, 200000, 500000];
+  
+  if (dailyAverage <= 0) return null;
+  
+  return (
+    <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+      <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
+        🔮 Прогноз достижения суммы
+      </ThemedText>
+      <View style={styles.forecastButtonsRow}>
+        {amounts.map(amount => (
+          <Pressable
+            key={amount}
+            style={[
+              styles.forecastButton,
+              { backgroundColor: targetAmount === amount ? theme.accent : theme.backgroundSecondary }
+            ]}
+            onPress={() => setTargetAmount(amount)}
+          >
+            <ThemedText style={[
+              styles.forecastButtonText,
+              { color: targetAmount === amount ? '#FFF' : theme.text }
+            ]}>
+              {formatK(amount)}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
+      <View style={styles.forecastResult}>
+        <ThemedText style={[styles.forecastTargetText, { color: theme.textSecondary }]}>
+          Чтобы заработать {formatFullCurrency(targetAmount)}:
+        </ThemedText>
+        <View style={styles.forecastDays}>
+          <ThemedText style={{ fontSize: 28 }}>📈</ThemedText>
+          <ThemedText style={[styles.forecastDaysValue, { color: theme.accent }]}>
+            ~{Math.ceil(targetAmount / dailyAverage)} {pluralizeDays(Math.ceil(targetAmount / dailyAverage))}
+          </ThemedText>
+        </View>
+        <ThemedText style={[styles.forecastDateResult, { color: theme.success }]}>
+          📅 ~{formatFullDate(new Date(Date.now() + Math.ceil(targetAmount / dailyAverage) * 24 * 60 * 60 * 1000))}
+        </ThemedText>
       </View>
     </View>
   );
@@ -370,11 +630,6 @@ export default function StatisticsScreen() {
     while (last7.length < 7) last7.unshift({ date: new Date().toISOString(), amount: 0 });
     return last7.map(d => ({ label: formatDay(d.date), value: d.amount, date: d.date }));
   }, [stats?.dailyEarningsHistory]);
-
-  const activeGoals = useMemo(() => {
-    if (!goals) return [];
-    return goals.filter(g => g.status === 'active').slice(0, 5);
-  }, [goals]);
 
   const nextScheduledShift = useMemo(() => {
     if (!shifts) return null;
@@ -421,18 +676,6 @@ export default function StatisticsScreen() {
     
     return { thisWeek, lastWeek };
   }, [shifts]);
-
-  const shiftTypeStats = useMemo(() => {
-    if (!shifts) return { dayShifts: 0, nightShifts: 0, returnsShifts: 0, receivingShifts: 0 };
-    const completedShifts = shifts.filter(s => s.status === 'completed');
-    return {
-      dayShifts: completedShifts.filter(s => s.shiftType === 'day').length,
-      nightShifts: completedShifts.filter(s => s.shiftType === 'night').length,
-      returnsShifts: completedShifts.filter(s => s.operationType === 'returns').length,
-      receivingShifts: completedShifts.filter(s => s.operationType === 'receiving').length,
-    };
-  }, [shifts]);
-
 
   if (isLoading) {
     return (
@@ -504,7 +747,7 @@ export default function StatisticsScreen() {
       )}
 
       <View style={styles.heroSection}>
-        <ThemedText style={[styles.heroLabel, { color: theme.textSecondary }]}>Заработано</ThemedText>
+        <ThemedText style={[styles.heroLabel, { color: theme.textSecondary }]}>💵 Заработано</ThemedText>
         <View style={styles.heroRow}>
           <ThemedText style={styles.heroAmount}>
             {formatFullCurrency(stats?.totalEarnings || 0)}
@@ -520,42 +763,57 @@ export default function StatisticsScreen() {
       </View>
 
       <View style={[styles.card, styles.chartCard, { backgroundColor: theme.backgroundDefault }]}>
-        <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>Доход по дням</ThemedText>
+        <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>📈 Доход по дням</ThemedText>
         <BarChart data={chartData} color={theme.accent} bgColor={theme.accentLight} />
       </View>
 
       <WeeklyComparison thisWeek={weeklyStats.thisWeek} lastWeek={weeklyStats.lastWeek} />
 
-      {(shiftTypeStats.dayShifts + shiftTypeStats.nightShifts > 0) && (
-        <ShiftTypeDistribution {...shiftTypeStats} />
-      )}
-
-      {activeGoals.length > 0 && (
+      {stats?.goalForecasts && stats.goalForecasts.length > 0 && (
         <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
-          <ThemedText style={styles.cardTitle}>Цели</ThemedText>
-          {activeGoals.map((goal) => (
-            <GoalProgress
-              key={goal.id}
-              name={goal.name}
-              current={parseFloat(String(goal.currentAmount)) || 0}
-              target={parseFloat(String(goal.targetAmount)) || 0}
-              color={goal.iconColor || theme.accent}
-            />
+          <ThemedText style={[styles.cardTitle, { color: theme.textSecondary }]}>
+            🎯 Прогноз достижения целей
+          </ThemedText>
+          {stats.goalForecasts.map((forecast) => (
+            <GoalForecastCard key={forecast.goalId} forecast={forecast} />
           ))}
         </View>
       )}
 
+      {stats?.goalForecasts && (
+        <GoalsTimelineCard goalForecasts={stats.goalForecasts} />
+      )}
+
+      <ShiftTypeProfitability
+        dayStats={stats?.dayShiftStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
+        nightStats={stats?.nightShiftStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
+        returnsStats={stats?.returnsShiftStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
+        receivingStats={stats?.receivingShiftStats || { count: 0, totalEarnings: 0, averageEarnings: 0 }}
+      />
+
+      <RecordsCard
+        recordShiftEarnings={stats?.recordShiftEarnings || 0}
+        recordShiftDate={stats?.recordShiftDate || null}
+        recordShiftType={stats?.recordShiftType || null}
+        bestWeekEarnings={stats?.bestWeekEarnings || 0}
+        bestWeekDate={stats?.bestWeekDate || null}
+        bestMonthEarnings={stats?.bestMonthEarnings || 0}
+        bestMonthDate={stats?.bestMonthDate || null}
+      />
+
+      <AmountForecastCard dailyAverage={stats?.dailyAverageEarnings || 0} />
+
       <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
         <StatItem
-          icon="trending-up"
-          label="Средний"
+          emoji="📊"
+          label="Средний за смену"
           value={formatK(stats?.averagePerShift || 0) + " ₽"}
           color={theme.accent}
           bgColor={theme.accentLight}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <StatItem
-          icon="calendar"
+          emoji="📅"
           label="Запланировано"
           value={String(stats?.shiftsByType.future || 0)}
           color={theme.warning}
@@ -563,28 +821,29 @@ export default function StatisticsScreen() {
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <StatItem
-          icon="credit-card"
-          label="Баланс"
+          emoji="💳"
+          label="Свободный баланс"
           value={formatK(stats?.freeBalance || 0) + " ₽"}
           color={theme.success}
           bgColor={theme.successLight}
+          subtitle="Не распределён на цели"
         />
       </View>
 
       {stats?.streak && stats.streak > 0 ? (
         <View style={[styles.banner, { backgroundColor: theme.warningLight }]}>
-          <Feather name="zap" size={14} color={theme.warning} />
+          <ThemedText style={{ fontSize: 14 }}>⚡</ThemedText>
           <ThemedText style={[styles.bannerText, { color: theme.warning }]}>
-            {stats.streak} {stats.streak === 1 ? 'день' : stats.streak < 5 ? 'дня' : 'дней'} подряд
+            {stats.streak} {stats.streak === 1 ? 'день' : stats.streak < 5 ? 'дня' : 'дней'} подряд работаете!
           </ThemedText>
         </View>
       ) : null}
 
       {stats?.daysToGoalForecast && stats.daysToGoalForecast > 0 ? (
         <View style={[styles.banner, { backgroundColor: theme.accentLight }]}>
-          <Feather name="flag" size={14} color={theme.accent} />
+          <ThemedText style={{ fontSize: 14 }}>🏁</ThemedText>
           <ThemedText style={[styles.bannerText, { color: theme.accent }]}>
-            До цели ~{stats.daysToGoalForecast} дней
+            До всех целей ~{stats.daysToGoalForecast} {pluralizeDays(stats.daysToGoalForecast)}
           </ThemedText>
         </View>
       ) : null}
@@ -625,6 +884,7 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     marginBottom: Spacing.lg,
+    marginLeft: Spacing.md,
   },
   heroLabel: {
     fontSize: 11,
@@ -692,12 +952,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 3,
   },
-  barDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 2,
-  },
   avgRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -711,10 +965,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginLeft: Spacing.sm,
   },
-  goalItem: {
-    marginBottom: Spacing.sm,
+  goalForecastItem: {
+    marginBottom: Spacing.md,
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  goalHeader: {
+  goalForecastHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 4,
@@ -728,6 +985,7 @@ const styles = StyleSheet.create({
   goalName: {
     flex: 1,
     fontSize: 13,
+    fontWeight: "500",
   },
   goalPct: {
     fontSize: 12,
@@ -742,30 +1000,84 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 3,
   },
-  goalAmounts: {
+  goalForecastFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 2,
+    alignItems: "center",
+    marginTop: 6,
   },
   goalAmount: {
     fontSize: 10,
   },
+  forecastDateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  forecastDateText: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  timeline: {
+    marginTop: Spacing.sm,
+  },
+  timelineItem: {
+    flexDirection: "row",
+    minHeight: 60,
+  },
+  timelineLeft: {
+    width: 24,
+    alignItems: "center",
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    marginTop: 4,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingLeft: Spacing.sm,
+    paddingBottom: Spacing.md,
+  },
+  timelineGoalName: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  timelineDate: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  timelineAmount: {
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: "500",
+  },
   statItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   statIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     marginRight: Spacing.sm,
   },
-  statLabel: {
+  statTextContainer: {
     flex: 1,
+  },
+  statLabel: {
     fontSize: 13,
+  },
+  statSubtitle: {
+    fontSize: 10,
+    marginTop: 1,
   },
   statValue: {
     fontSize: 14,
@@ -871,36 +1183,119 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 2,
   },
-  distRow: {
-    gap: Spacing.md,
+  profitSection: {
+    marginBottom: Spacing.md,
   },
-  distItem: {
-    marginBottom: Spacing.xs,
+  profitSectionTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: Spacing.sm,
   },
-  distHeader: {
+  profitRow: {
     flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  profitCard: {
+    flex: 1,
+    padding: Spacing.sm,
+    borderRadius: 10,
     alignItems: "center",
+  },
+  profitCardWinner: {
+    borderWidth: 2,
+    borderColor: '#22C55E',
+  },
+  profitEmoji: {
+    fontSize: 24,
     marginBottom: 4,
   },
-  distLabel: {
-    fontSize: 11,
-  },
-  distBar: {
-    height: 6,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  distFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  distCounts: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 3,
-  },
-  distCount: {
-    fontSize: 11,
+  profitType: {
+    fontSize: 12,
     fontWeight: "600",
+  },
+  profitCount: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  profitAvg: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  profitTotal: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  winnerBadge: {
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  recordItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  recordIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.sm,
+  },
+  recordContent: {
+    flex: 1,
+  },
+  recordLabel: {
+    fontSize: 12,
+  },
+  recordValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  recordMeta: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  forecastButtonsRow: {
+    flexDirection: "row",
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
+  forecastButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  forecastButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  forecastResult: {
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+  },
+  forecastTargetText: {
+    fontSize: 12,
+    marginBottom: Spacing.sm,
+  },
+  forecastDays: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  forecastDaysValue: {
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  forecastDateResult: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: Spacing.sm,
   },
 });

@@ -198,8 +198,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   balanceSection: {
-    alignItems: "center",
+    alignItems: "flex-end",
     paddingVertical: Spacing.lg,
+    marginRight: Spacing.md,
   },
   balanceLabel: {
     letterSpacing: 1.5,
