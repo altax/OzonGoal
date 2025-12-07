@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -18,6 +19,7 @@ import { useGoals, useDeleteGoal, useUpdateGoal } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const BUTTON_AREA_HEIGHT = 72;
+const GOAL_VIEW_MODE_KEY = "goal_view_mode";
 
 type GoalFilter = "active" | "completed";
 type ViewMode = "full" | "compact";
@@ -47,6 +49,18 @@ export default function GoalsScreen() {
   
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorPosition = useSharedValue(0);
+
+  useEffect(() => {
+    AsyncStorage.getItem(GOAL_VIEW_MODE_KEY).then((stored) => {
+      if (stored === "full" || stored === "compact") {
+        setViewMode(stored);
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(GOAL_VIEW_MODE_KEY, viewMode).catch(() => {});
+  }, [viewMode]);
   
   const handleFilterChange = (newFilter: GoalFilter) => {
     indicatorPosition.value = withTiming(newFilter === "active" ? 0 : 1, {
