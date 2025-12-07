@@ -87,26 +87,19 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const handleDeleteAll = () => {
-    Alert.alert(
-      "Удалить все",
-      "Вы уверены, что хотите удалить все скрытые смены? Это действие нельзя отменить.",
-      [
-        { text: "Отмена", style: "cancel" },
-        { 
-          text: "Удалить", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteAllHiddenShifts.mutateAsync();
-              onClose();
-            } catch (error) {
-              Alert.alert("Ошибка", "Не удалось удалить смены");
-            }
-          }
-        },
-      ]
+  const handleDeleteAll = async () => {
+    const confirmed = window.confirm(
+      "Вы уверены, что хотите удалить все скрытые смены? Это действие нельзя отменить."
     );
+    
+    if (confirmed) {
+      try {
+        await deleteAllHiddenShifts.mutateAsync();
+        onClose();
+      } catch (error) {
+        window.alert("Не удалось удалить смены");
+      }
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -344,26 +337,19 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const handleDeleteAll = () => {
-    Alert.alert(
-      "Удалить все",
-      "Вы уверены, что хотите удалить все скрытые цели? Это действие нельзя отменить.",
-      [
-        { text: "Отмена", style: "cancel" },
-        { 
-          text: "Удалить", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteAllHiddenGoals.mutateAsync();
-              onClose();
-            } catch (error) {
-              Alert.alert("Ошибка", "Не удалось удалить цели");
-            }
-          }
-        },
-      ]
+  const handleDeleteAll = async () => {
+    const confirmed = window.confirm(
+      "Вы уверены, что хотите удалить все скрытые цели? Это действие нельзя отменить."
     );
+    
+    if (confirmed) {
+      try {
+        await deleteAllHiddenGoals.mutateAsync();
+        onClose();
+      } catch (error) {
+        window.alert("Не удалось удалить цели");
+      }
+    }
   };
 
   return (
