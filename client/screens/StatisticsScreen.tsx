@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   bar: {
-    width: 14,
+    width: 18,
     borderRadius: 4,
     minHeight: 4,
   },
