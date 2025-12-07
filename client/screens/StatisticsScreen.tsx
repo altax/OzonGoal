@@ -14,18 +14,21 @@ import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useEarningsStats, type StatsPeriod } from "@/api";
 
-function formatCurrency(amount: number): string {
-  if (amount >= 1000000) {
-    return (amount / 1000000).toFixed(1).replace('.0', '') + "М";
-  }
+function formatK(amount: number): string {
   if (amount >= 1000) {
-    return Math.round(amount / 1000) + "К";
+    return (amount / 1000).toFixed(1).replace('.0', '') + "К";
   }
   return String(Math.round(amount));
 }
 
 function formatFullCurrency(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(Math.round(amount)) + " ₽";
+}
+
+function formatDay(dateStr: string): string {
+  const d = new Date(dateStr);
+  const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  return days[d.getDay()];
 }
 
 type PeriodOption = { key: StatsPeriod; label: string };
@@ -35,39 +38,50 @@ const PERIOD_OPTIONS: PeriodOption[] = [
   { key: "year", label: "Год" },
 ];
 
-function MiniSparkline({ 
+function BarChart({ 
   data, 
   color,
-  height = 40,
+  bgColor,
 }: { 
-  data: number[];
+  data: { label: string; value: number }[];
   color: string;
-  height?: number;
+  bgColor: string;
 }) {
-  const max = Math.max(...data, 1);
-  const barWidth = 100 / data.length;
+  const { theme } = useTheme();
+  const max = Math.max(...data.map(d => d.value), 1);
   
   return (
-    <View style={[styles.sparkline, { height }]}>
-      {data.map((value, i) => (
-        <View 
-          key={i} 
-          style={[
-            styles.sparkBar,
-            { 
-              height: `${Math.max((value / max) * 100, 8)}%`,
-              width: `${barWidth - 2}%`,
-              backgroundColor: color,
-              opacity: i === data.length - 1 ? 1 : 0.4,
-            }
-          ]} 
-        />
-      ))}
+    <View style={styles.barChart}>
+      {data.map((item, i) => {
+        const heightPct = Math.max((item.value / max) * 100, 6);
+        const isLast = i === data.length - 1;
+        return (
+          <View key={i} style={styles.barCol}>
+            {item.value > 0 && (
+              <ThemedText style={[styles.barValue, { color: isLast ? color : theme.textSecondary }]}>
+                {formatK(item.value)}
+              </ThemedText>
+            )}
+            <View 
+              style={[
+                styles.bar,
+                { 
+                  height: `${heightPct}%`,
+                  backgroundColor: isLast ? color : bgColor,
+                }
+              ]} 
+            />
+            <ThemedText style={[styles.barLabel, { color: theme.textSecondary }]}>
+              {item.label}
+            </ThemedText>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
-function StatRow({ 
+function StatItem({ 
   icon, 
   label, 
   value, 
@@ -83,12 +97,12 @@ function StatRow({
   const { theme } = useTheme();
   
   return (
-    <View style={styles.statRow}>
+    <View style={styles.statItem}>
       <View style={[styles.statIcon, { backgroundColor: bgColor }]}>
-        <Feather name={icon} size={16} color={color} />
+        <Feather name={icon} size={14} color={color} />
       </View>
-      <ThemedText type="body" style={{ flex: 1, color: theme.textSecondary }}>{label}</ThemedText>
-      <ThemedText type="h4">{value}</ThemedText>
+      <ThemedText style={[styles.statLabel, { color: theme.textSecondary }]}>{label}</ThemedText>
+      <ThemedText style={styles.statValue}>{value}</ThemedText>
     </View>
   );
 }
@@ -103,7 +117,7 @@ export default function StatisticsScreen() {
   const indicatorX = useSharedValue(activeIndex);
   
   const handlePeriodChange = (newPeriod: StatsPeriod, index: number) => {
-    indicatorX.value = withTiming(index, { duration: 200, easing: Easing.out(Easing.cubic) });
+    indicatorX.value = withTiming(index, { duration: 180, easing: Easing.out(Easing.cubic) });
     setPeriod(newPeriod);
   };
   
@@ -111,14 +125,16 @@ export default function StatisticsScreen() {
     left: `${(indicatorX.value / 3) * 100}%`,
   }));
 
-  const sparkData = useMemo(() => {
-    if (!stats?.dailyEarningsHistory) return [0, 0, 0, 0, 0, 0, 0];
+  const chartData = useMemo(() => {
+    if (!stats?.dailyEarningsHistory) {
+      return Array(7).fill(null).map((_, i) => ({ label: '', value: 0 }));
+    }
     const last7 = stats.dailyEarningsHistory.slice(-7);
-    while (last7.length < 7) last7.unshift({ date: '', amount: 0 });
-    return last7.map(d => d.amount);
+    while (last7.length < 7) last7.unshift({ date: new Date().toISOString(), amount: 0 });
+    return last7.map(d => ({ label: formatDay(d.date), value: d.amount }));
   }, [stats?.dailyEarningsHistory]);
 
-  const progressPercent = stats?.goalsProgressPercent || 0;
+  const progressPct = stats?.goalsProgressPercent || 0;
 
   if (isLoading) {
     return (
@@ -131,15 +147,15 @@ export default function StatisticsScreen() {
   if (error) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <Feather name="wifi-off" size={40} color={theme.textSecondary} />
-        <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
+        <Feather name="wifi-off" size={32} color={theme.textSecondary} />
+        <ThemedText style={{ color: theme.textSecondary, marginTop: Spacing.sm, fontSize: 14 }}>
           Нет подключения
         </ThemedText>
         <Pressable 
           style={[styles.retryBtn, { backgroundColor: theme.accent }]}
           onPress={() => refetch()}
         >
-          <ThemedText type="small" style={{ color: "#FFF" }}>Повторить</ThemedText>
+          <ThemedText style={{ color: "#FFF", fontSize: 13 }}>Повторить</ThemedText>
         </Pressable>
       </View>
     );
@@ -149,9 +165,9 @@ export default function StatisticsScreen() {
     <ScrollView
       style={[styles.container, { backgroundColor: theme.backgroundContent }]}
       contentContainerStyle={{
-        paddingTop: Spacing.lg,
-        paddingHorizontal: Spacing.xl,
-        paddingBottom: Spacing["3xl"] + insets.bottom,
+        paddingTop: Spacing.md,
+        paddingHorizontal: Spacing.lg,
+        paddingBottom: Spacing.xl + insets.bottom,
       }}
       showsVerticalScrollIndicator={false}
     >
@@ -170,11 +186,11 @@ export default function StatisticsScreen() {
             onPress={() => handlePeriodChange(option.key, index)}
           >
             <ThemedText
-              type="small"
-              style={{
-                color: period === option.key ? theme.text : theme.textSecondary,
-                fontWeight: period === option.key ? "600" : "400",
-              }}
+              style={[
+                styles.periodText,
+                { color: period === option.key ? theme.text : theme.textSecondary },
+                period === option.key && { fontWeight: "600" },
+              ]}
             >
               {option.label}
             </ThemedText>
@@ -183,60 +199,48 @@ export default function StatisticsScreen() {
       </View>
 
       <View style={styles.heroSection}>
-        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-          Заработано
-        </ThemedText>
+        <ThemedText style={[styles.heroLabel, { color: theme.textSecondary }]}>Заработано</ThemedText>
         <View style={styles.heroRow}>
           <ThemedText style={styles.heroAmount}>
             {formatFullCurrency(stats?.totalEarnings || 0)}
           </ThemedText>
           {stats?.completedShiftsCount ? (
-            <View style={[styles.shiftsBadge, { backgroundColor: theme.accentLight }]}>
-              <ThemedText type="caption" style={{ color: theme.accent }}>
-                {stats.completedShiftsCount} {stats.completedShiftsCount === 1 ? 'смена' : 'смен'}
+            <View style={[styles.badge, { backgroundColor: theme.accentLight }]}>
+              <ThemedText style={[styles.badgeText, { color: theme.accent }]}>
+                {stats.completedShiftsCount} смен
               </ThemedText>
             </View>
           ) : null}
         </View>
-        
-        <MiniSparkline data={sparkData} color={theme.accent} />
       </View>
 
-      <View style={[styles.progressCard, { backgroundColor: theme.backgroundDefault }]}>
-        <View style={styles.progressHeader}>
+      <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+        <BarChart data={chartData} color={theme.accent} bgColor={theme.accentLight} />
+      </View>
+
+      <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+        <View style={styles.progressRow}>
           <View style={[styles.progressIcon, { backgroundColor: theme.successLight }]}>
-            <Feather name="target" size={18} color={theme.success} />
+            <Feather name="target" size={14} color={theme.success} />
           </View>
-          <View style={styles.progressInfo}>
-            <ThemedText type="body">Прогресс целей</ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {progressPercent}% выполнено
-            </ThemedText>
-          </View>
+          <ThemedText style={styles.progressLabel}>Прогресс целей</ThemedText>
+          <ThemedText style={[styles.progressPct, { color: theme.success }]}>{progressPct}%</ThemedText>
         </View>
         <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { 
-                width: `${Math.min(progressPercent, 100)}%`,
-                backgroundColor: theme.success,
-              }
-            ]} 
-          />
+          <View style={[styles.progressFill, { width: `${Math.min(progressPct, 100)}%`, backgroundColor: theme.success }]} />
         </View>
       </View>
 
-      <View style={[styles.statsCard, { backgroundColor: theme.backgroundDefault }]}>
-        <StatRow
+      <View style={[styles.card, { backgroundColor: theme.backgroundDefault }]}>
+        <StatItem
           icon="trending-up"
-          label="Средний заработок"
-          value={formatCurrency(stats?.averagePerShift || 0) + " ₽"}
+          label="Средний"
+          value={formatK(stats?.averagePerShift || 0) + " ₽"}
           color={theme.accent}
           bgColor={theme.accentLight}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <StatRow
+        <StatItem
           icon="calendar"
           label="Запланировано"
           value={String(stats?.shiftsByType.future || 0)}
@@ -244,29 +248,29 @@ export default function StatisticsScreen() {
           bgColor={theme.warningLight}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <StatRow
+        <StatItem
           icon="credit-card"
-          label="Свободный баланс"
-          value={formatCurrency(stats?.freeBalance || 0) + " ₽"}
+          label="Баланс"
+          value={formatK(stats?.freeBalance || 0) + " ₽"}
           color={theme.success}
           bgColor={theme.successLight}
         />
       </View>
 
       {stats?.streak && stats.streak > 0 ? (
-        <View style={[styles.streakBanner, { backgroundColor: theme.warningLight }]}>
-          <Feather name="zap" size={18} color={theme.warning} />
-          <ThemedText type="body" style={{ color: theme.warning, marginLeft: Spacing.sm, fontWeight: "600" }}>
+        <View style={[styles.banner, { backgroundColor: theme.warningLight }]}>
+          <Feather name="zap" size={14} color={theme.warning} />
+          <ThemedText style={[styles.bannerText, { color: theme.warning }]}>
             {stats.streak} {stats.streak === 1 ? 'день' : stats.streak < 5 ? 'дня' : 'дней'} подряд
           </ThemedText>
         </View>
       ) : null}
 
       {stats?.daysToGoalForecast && stats.daysToGoalForecast > 0 ? (
-        <View style={[styles.forecastBanner, { backgroundColor: theme.accentLight }]}>
-          <Feather name="flag" size={16} color={theme.accent} />
-          <ThemedText type="small" style={{ color: theme.accent, marginLeft: Spacing.sm }}>
-            До цели примерно {stats.daysToGoalForecast} дней
+        <View style={[styles.banner, { backgroundColor: theme.accentLight }]}>
+          <Feather name="flag" size={14} color={theme.accent} />
+          <ThemedText style={[styles.bannerText, { color: theme.accent }]}>
+            До цели ~{stats.daysToGoalForecast} дней
           </ThemedText>
         </View>
       ) : null}
@@ -284,121 +288,157 @@ const styles = StyleSheet.create({
   },
   periodTabs: {
     flexDirection: "row",
-    borderRadius: BorderRadius.sm,
-    padding: 3,
-    marginBottom: Spacing.xl,
+    borderRadius: 8,
+    padding: 2,
+    marginBottom: Spacing.md,
     position: "relative",
   },
   periodIndicator: {
     position: "absolute",
-    top: 3,
-    bottom: 3,
+    top: 2,
+    bottom: 2,
     width: "33.33%",
-    borderRadius: BorderRadius.xs,
+    borderRadius: 6,
   },
   periodTab: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: Spacing.sm,
+    paddingVertical: 6,
     zIndex: 1,
   },
+  periodText: {
+    fontSize: 12,
+  },
   heroSection: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.md,
+  },
+  heroLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   heroRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.lg,
+    marginTop: 2,
   },
   heroAmount: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "700",
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
-  shiftsBadge: {
-    marginLeft: Spacing.md,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
+  badge: {
+    marginLeft: Spacing.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
-  sparkline: {
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  card: {
+    padding: Spacing.md,
+    borderRadius: 12,
+    marginBottom: Spacing.sm,
+  },
+  barChart: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
+    height: 90,
   },
-  sparkBar: {
-    borderRadius: 3,
+  barCol: {
+    flex: 1,
+    alignItems: "center",
+    height: "100%",
+    justifyContent: "flex-end",
   },
-  progressCard: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
+  barValue: {
+    fontSize: 9,
+    fontWeight: "600",
+    marginBottom: 2,
   },
-  progressHeader: {
+  bar: {
+    width: 20,
+    borderRadius: 4,
+    minHeight: 4,
+  },
+  barLabel: {
+    fontSize: 10,
+    marginTop: 4,
+  },
+  progressRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   progressIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.xs,
+    width: 26,
+    height: 26,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: Spacing.md,
+    marginRight: Spacing.sm,
   },
-  progressInfo: {
+  progressLabel: {
     flex: 1,
+    fontSize: 13,
+  },
+  progressPct: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   progressBar: {
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderRadius: 4,
+    borderRadius: 3,
   },
-  statsCard: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-  },
-  statRow: {
+  statItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: Spacing.sm,
+    paddingVertical: 6,
   },
   statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: BorderRadius.xs,
+    width: 26,
+    height: 26,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: Spacing.md,
+    marginRight: Spacing.sm,
+  },
+  statLabel: {
+    flex: 1,
+    fontSize: 13,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   divider: {
     height: 1,
-    marginVertical: Spacing.xs,
+    marginVertical: 2,
   },
-  streakBanner: {
+  banner: {
     flexDirection: "row",
     alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.sm,
+    padding: Spacing.sm,
+    borderRadius: 10,
+    marginBottom: 6,
   },
-  forecastBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
+  bannerText: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 6,
   },
   retryBtn: {
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.xs,
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
 });
