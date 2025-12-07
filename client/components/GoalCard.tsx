@@ -106,14 +106,12 @@ const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
 };
 
 const MILESTONES = [0, 25, 50, 75, 100];
-const ACTION_BUTTON_WIDTH = 70;
-const SWIPE_THRESHOLD = 80;
+const SWIPE_THRESHOLD = 100;
 
 export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, compact = false, averageEarningsPerShift = 3200 }: GoalCardProps) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
-  const actionsVisible = useSharedValue(false);
   
   const currentAmount = parseFloat(String(goal.currentAmount)) || 0;
   const targetAmount = parseFloat(String(goal.targetAmount)) || 1;
@@ -129,44 +127,42 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   const shiftsNeeded = remaining > 0 ? Math.ceil(remaining / averageEarningsPerShift) : 0;
 
   const handleHide = () => {
-    if (onHide && goal.status !== "completed") {
+    if (onHide) {
       onHide(goal.id);
     }
     translateX.value = withSpring(0);
-    actionsVisible.value = false;
   };
 
   const handleDelete = () => {
     if (onDelete) {
       onDelete(goal.id);
     }
+    translateX.value = withSpring(0);
   };
 
   const panGesture = Gesture.Pan()
-    .activeOffsetX([-10, 10])
-    .failOffsetY([-10, 10])
+    .activeOffsetX([-15, 15])
+    .failOffsetY([-5, 5])
     .onUpdate((event) => {
       const newX = event.translationX;
       
       if (newX > 0) {
-        if (!isCompleted) {
-          translateX.value = Math.min(newX, SWIPE_THRESHOLD + 20);
-        }
+        translateX.value = Math.min(newX, SWIPE_THRESHOLD + 40);
       } else {
-        translateX.value = Math.max(newX, -(ACTION_BUTTON_WIDTH + 10));
+        translateX.value = Math.max(newX, -(SWIPE_THRESHOLD + 40));
       }
     })
     .onEnd((event) => {
-      if (event.translationX > SWIPE_THRESHOLD && !isCompleted) {
-        translateX.value = withTiming(SWIPE_THRESHOLD + 50, { duration: 200 }, () => {
+      if (event.translationX > SWIPE_THRESHOLD) {
+        translateX.value = withTiming(SWIPE_THRESHOLD + 60, { duration: 150 }, () => {
           runOnJS(handleHide)();
         });
       } else if (event.translationX < -SWIPE_THRESHOLD) {
-        translateX.value = withSpring(-ACTION_BUTTON_WIDTH);
-        actionsVisible.value = true;
+        translateX.value = withTiming(-(SWIPE_THRESHOLD + 60), { duration: 150 }, () => {
+          runOnJS(handleDelete)();
+        });
       } else {
         translateX.value = withSpring(0);
-        actionsVisible.value = false;
       }
     });
 
@@ -212,16 +208,11 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
     return (
       <View style={styles.swipeContainer}>
         <Animated.View style={[styles.hideIndicator, { backgroundColor: '#64748B' }, hideIndicatorStyle]}>
-          <Feather name="eye-off" size={16} color="#FFFFFF" />
+          <ThemedText style={styles.swipeActionText}>Скрыть</ThemedText>
         </Animated.View>
 
-        <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
-          <Pressable
-            style={[styles.actionButtonCompact, { backgroundColor: '#94A3B8' }]}
-            onPress={handleDelete}
-          >
-            <Feather name="trash-2" size={16} color="#FFFFFF" />
-          </Pressable>
+        <Animated.View style={[styles.deleteIndicator, { backgroundColor: '#EF4444' }, actionsContainerStyle]}>
+          <ThemedText style={styles.swipeActionText}>Удалить</ThemedText>
         </Animated.View>
 
         <GestureDetector gesture={panGesture}>
@@ -298,18 +289,11 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   return (
     <View style={styles.swipeContainer}>
       <Animated.View style={[styles.hideIndicator, { backgroundColor: '#64748B' }, hideIndicatorStyle]}>
-        <Feather name="eye-off" size={20} color="#FFFFFF" />
-        <ThemedText style={styles.hideText}>Скрыть</ThemedText>
+        <ThemedText style={styles.swipeActionText}>Скрыть</ThemedText>
       </Animated.View>
 
-      <Animated.View style={[styles.actionsContainer, actionsContainerStyle]}>
-        <Pressable
-          style={[styles.actionButton, { backgroundColor: '#94A3B8' }]}
-          onPress={handleDelete}
-        >
-          <Feather name="trash-2" size={20} color="#FFFFFF" />
-          <ThemedText style={styles.actionText}>Удалить</ThemedText>
-        </Pressable>
+      <Animated.View style={[styles.deleteIndicator, { backgroundColor: '#EF4444' }, actionsContainerStyle]}>
+        <ThemedText style={styles.swipeActionText}>Удалить</ThemedText>
       </Animated.View>
 
       <GestureDetector gesture={panGesture}>
@@ -506,46 +490,28 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: SWIPE_THRESHOLD + 30,
+    width: SWIPE_THRESHOLD + 40,
     borderRadius: BorderRadius.md,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: Spacing.sm,
     zIndex: 1,
   },
-  hideText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  actionsContainer: {
+  deleteIndicator: {
     position: "absolute",
     right: 0,
     top: 0,
     bottom: 0,
-    flexDirection: "row",
+    width: SWIPE_THRESHOLD + 40,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 1,
   },
-  actionButton: {
-    width: ACTION_BUTTON_WIDTH,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: BorderRadius.md,
-    marginLeft: 4,
-  },
-  actionButtonCompact: {
-    width: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: BorderRadius.sm,
-    marginLeft: 4,
-  },
-  actionText: {
+  swipeActionText: {
     color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "600",
-    marginTop: 4,
+    fontWeight: "700",
+    fontSize: 15,
+    letterSpacing: 0.5,
   },
   primaryBadge: {
     position: "absolute",
