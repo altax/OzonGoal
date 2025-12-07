@@ -7,47 +7,68 @@ import { BlurView } from "expo-blur";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
-import { Card } from "@/components/Card";
+import { Spacing, BorderRadius } from "@/constants/theme";
 import { useShifts, useUpdateShift, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals } from "@/api";
 
 interface SettingsItemProps {
   icon: keyof typeof Feather.glyphMap;
+  iconColor?: string;
+  iconBgColor?: string;
   title: string;
+  subtitle?: string;
   value?: string;
   onPress?: () => void;
   showChevron?: boolean;
+  danger?: boolean;
 }
 
-function SettingsItem({ icon, title, value, onPress, showChevron = true }: SettingsItemProps) {
+function SettingsItem({ 
+  icon, 
+  iconColor,
+  iconBgColor,
+  title, 
+  subtitle,
+  value, 
+  onPress, 
+  showChevron = true,
+  danger = false,
+}: SettingsItemProps) {
   const { theme } = useTheme();
+  const finalIconColor = danger ? "#EF4444" : (iconColor || theme.accent);
+  const finalIconBgColor = danger ? "#FEE2E2" : (iconBgColor || theme.accentLight);
   
   return (
     <Pressable
       style={({ pressed }) => [
         styles.settingsItem,
         { 
-          backgroundColor: pressed ? theme.backgroundSecondary : "transparent",
-          borderBottomColor: theme.border,
+          backgroundColor: pressed ? theme.backgroundSecondary : theme.backgroundContent,
         },
       ]}
       onPress={onPress}
     >
-      <View style={styles.settingsItemLeft}>
-        <View style={[styles.settingsItemIcon, { backgroundColor: theme.accentLight }]}>
-          <Feather name={icon} size={18} color={theme.accent} />
-        </View>
-        <ThemedText type="body">{title}</ThemedText>
+      <View style={[styles.settingsItemIcon, { backgroundColor: finalIconBgColor }]}>
+        <Feather name={icon} size={18} color={finalIconColor} />
+      </View>
+      <View style={styles.settingsItemContent}>
+        <ThemedText type="body" style={[danger && { color: "#EF4444" }]}>
+          {title}
+        </ThemedText>
+        {subtitle && (
+          <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+            {subtitle}
+          </ThemedText>
+        )}
       </View>
       <View style={styles.settingsItemRight}>
-        {value ? (
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginRight: Spacing.sm }}>
+        {value && (
+          <ThemedText type="small" style={{ color: theme.textSecondary }}>
             {value}
           </ThemedText>
-        ) : null}
-        {showChevron ? (
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-        ) : null}
+        )}
+        {showChevron && (
+          <Feather name="chevron-right" size={18} color={theme.textSecondary} style={{ marginLeft: Spacing.sm }} />
+        )}
       </View>
     </Pressable>
   );
@@ -113,38 +134,38 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
     <BlurView
       intensity={20}
       tint={isDark ? "dark" : "light"}
-      style={hiddenShiftsStyles.blurContainer}
+      style={modalStyles.blurContainer}
     >
-      <Pressable style={hiddenShiftsStyles.overlay} onPress={onClose} />
+      <Pressable style={modalStyles.overlay} onPress={onClose} />
       
       <View
         style={[
-          hiddenShiftsStyles.modalContent,
+          modalStyles.modalContent,
           {
             backgroundColor: theme.backgroundContent,
             paddingBottom: insets.bottom + Spacing.xl,
           },
         ]}
       >
-        <View style={hiddenShiftsStyles.handle} />
+        <View style={modalStyles.handle} />
         
-        <View style={hiddenShiftsStyles.header}>
-          <ThemedText type="h4" style={hiddenShiftsStyles.title}>
+        <View style={modalStyles.header}>
+          <ThemedText type="h4" style={modalStyles.title}>
             Скрытые смены
           </ThemedText>
-          <Pressable onPress={onClose} style={hiddenShiftsStyles.closeButton}>
+          <Pressable onPress={onClose} style={modalStyles.closeButton}>
             <Feather name="x" size={24} color={theme.text} />
           </Pressable>
         </View>
 
         <ScrollView
-          style={hiddenShiftsStyles.listContainer}
-          contentContainerStyle={hiddenShiftsStyles.listContent}
+          style={modalStyles.listContainer}
+          contentContainerStyle={modalStyles.listContent}
           showsVerticalScrollIndicator={false}
         >
           {hiddenShifts.length === 0 ? (
-            <View style={hiddenShiftsStyles.emptyState}>
-              <View style={[hiddenShiftsStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
+            <View style={modalStyles.emptyState}>
+              <View style={[modalStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
                 <Feather name="eye-off" size={32} color={theme.accent} />
               </View>
               <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg, textAlign: "center" }}>
@@ -157,15 +178,15 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
                 <View
                   key={shift.id}
                   style={[
-                    hiddenShiftsStyles.shiftItem,
+                    modalStyles.listItem,
                     { 
                       backgroundColor: theme.backgroundSecondary,
                       borderColor: theme.border,
                     },
                   ]}
                 >
-                  <View style={hiddenShiftsStyles.shiftItemLeft}>
-                    <View style={[hiddenShiftsStyles.shiftTypeIcon, { backgroundColor: theme.accentLight }]}>
+                  <View style={modalStyles.listItemLeft}>
+                    <View style={[modalStyles.listItemIcon, { backgroundColor: theme.accentLight }]}>
                       <Feather
                         name={shift.shiftType === "day" ? "sun" : "moon"}
                         size={18}
@@ -183,7 +204,7 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
                   </View>
                   <Pressable
                     style={({ pressed }) => [
-                      hiddenShiftsStyles.restoreButton,
+                      modalStyles.restoreButton,
                       { backgroundColor: theme.accentLight },
                       pressed && { opacity: 0.7 },
                     ]}
@@ -195,7 +216,7 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
               ))}
               <Pressable
                 style={({ pressed }) => [
-                  hiddenShiftsStyles.deleteAllButton,
+                  modalStyles.deleteAllButton,
                   { backgroundColor: "#FEE2E2" },
                   pressed && { opacity: 0.7 },
                 ]}
@@ -213,96 +234,6 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
     </BlurView>
   );
 }
-
-const hiddenShiftsStyles = StyleSheet.create({
-  blurContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-  },
-  modalContent: {
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
-    paddingTop: Spacing.md,
-    paddingHorizontal: Spacing["2xl"],
-    maxHeight: "70%",
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: "#D1D5DB",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: Spacing.lg,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: Spacing.xl,
-  },
-  title: {
-    fontWeight: "700",
-  },
-  closeButton: {
-    padding: Spacing.xs,
-  },
-  listContainer: {
-    maxHeight: 400,
-  },
-  listContent: {
-    gap: Spacing.md,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: Spacing["4xl"],
-  },
-  emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: BorderRadius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shiftItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1,
-  },
-  shiftItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  shiftTypeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  restoreButton: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteAllButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.sm,
-    marginTop: Spacing.md,
-  },
-});
 
 function HiddenGoalsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
@@ -356,38 +287,38 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
     <BlurView
       intensity={20}
       tint={isDark ? "dark" : "light"}
-      style={hiddenShiftsStyles.blurContainer}
+      style={modalStyles.blurContainer}
     >
-      <Pressable style={hiddenShiftsStyles.overlay} onPress={onClose} />
+      <Pressable style={modalStyles.overlay} onPress={onClose} />
       
       <View
         style={[
-          hiddenShiftsStyles.modalContent,
+          modalStyles.modalContent,
           {
             backgroundColor: theme.backgroundContent,
             paddingBottom: insets.bottom + Spacing.xl,
           },
         ]}
       >
-        <View style={hiddenShiftsStyles.handle} />
+        <View style={modalStyles.handle} />
         
-        <View style={hiddenShiftsStyles.header}>
-          <ThemedText type="h4" style={hiddenShiftsStyles.title}>
+        <View style={modalStyles.header}>
+          <ThemedText type="h4" style={modalStyles.title}>
             Скрытые цели
           </ThemedText>
-          <Pressable onPress={onClose} style={hiddenShiftsStyles.closeButton}>
+          <Pressable onPress={onClose} style={modalStyles.closeButton}>
             <Feather name="x" size={24} color={theme.text} />
           </Pressable>
         </View>
 
         <ScrollView
-          style={hiddenShiftsStyles.listContainer}
-          contentContainerStyle={hiddenShiftsStyles.listContent}
+          style={modalStyles.listContainer}
+          contentContainerStyle={modalStyles.listContent}
           showsVerticalScrollIndicator={false}
         >
           {hiddenGoals.length === 0 ? (
-            <View style={hiddenShiftsStyles.emptyState}>
-              <View style={[hiddenShiftsStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
+            <View style={modalStyles.emptyState}>
+              <View style={[modalStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
                 <Feather name="eye-off" size={32} color={theme.accent} />
               </View>
               <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg, textAlign: "center" }}>
@@ -400,15 +331,15 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
                 <View
                   key={goal.id}
                   style={[
-                    hiddenShiftsStyles.shiftItem,
+                    modalStyles.listItem,
                     { 
                       backgroundColor: theme.backgroundSecondary,
                       borderColor: theme.border,
                     },
                   ]}
                 >
-                  <View style={hiddenShiftsStyles.shiftItemLeft}>
-                    <View style={[hiddenShiftsStyles.shiftTypeIcon, { backgroundColor: goal.iconBgColor || theme.accentLight }]}>
+                  <View style={modalStyles.listItemLeft}>
+                    <View style={[modalStyles.listItemIcon, { backgroundColor: goal.iconBgColor || theme.accentLight }]}>
                       <Feather
                         name={(goal.iconKey || "target") as keyof typeof Feather.glyphMap}
                         size={18}
@@ -426,7 +357,7 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
                   </View>
                   <Pressable
                     style={({ pressed }) => [
-                      hiddenShiftsStyles.restoreButton,
+                      modalStyles.restoreButton,
                       { backgroundColor: theme.accentLight },
                       (pressed || restoringId === goal.id) && { opacity: 0.5 },
                     ]}
@@ -439,7 +370,7 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
               ))}
               <Pressable
                 style={({ pressed }) => [
-                  hiddenShiftsStyles.deleteAllButton,
+                  modalStyles.deleteAllButton,
                   { backgroundColor: "#FEE2E2" },
                   (pressed || deleteAllHiddenGoals.isPending) && { opacity: 0.5 },
                 ]}
@@ -476,87 +407,87 @@ export default function SettingsScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: Spacing["2xl"],
+          paddingTop: Spacing.xl,
           paddingHorizontal: Spacing["2xl"],
           paddingBottom: Spacing["4xl"] + insets.bottom,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <ThemedText type="h3" style={styles.screenTitle}>
-          Настройки
-        </ThemedText>
-        <Card style={styles.profileCard}>
-          <View style={styles.profileContent}>
-            <View style={[styles.avatar, { backgroundColor: theme.accentLight }]}>
-              <Feather name="user" size={32} color={theme.accent} />
-            </View>
-            <View style={styles.profileInfo}>
-              <ThemedText type="h4">Пользователь</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-                Нажмите для редактирования
-              </ThemedText>
-            </View>
-            <View style={[styles.chevronBadge, { backgroundColor: theme.backgroundSecondary }]}>
-              <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-            </View>
+        <View style={[styles.profileSection, { backgroundColor: theme.backgroundContent }]}>
+          <View style={[styles.avatarContainer, { backgroundColor: theme.accentLight }]}>
+            <Feather name="user" size={28} color={theme.accent} />
           </View>
-        </Card>
+          <View style={styles.profileInfo}>
+            <ThemedText type="h4">Пользователь</ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+              Управление профилем
+            </ThemedText>
+          </View>
+        </View>
 
-        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          ОСНОВНЫЕ
-        </ThemedText>
-        <Card style={styles.settingsGroup}>
-          <SettingsItem icon="dollar-sign" title="Валюта" value="RUB" />
-          <SettingsItem icon="globe" title="Язык" value="Русский" />
-          <SettingsItem icon="bell" title="Уведомления" />
-        </Card>
+        <View style={styles.sectionDivider} />
 
-        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          ВНЕШНИЙ ВИД
-        </ThemedText>
-        <Card style={styles.settingsGroup}>
-          <SettingsItem icon="moon" title="Тема" value="Системная" />
-        </Card>
+        <SettingsItem
+          icon="eye-off"
+          title="Скрытые смены"
+          subtitle="Восстановить или удалить"
+          value={hiddenShiftsCount > 0 ? `${hiddenShiftsCount}` : undefined}
+          onPress={() => setShowHiddenShifts(true)}
+        />
 
-        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          СМЕНЫ
-        </ThemedText>
-        <Card style={styles.settingsGroup}>
-          <SettingsItem 
-            icon="eye-off" 
-            title="Скрытые смены" 
-            value={hiddenShiftsCount > 0 ? `${hiddenShiftsCount}` : undefined}
-            onPress={() => setShowHiddenShifts(true)}
-          />
-        </Card>
+        <SettingsItem
+          icon="eye-off"
+          title="Скрытые цели"
+          subtitle="Восстановить или удалить"
+          value={hiddenGoals.length > 0 ? `${hiddenGoals.length}` : undefined}
+          onPress={() => setShowHiddenGoals(true)}
+        />
 
-        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          ЦЕЛИ
-        </ThemedText>
-        <Card style={styles.settingsGroup}>
-          <SettingsItem 
-            icon="eye-off" 
-            title="Скрытые цели" 
-            value={hiddenGoals.length > 0 ? `${hiddenGoals.length}` : undefined}
-            onPress={() => setShowHiddenGoals(true)}
-          />
-        </Card>
+        <View style={styles.sectionDivider} />
 
-        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          ДАННЫЕ
-        </ThemedText>
-        <Card style={styles.settingsGroup}>
-          <SettingsItem icon="download" title="Экспорт данных" />
-          <SettingsItem icon="trash-2" title="Очистить данные" />
-        </Card>
+        <SettingsItem
+          icon="moon"
+          title="Оформление"
+          value="Системная"
+        />
 
-        <ThemedText type="caption" style={[styles.sectionTitle, { color: theme.textSecondary }]}>
-          О ПРИЛОЖЕНИИ
-        </ThemedText>
-        <Card style={styles.settingsGroup}>
-          <SettingsItem icon="info" title="Версия" value="1.0.0" showChevron={false} />
-          <SettingsItem icon="help-circle" title="Помощь" />
-        </Card>
+        <SettingsItem
+          icon="globe"
+          title="Язык"
+          value="Русский"
+        />
+
+        <SettingsItem
+          icon="bell"
+          title="Уведомления"
+        />
+
+        <View style={styles.sectionDivider} />
+
+        <SettingsItem
+          icon="download"
+          title="Экспорт данных"
+        />
+
+        <SettingsItem
+          icon="help-circle"
+          title="Помощь"
+        />
+
+        <SettingsItem
+          icon="info"
+          title="О приложении"
+          value="v1.0.0"
+          showChevron={false}
+        />
+
+        <View style={styles.sectionDivider} />
+
+        <SettingsItem
+          icon="trash-2"
+          title="Очистить данные"
+          danger
+        />
       </ScrollView>
 
       <HiddenShiftsModal
@@ -579,19 +510,14 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  screenTitle: {
-    marginBottom: Spacing["2xl"],
-  },
-  profileCard: {
-    marginBottom: Spacing["2xl"],
-  },
-  profileContent: {
+  profileSection: {
     flexDirection: "row",
     alignItems: "center",
+    paddingVertical: Spacing.lg,
   },
-  avatar: {
-    width: 64,
-    height: 64,
+  avatarContainer: {
+    width: 56,
+    height: 56,
     borderRadius: BorderRadius.md,
     alignItems: "center",
     justifyContent: "center",
@@ -600,46 +526,119 @@ const styles = StyleSheet.create({
   profileInfo: {
     flex: 1,
   },
-  chevronBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: BorderRadius.xs,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionTitle: {
-    marginBottom: Spacing.md,
-    marginLeft: Spacing.xs,
-    letterSpacing: 1,
-  },
-  settingsGroup: {
-    marginBottom: Spacing["2xl"],
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    overflow: "hidden",
+  sectionDivider: {
+    height: Spacing.lg,
   },
   settingsItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.xl,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  settingsItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.xs,
   },
   settingsItemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.xs,
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: Spacing.lg,
+  },
+  settingsItemContent: {
+    flex: 1,
   },
   settingsItemRight: {
     flexDirection: "row",
     alignItems: "center",
+  },
+});
+
+const modalStyles = StyleSheet.create({
+  blurContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    paddingTop: Spacing.md,
+    paddingHorizontal: Spacing["2xl"],
+    maxHeight: "70%",
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: "#D1D5DB",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: Spacing.lg,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.xl,
+  },
+  title: {
+    fontWeight: "700",
+  },
+  closeButton: {
+    padding: Spacing.xs,
+  },
+  listContainer: {
+    maxHeight: 400,
+  },
+  listContent: {
+    gap: Spacing.md,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: Spacing["4xl"],
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  listItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  listItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  restoreButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deleteAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.md,
   },
 });
