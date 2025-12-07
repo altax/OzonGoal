@@ -100,49 +100,28 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
         const percentage = tabInfo.totalTarget > 0 
           ? Math.round((tabInfo.totalCurrent / tabInfo.totalTarget) * 100) 
           : 0;
-        const remaining = tabInfo.totalTarget - tabInfo.totalCurrent;
-        const avgEarnings = tabInfo.averageEarningsPerShift || 3200;
-        const shiftsNeeded = remaining > 0 ? Math.ceil(remaining / avgEarnings) : 0;
         
         return (
-          <View style={styles.infoTagContainer}>
-            <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
-              <ThemedText style={[styles.infoText, { color: theme.accent }]}>
-                {tabInfo.count} {pluralizeGoals(tabInfo.count)} • {formatBalance(tabInfo.totalTarget)} ₽ • {percentage}%
-              </ThemedText>
-            </View>
-            {shiftsNeeded > 0 && (
-              <View style={[styles.infoTag, { backgroundColor: theme.successLight, marginTop: Spacing.sm }]}>
-                <ThemedText style={[styles.infoText, { color: theme.success }]}>
-                  ≈ {shiftsNeeded} {pluralizeDays(shiftsNeeded)} до всех целей
-                </ThemedText>
-              </View>
-            )}
+          <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+            <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+              {tabInfo.count} {pluralizeGoals(tabInfo.count)} • {formatBalance(tabInfo.totalTarget)} ₽ • {percentage}%
+            </ThemedText>
           </View>
         );
       }
       case "shifts": {
         const parts = [];
-        if (tabInfo.past > 0) parts.push(`${tabInfo.past} отработано`);
-        if (tabInfo.scheduled > 0) parts.push(`${tabInfo.scheduled} запланировано`);
-        if (tabInfo.hasCurrent) parts.push("идет смена");
+        if (tabInfo.past > 0) parts.push(`${tabInfo.past} прошло`);
+        if (tabInfo.scheduled > 0) parts.push(`${tabInfo.scheduled} будет`);
+        if (tabInfo.hasCurrent) parts.push("сейчас");
+        
+        if (parts.length === 0) return null;
         
         return (
-          <View style={styles.infoTagContainer}>
-            {parts.length > 0 && (
-              <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
-                <ThemedText style={[styles.infoText, { color: theme.accent }]}>
-                  {parts.join(" • ")}
-                </ThemedText>
-              </View>
-            )}
-            {tabInfo.currentShift && (
-              <View style={[styles.infoTag, { backgroundColor: theme.successLight, marginTop: parts.length > 0 ? Spacing.sm : 0 }]}>
-                <ThemedText style={[styles.infoText, { color: theme.success }]}>
-                  {getTimeRemaining(tabInfo.currentShift.scheduledEnd)}
-                </ThemedText>
-              </View>
-            )}
+          <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+            <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+              {parts.join(" • ")}
+            </ThemedText>
           </View>
         );
       }
@@ -240,12 +219,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   infoTag: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
   },
   infoText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "500",
   },
 });
