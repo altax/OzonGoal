@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue,
   withTiming,
   Easing,
+  interpolate,
 } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -675,9 +676,12 @@ export default function StatisticsScreen() {
     setPeriod(newPeriod);
   };
   
-  const animatedIndicatorStyle = useAnimatedStyle(() => ({
-    left: `${(indicatorX.value / 2) * 100}%`,
-  }));
+  const animatedIndicatorStyle = useAnimatedStyle(() => {
+    const leftPercent = interpolate(indicatorX.value, [0, 1], [1, 51]);
+    return {
+      left: `${leftPercent}%`,
+    };
+  });
 
   const chartData = useMemo(() => {
     const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
@@ -926,22 +930,22 @@ const styles = StyleSheet.create({
   },
   periodTabs: {
     flexDirection: "row",
-    borderRadius: 8,
-    padding: 2,
+    borderRadius: 10,
+    padding: 4,
     marginBottom: Spacing.md,
     position: "relative",
   },
   periodIndicator: {
     position: "absolute",
-    top: 2,
-    bottom: 2,
-    width: "50%",
-    borderRadius: 6,
+    top: 4,
+    bottom: 4,
+    width: "48%",
+    borderRadius: 7,
   },
   periodTab: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 6,
+    paddingVertical: 8,
     zIndex: 1,
   },
   periodText: {
