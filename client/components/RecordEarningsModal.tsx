@@ -58,14 +58,18 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
   const [amount, setAmount] = useState("");
   const [allocations, setAllocations] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
+  const [manuallyEditedGoals, setManuallyEditedGoals] = useState<Set<string>>(new Set());
 
   const activeGoals = goals?.filter(g => g.status === "active") || [];
+  
+  const hasAutoAllocationConfig = activeGoals.some(g => (g.allocationPercentage || 0) > 0);
 
   useEffect(() => {
     if (visible) {
       setAmount("");
       setAllocations({});
       setError("");
+      setManuallyEditedGoals(new Set());
     }
   }, [visible]);
 
@@ -81,12 +85,52 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
     return parseFloat(cleaned) || 0;
   };
 
+  const calculateAutoAllocations = (earnedAmount: number, currentAllocations: Record<string, string>, editedGoals: Set<string>) => {
+    if (earnedAmount <= 0 || !hasAutoAllocationConfig) return currentAllocations;
+    
+    const newAllocations: Record<string, string> = { ...currentAllocations };
+    
+    for (const goal of activeGoals) {
+      if (editedGoals.has(goal.id)) {
+        continue;
+      }
+      
+      const percentage = goal.allocationPercentage || 0;
+      if (percentage > 0) {
+        const currentAmount = parseFloat(goal.currentAmount) || 0;
+        const targetAmount = parseFloat(goal.targetAmount) || 0;
+        const goalRemaining = Math.max(0, targetAmount - currentAmount);
+        
+        const calculatedAmount = Math.floor(earnedAmount * (percentage / 100));
+        const finalAmount = Math.min(calculatedAmount, goalRemaining);
+        
+        if (finalAmount > 0) {
+          newAllocations[goal.id] = new Intl.NumberFormat("ru-RU").format(finalAmount);
+        } else {
+          delete newAllocations[goal.id];
+        }
+      } else {
+        delete newAllocations[goal.id];
+      }
+    }
+    
+    return newAllocations;
+  };
+
   const handleAmountChange = (text: string) => {
-    setAmount(formatAmount(text));
+    const formattedAmount = formatAmount(text);
+    setAmount(formattedAmount);
     setError("");
+    
+    if (hasAutoAllocationConfig) {
+      const earnedAmount = parseAmount(formattedAmount);
+      const autoAllocations = calculateAutoAllocations(earnedAmount, allocations, manuallyEditedGoals);
+      setAllocations(autoAllocations);
+    }
   };
 
   const handleAllocationChange = (goalId: string, text: string) => {
+    setManuallyEditedGoals(prev => new Set(prev).add(goalId));
     setAllocations(prev => ({
       ...prev,
       [goalId]: formatAmount(text),
@@ -204,9 +248,19 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
 
         {activeGoals.length > 0 && earnedAmount > 0 && (
           <View style={styles.inputGroup}>
-            <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-              РАСПРЕДЕЛИТЬ ПО ЦЕЛЯМ
-            </ThemedText>
+            <View style={styles.labelRow}>
+              <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary, marginBottom: 0 }]}>
+                РАСПРЕДЕЛИТЬ ПО ЦЕЛЯМ
+              </ThemedText>
+              {hasAutoAllocationConfig && manuallyEditedGoals.size < activeGoals.filter(g => (g.allocationPercentage || 0) > 0).length && (
+                <View style={[styles.autoTag, { backgroundColor: '#D1FAE5' }]}>
+                  <Feather name="zap" size={10} color="#10B981" />
+                  <ThemedText type="caption" style={{ color: '#10B981', fontSize: 10 }}>
+                    авто
+                  </ThemedText>
+                </View>
+              )}
+            </View>
 
             <View style={[styles.summaryRow, { backgroundColor: theme.backgroundDefault }]}>
               <ThemedText style={{ color: theme.textSecondary }}>
@@ -227,11 +281,19 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
               const targetAmount = parseFloat(goal.targetAmount) || 0;
               const goalRemaining = targetAmount - currentAmount;
               const progress = targetAmount > 0 ? Math.round((currentAmount / targetAmount) * 100) : 0;
+              const hasPercentage = (goal.allocationPercentage || 0) > 0;
 
               return (
                 <View key={goal.id} style={[styles.goalAllocation, { borderColor: theme.border }]}>
                   <View style={styles.goalHeader}>
-                    <ThemedText style={styles.goalName}>{goal.name}</ThemedText>
+                    <View style={styles.goalNameRow}>
+                      <ThemedText style={styles.goalName}>{goal.name}</ThemedText>
+                      {hasPercentage && (
+                        <ThemedText type="caption" style={{ color: '#10B981', marginLeft: Spacing.xs }}>
+                          {goal.allocationPercentage}%
+                        </ThemedText>
+                      )}
+                    </View>
                     <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                       {progress}% • осталось {new Intl.NumberFormat("ru-RU").format(goalRemaining)} ₽
                     </ThemedText>
@@ -388,8 +450,26 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginBottom: Spacing.md,
   },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.md,
+  },
+  autoTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
   goalHeader: {
     marginBottom: Spacing.md,
+  },
+  goalNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   goalName: {
     fontSize: 15,
