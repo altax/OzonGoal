@@ -39,7 +39,7 @@ export function RecordEarningsModal({ visible, shift, onClose }: RecordEarningsM
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="fullScreen"
+      presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
       <ThemeProvider>

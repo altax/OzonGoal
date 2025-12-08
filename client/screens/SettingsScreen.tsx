@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -385,7 +385,7 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
 
 function AutoAllocationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <ThemeProvider>
         <AutoAllocationModalContent onClose={onClose} />
       </ThemeProvider>
@@ -454,33 +454,36 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <BlurView
-      intensity={20}
-      tint={isDark ? "dark" : "light"}
-      style={modalStyles.blurContainer}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[autoAllocationStyles.fullScreenContainer, { backgroundColor: theme.backgroundRoot }]}
     >
-      <Pressable style={modalStyles.overlay} onPress={onClose} />
-      
-      <View
-        style={[
-          modalStyles.modalContent,
-          {
-            backgroundColor: theme.backgroundContent,
-            paddingBottom: insets.bottom + Spacing.xl,
-          },
-        ]}
-      >
-        <View style={modalStyles.handle} />
-        
-        <View style={modalStyles.header}>
-          <ThemedText type="h4" style={modalStyles.title}>
-            Автораспределение
-          </ThemedText>
-          <Pressable onPress={onClose} style={modalStyles.closeButton}>
-            <Feather name="x" size={24} color={theme.text} />
-          </Pressable>
-        </View>
+      <View style={[autoAllocationStyles.fullScreenHeader, { paddingTop: insets.top + Spacing.md }]}>
+        <Pressable
+          style={({ pressed }) => [
+            autoAllocationStyles.fullScreenCloseButton,
+            { backgroundColor: theme.backgroundSecondary },
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={onClose}
+        >
+          <Feather name="x" size={20} color={theme.text} />
+        </Pressable>
+        <ThemedText type="h4" style={autoAllocationStyles.fullScreenTitle}>
+          Автораспределение
+        </ThemedText>
+        <View style={autoAllocationStyles.fullScreenHeaderSpacer} />
+      </View>
 
+      <ScrollView
+        style={autoAllocationStyles.fullScreenContent}
+        contentContainerStyle={[
+          autoAllocationStyles.fullScreenContentContainer,
+          { paddingBottom: insets.bottom + Spacing["4xl"] },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[autoAllocationStyles.infoCompact, { backgroundColor: theme.accentLight }]}>
           <Feather name="zap" size={14} color={theme.accent} />
           <ThemedText type="caption" style={{ color: theme.accent, marginLeft: Spacing.xs, flex: 1 }}>
@@ -488,103 +491,110 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
           </ThemedText>
         </View>
 
-        <ScrollView
-          style={modalStyles.listContainer}
-          contentContainerStyle={modalStyles.listContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {activeGoals.length === 0 ? (
-            <View style={modalStyles.emptyState}>
-              <View style={[modalStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
-                <Feather name="target" size={32} color={theme.accent} />
+        {activeGoals.length === 0 ? (
+          <View style={modalStyles.emptyState}>
+            <View style={[modalStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
+              <Feather name="target" size={32} color={theme.accent} />
+            </View>
+            <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg, textAlign: "center" }}>
+              Нет активных целей
+            </ThemedText>
+          </View>
+        ) : (
+          <>
+            {activeGoals.map((goal) => (
+              <View
+                key={goal.id}
+                style={[
+                  autoAllocationStyles.goalRow,
+                  { 
+                    backgroundColor: theme.backgroundDefault,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <View style={autoAllocationStyles.goalInfo}>
+                  <View style={[autoAllocationStyles.goalIcon, { backgroundColor: goal.iconBgColor }]}>
+                    <Feather
+                      name={(goal.iconKey || "target") as keyof typeof Feather.glyphMap}
+                      size={14}
+                      color={goal.iconColor}
+                    />
+                  </View>
+                  <ThemedText type="body" style={{ flex: 1 }} numberOfLines={1}>
+                    {goal.name}
+                  </ThemedText>
+                </View>
+                <View style={autoAllocationStyles.percentageInput}>
+                  <TextInput
+                    style={[
+                      autoAllocationStyles.input,
+                      { 
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                    value={percentages[goal.id] || "0"}
+                    onChangeText={(text) => handlePercentageChange(goal.id, text)}
+                    keyboardType="numeric"
+                    maxLength={3}
+                    selectTextOnFocus
+                  />
+                  <ThemedText type="body" style={{ color: theme.textSecondary }}>%</ThemedText>
+                </View>
               </View>
-              <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg, textAlign: "center" }}>
-                Нет активных целей
+            ))}
+
+            <View style={[autoAllocationStyles.totalRow, { borderColor: theme.border }]}>
+              <ThemedText type="body" style={{ fontWeight: '600' }}>Итого</ThemedText>
+              <ThemedText 
+                type="body" 
+                style={{ 
+                  fontWeight: '600',
+                  color: totalPercentage > 100 ? '#EF4444' : (totalPercentage === 100 ? theme.success : theme.text),
+                }}
+              >
+                {totalPercentage}%
               </ThemedText>
             </View>
-          ) : (
-            <>
-              {activeGoals.map((goal) => (
-                <View
-                  key={goal.id}
-                  style={[
-                    autoAllocationStyles.goalRow,
-                    { 
-                      backgroundColor: theme.backgroundSecondary,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                >
-                  <View style={autoAllocationStyles.goalInfo}>
-                    <View style={[autoAllocationStyles.goalIcon, { backgroundColor: goal.iconBgColor }]}>
-                      <Feather
-                        name={(goal.iconKey || "target") as keyof typeof Feather.glyphMap}
-                        size={14}
-                        color={goal.iconColor}
-                      />
-                    </View>
-                    <ThemedText type="body" style={{ flex: 1 }} numberOfLines={1}>
-                      {goal.name}
-                    </ThemedText>
-                  </View>
-                  <View style={autoAllocationStyles.percentageInput}>
-                    <TextInput
-                      style={[
-                        autoAllocationStyles.input,
-                        { 
-                          backgroundColor: theme.backgroundContent,
-                          color: theme.text,
-                          borderColor: theme.border,
-                        },
-                      ]}
-                      value={percentages[goal.id] || "0"}
-                      onChangeText={(text) => handlePercentageChange(goal.id, text)}
-                      keyboardType="numeric"
-                      maxLength={3}
-                      selectTextOnFocus
-                    />
-                    <ThemedText type="body" style={{ color: theme.textSecondary }}>%</ThemedText>
-                  </View>
-                </View>
-              ))}
 
-              <View style={[autoAllocationStyles.totalRow, { borderColor: theme.border }]}>
-                <ThemedText type="body" style={{ fontWeight: '600' }}>Итого</ThemedText>
-                <ThemedText 
-                  type="body" 
-                  style={{ 
-                    fontWeight: '600',
-                    color: totalPercentage > 100 ? '#EF4444' : (totalPercentage === 100 ? theme.success : theme.text),
-                  }}
-                >
-                  {totalPercentage}%
-                </ThemedText>
-              </View>
+            {totalPercentage < 100 && (
+              <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+                {100 - totalPercentage}% останется в свободном балансе
+              </ThemedText>
+            )}
+          </>
+        )}
+      </ScrollView>
 
-              {totalPercentage < 100 && (
-                <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: 'center' }}>
-                  {100 - totalPercentage}% останется в свободном балансе
-                </ThemedText>
-              )}
-
-              <Pressable
-                style={({ pressed }) => [
-                  autoAllocationStyles.saveButton,
-                  { backgroundColor: theme.accent },
-                  (pressed || saving) && { opacity: 0.7 },
-                ]}
-                onPress={handleSave}
-                disabled={saving || totalPercentage > 100}
-              >
-                <ThemedText type="body" style={{ color: '#fff', fontWeight: '600' }}>
-                  {saving ? "Сохранение..." : "Сохранить"}
-                </ThemedText>
-              </Pressable>
-            </>
-          )}
-        </ScrollView>
-      </View>
-    </BlurView>
+      {activeGoals.length > 0 && (
+        <View
+          style={[
+            autoAllocationStyles.fullScreenFooter,
+            {
+              backgroundColor: theme.backgroundRoot,
+              paddingBottom: insets.bottom + Spacing.lg,
+            },
+          ]}
+        >
+          <Pressable
+            style={({ pressed }) => [
+              autoAllocationStyles.fullScreenSaveButton,
+              { backgroundColor: theme.accent },
+              (pressed || saving) && { opacity: 0.7 },
+            ]}
+            onPress={handleSave}
+            disabled={saving || totalPercentage > 100}
+          >
+            <Feather name="check" size={18} color="#FFFFFF" style={{ marginRight: Spacing.sm }} />
+            <ThemedText type="body" style={{ color: '#fff', fontWeight: '600' }}>
+              {saving ? "Сохранение..." : "Сохранить"}
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -928,7 +938,49 @@ const autoAllocationStyles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.sm,
-    marginHorizontal: Spacing.xl,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing["2xl"],
+  },
+  fullScreenContainer: {
+    flex: 1,
+  },
+  fullScreenHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing["2xl"],
+    paddingBottom: Spacing.lg,
+  },
+  fullScreenCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fullScreenTitle: {
+    flex: 1,
+    textAlign: "center",
+  },
+  fullScreenHeaderSpacer: {
+    width: 36,
+  },
+  fullScreenContent: {
+    flex: 1,
+  },
+  fullScreenContentContainer: {
+    paddingHorizontal: Spacing["2xl"],
+    paddingTop: Spacing.lg,
+    gap: Spacing.md,
+  },
+  fullScreenFooter: {
+    paddingHorizontal: Spacing["2xl"],
+    paddingTop: Spacing.lg,
+  },
+  fullScreenSaveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 52,
+    borderRadius: BorderRadius.sm,
   },
 });
