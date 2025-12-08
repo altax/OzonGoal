@@ -157,9 +157,6 @@ export function useUpdateGoal() {
       if (data.orderIndex !== undefined) updateData.order_index = data.orderIndex;
       if (data.allocationPercentage !== undefined) updateData.allocation_percentage = data.allocationPercentage;
       
-      console.log('[useUpdateGoal] Updating goal:', id);
-      console.log('[useUpdateGoal] Update data:', JSON.stringify(updateData));
-      
       const { data: updatedGoal, error } = await supabase
         .from('goals')
         .update(updateData)
@@ -172,7 +169,6 @@ export function useUpdateGoal() {
         throw new Error(error.message);
       }
       
-      console.log('[useUpdateGoal] Success! Updated goal:', JSON.stringify(updatedGoal));
       return toClientGoal(updatedGoal as SupabaseGoal);
     },
     onSuccess: () => {

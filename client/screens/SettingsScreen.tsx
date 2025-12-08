@@ -433,25 +433,17 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
       return;
     }
     
-    console.log('[AutoAllocation] Saving percentages:', JSON.stringify(percentages));
-    
     setSaving(true);
     try {
       for (const goal of activeGoals) {
         const newPercentage = parseInt(percentages[goal.id]) || 0;
-        console.log(`[AutoAllocation] Goal "${goal.name}": new=${newPercentage}, current=${goal.allocationPercentage}`);
         if (newPercentage !== goal.allocationPercentage) {
-          console.log(`[AutoAllocation] Updating goal "${goal.name}" to ${newPercentage}%`);
           await updateGoal.mutateAsync({
             id: goal.id,
             allocationPercentage: newPercentage,
           });
-          console.log(`[AutoAllocation] Goal "${goal.name}" updated successfully`);
-        } else {
-          console.log(`[AutoAllocation] Skipping goal "${goal.name}" - no change`);
         }
       }
-      console.log('[AutoAllocation] All saves complete');
       onClose();
     } catch (error) {
       console.error('[AutoAllocation] Error saving:', error);
