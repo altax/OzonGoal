@@ -144,11 +144,16 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Logout Button**: Added "Выйти из аккаунта" option in Settings screen
 - **User Profile Display**: Email displayed in Settings screen profile section
 
-### Key Files
-- `client/contexts/AuthContext.tsx` - Authentication context and hooks
-- `client/screens/AuthScreen.tsx` - Login/registration UI
-- `client/lib/supabase.ts` - Supabase client with `getCurrentUserId()` helper
-- `client/api/index.ts` - All queries use dynamic user ID for isolation
+### Guest Mode & Data Migration (Dec 8, 2025)
+- **Guest Mode Support**: Users can use the app without authentication with localStorage-based storage
+- **Automatic Data Migration**: When guests sign up/sign in, local data migrates to cloud automatically
+- **Idempotent Migration**: Duplicate detection using composite keys (goals: name|target_amount, shifts: date|type|operation)
+- **Balance Safety**: Balance only added when new data actually migrates (no inflation on retries)
+- **Snapshot Preservation**: Data captured before auth calls to prevent race conditions during session upgrade
+- **Key Files**:
+  - `client/lib/localStorage.ts` - Local storage service with HAS_LOCAL_DATA markers
+  - `client/lib/dataMigration.ts` - Migration logic with duplicate detection and ID mapping
+  - `client/contexts/AuthContext.tsx` - Captures snapshot and triggers migration on auth
 
 ## Next Steps (Future Development)
 1. Add notifications for goal milestones
