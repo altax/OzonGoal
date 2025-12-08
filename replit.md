@@ -75,6 +75,14 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Auto-allocation Feature (Dec 8, 2025):**
+  - Added `allocation_percentage` field to goals table (0-100%)
+  - New Auto-allocation settings UI in Profile/Settings screen with sliders
+  - RecordEarningsModal now auto-fills goal allocations based on configured percentages
+  - Auto-allocation recalculates on every earnings amount change
+  - Manual edits to allocations are preserved and not overwritten
+  - Visual "auto" indicator shows when allocations are auto-calculated
+  - Allocations are capped to goal remaining amounts
 - **Statistics Screen UI Polish (Dec 7, 2025):**
   - Removed "Не распределён на цели" subtitle from Free Balance stat
   - Fixed daily income chart to show real calendar (last 7 days with correct dates)
