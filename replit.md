@@ -76,10 +76,10 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 
 ## Recent Changes
 - **Balance Display Settings (Dec 8, 2025):**
-  - Added balance position setting (left, center, right alignment)
-  - Added hide/show balance toggle with eye icon in header
+  - Added inline balance position selector with 4 compact buttons (left, center, right + hide toggle)
+  - Balance updates immediately when user selects a position
   - SettingsContext with localStorage persistence for app settings
-  - Fixed BalancePositionModal with proper context providers for modals
+  - Removed modal in favor of inline controls for better UX
 - **Delete All Data Fix (Dec 8, 2025):**
   - Fixed bug in useDeleteAllData - goal_allocations table doesn't have user_id column
   - Now properly deletes allocations through related shifts first
