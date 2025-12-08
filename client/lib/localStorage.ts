@@ -91,6 +91,9 @@ export const localStorageService = {
     const user = await this.getUser();
     const updatedUser = { ...user, ...updates };
     await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+    if (updates.balance !== undefined) {
+      await this.markHasLocalData();
+    }
     return updatedUser;
   },
 
@@ -133,6 +136,7 @@ export const localStorageService = {
       updatedAt: new Date().toISOString() 
     };
     await AsyncStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+    await this.markHasLocalData();
     return goals[index];
   },
 
@@ -183,6 +187,7 @@ export const localStorageService = {
       updatedAt: new Date().toISOString() 
     };
     await AsyncStorage.setItem(STORAGE_KEYS.SHIFTS, JSON.stringify(shifts));
+    await this.markHasLocalData();
     return shifts[index];
   },
 
@@ -215,6 +220,7 @@ export const localStorageService = {
     };
     allocations.push(newAllocation);
     await AsyncStorage.setItem(STORAGE_KEYS.GOAL_ALLOCATIONS, JSON.stringify(allocations));
+    await this.markHasLocalData();
     return newAllocation;
   },
 

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { Alert } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { migrateLocalDataToCloud, checkAndPromptMigration } from '@/lib/dataMigration';
+import { migrateLocalDataToCloud, checkAndPromptMigration, getLocalDataSnapshot } from '@/lib/dataMigration';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -53,12 +53,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleMigration = async (userId: string) => {
+  const handleMigration = async (
+    userId: string, 
+    snapshot?: Awaited<ReturnType<typeof getLocalDataSnapshot>>
+  ) => {
     try {
-      const hasLocalData = await checkAndPromptMigration();
+      const hasLocalData = snapshot || await checkAndPromptMigration();
       if (hasLocalData) {
         console.log('[Auth] Local data found, starting migration...');
-        const result = await migrateLocalDataToCloud(userId);
+        const result = await migrateLocalDataToCloud(userId, snapshot);
         if (result.success && (result.migratedGoals > 0 || result.migratedShifts > 0)) {
           Alert.alert(
             'Данные перенесены',
@@ -150,6 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const linkEmail = useCallback(async (email: string, password: string) => {
     try {
+      const snapshot = await getLocalDataSnapshot();
+      
       const { error } = await supabase.auth.updateUser({
         email,
         password,
@@ -159,6 +164,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.from('users').update({
           username: email.split('@')[0],
         }).eq('id', user.id);
+        
+        if (snapshot) {
+          await handleMigration(user.id, snapshot);
+        }
       }
       
       return { error };
@@ -169,13 +178,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
+      const snapshot = await getLocalDataSnapshot();
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (!error && data.user) {
-        await handleMigration(data.user.id);
+        await handleMigration(data.user.id, snapshot);
       }
       
       return { error };
@@ -186,6 +197,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string) => {
     try {
+      const snapshot = await getLocalDataSnapshot();
+      
       const { error, data } = await supabase.auth.signUp({
         email,
         password,
@@ -193,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (!error && data.user) {
         await createUserRecord(data.user.id, email.split('@')[0]);
-        await handleMigration(data.user.id);
+        await handleMigration(data.user.id, snapshot);
       }
       
       return { error };
