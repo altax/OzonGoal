@@ -138,6 +138,7 @@ export function useUpdateGoal() {
       status: 'active' | 'completed' | 'hidden';
       isPrimary: boolean;
       orderIndex: number;
+      allocationPercentage: number;
     }>) => {
       const updateData: Record<string, unknown> = {};
       if (data.name !== undefined) updateData.name = data.name;
@@ -154,6 +155,7 @@ export function useUpdateGoal() {
       }
       if (data.isPrimary !== undefined) updateData.is_primary = data.isPrimary;
       if (data.orderIndex !== undefined) updateData.order_index = data.orderIndex;
+      if (data.allocationPercentage !== undefined) updateData.allocation_percentage = data.allocationPercentage;
       
       const { data: updatedGoal, error } = await supabase
         .from('goals')
