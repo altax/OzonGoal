@@ -75,6 +75,15 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Balance Display Settings (Dec 8, 2025):**
+  - Added balance position setting (left, center, right alignment)
+  - Added hide/show balance toggle with eye icon in header
+  - SettingsContext with localStorage persistence for app settings
+  - Fixed BalancePositionModal with proper context providers for modals
+- **Delete All Data Fix (Dec 8, 2025):**
+  - Fixed bug in useDeleteAllData - goal_allocations table doesn't have user_id column
+  - Now properly deletes allocations through related shifts first
+  - Added error handling for shifts selection query
 - **Auto-allocation Feature (Dec 8, 2025):**
   - Added `allocation_percentage` field to goals table (0-100%)
   - New Auto-allocation settings UI in Profile/Settings screen with sliders
