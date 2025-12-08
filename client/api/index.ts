@@ -46,6 +46,7 @@ export function useGoals() {
     queryKey: ["goals"],
     queryFn: async () => {
       const userId = await getCurrentUserId();
+      console.log('[API] Fetching goals for user:', userId);
       const { data, error } = await supabase
         .from('goals')
         .select('*')
@@ -54,7 +55,11 @@ export function useGoals() {
         .order('order_index', { ascending: true })
         .order('created_at', { ascending: false });
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error('[API] Goals fetch error:', error.message);
+        throw new Error(error.message);
+      }
+      console.log('[API] Goals fetched:', data?.length || 0);
       return (data as SupabaseGoal[]).map(toClientGoal);
     },
     refetchInterval: 5000,

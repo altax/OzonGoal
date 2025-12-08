@@ -73,15 +73,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session.user);
         setLoading(false);
       } else {
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (!mounted) return;
-        
-        if (!error && data.session) {
-          setSession(data.session);
-          setUser(data.user);
-          if (data.user) {
-            await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
+        try {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (!mounted) return;
+          
+          if (error) {
+            console.error('[Auth] Anonymous sign-in failed:', error.message);
+          } else if (data.session) {
+            setSession(data.session);
+            setUser(data.user);
+            if (data.user) {
+              await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
+            }
           }
+        } catch (err) {
+          console.error('[Auth] Error during initial anonymous sign-in:', err);
         }
         setLoading(false);
       }
@@ -97,16 +103,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (event === 'SIGNED_OUT') {
         queryClient.clear();
+        setSession(null);
+        setUser(null);
         
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (!mounted) return;
-        
-        if (!error && data.session) {
-          setSession(data.session);
-          setUser(data.user);
-          if (data.user) {
-            await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
+        try {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (!mounted) return;
+          
+          if (error) {
+            console.warn('[Auth] Anonymous sign-in not available:', error.message);
+          } else if (data.session) {
+            setSession(data.session);
+            setUser(data.user);
+            if (data.user) {
+              await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
+            }
           }
+        } catch (err) {
+          console.warn('[Auth] Anonymous sign-in error:', err);
         }
       }
       
