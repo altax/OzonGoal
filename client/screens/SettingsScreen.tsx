@@ -481,22 +481,11 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
           </Pressable>
         </View>
 
-        <View style={autoAllocationStyles.infoSection}>
-          <View style={[autoAllocationStyles.infoHeader, { backgroundColor: theme.accentLight }]}>
-            <Feather name="info" size={16} color={theme.accent} />
-            <ThemedText type="body" style={{ color: theme.accent, fontWeight: '600', marginLeft: Spacing.sm }}>
-              Как это работает
-            </ThemedText>
-          </View>
-          <View style={[autoAllocationStyles.infoContent, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-            <ThemedText type="caption" style={{ color: theme.textSecondary, lineHeight: 18 }}>
-              • Укажите процент от заработка для каждой цели{'\n'}
-              • При записи смены суммы заполнятся автоматически{'\n'}
-              • Если сумма превысит остаток до цели — начислится только недостающая часть{'\n'}
-              • Если общий % больше 100% — суммы масштабируются пропорционально{'\n'}
-              • Вы всегда можете изменить значения вручную
-            </ThemedText>
-          </View>
+        <View style={[autoAllocationStyles.infoCompact, { backgroundColor: theme.accentLight }]}>
+          <Feather name="zap" size={14} color={theme.accent} />
+          <ThemedText type="caption" style={{ color: theme.accent, marginLeft: Spacing.xs, flex: 1 }}>
+            Суммы заполнятся автоматически при записи смены
+          </ThemedText>
         </View>
 
         <ScrollView
@@ -932,5 +921,14 @@ const autoAllocationStyles = StyleSheet.create({
     borderTopWidth: 0,
     borderBottomLeftRadius: BorderRadius.sm,
     borderBottomRightRadius: BorderRadius.sm,
+  },
+  infoCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.md,
   },
 });

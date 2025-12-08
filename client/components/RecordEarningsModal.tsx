@@ -268,6 +268,22 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
                 </View>
               )}
             </View>
+            
+            {(() => {
+              const goalsToCheck = activeGoals.filter(g => !manuallyEditedGoals.has(g.id) && (g.allocationPercentage || 0) > 0);
+              const totalPct = goalsToCheck.reduce((sum, g) => sum + (g.allocationPercentage || 0), 0);
+              if (totalPct > 100) {
+                return (
+                  <View style={[styles.scaleWarning, { backgroundColor: '#FEF3C7' }]}>
+                    <Feather name="info" size={12} color="#D97706" />
+                    <ThemedText type="caption" style={{ color: '#D97706', marginLeft: 6, flex: 1 }}>
+                      Сумма {totalPct}% масштабирована до 100%
+                    </ThemedText>
+                  </View>
+                );
+              }
+              return null;
+            })()}
 
             <View style={[styles.summaryRow, { backgroundColor: theme.backgroundDefault }]}>
               <ThemedText style={{ color: theme.textSecondary }}>
@@ -470,6 +486,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+  },
+  scaleWarning: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 12,
   },
   goalHeader: {
     marginBottom: Spacing.md,
