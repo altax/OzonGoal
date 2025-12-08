@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, Alert } from "react-native";
+import { useState, useMemo, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useShifts, useUpdateShift, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals } from "@/api";
+import { useShifts, useUpdateShift, useGoals, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals } from "@/api";
 
 interface SettingsItemProps {
   icon: keyof typeof Feather.glyphMap;
@@ -383,17 +383,224 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
   );
 }
 
+function AutoAllocationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <ThemeProvider>
+        <AutoAllocationModalContent onClose={onClose} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const { data: goals = [] } = useGoals();
+  const updateGoal = useUpdateGoal();
+  const [percentages, setPercentages] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const activeGoals = useMemo(() => {
+    return goals.filter(g => g.status === "active").sort((a, b) => a.orderIndex - b.orderIndex);
+  }, [goals]);
+
+  useEffect(() => {
+    const initial: Record<string, string> = {};
+    activeGoals.forEach(g => {
+      initial[g.id] = String(g.allocationPercentage || 0);
+    });
+    setPercentages(initial);
+  }, [activeGoals]);
+
+  const totalPercentage = useMemo(() => {
+    return Object.values(percentages).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+  }, [percentages]);
+
+  const handlePercentageChange = (goalId: string, value: string) => {
+    const cleaned = value.replace(/[^\d]/g, '');
+    const num = Math.min(100, parseInt(cleaned) || 0);
+    setPercentages(prev => ({ ...prev, [goalId]: String(num) }));
+  };
+
+  const handleSave = async () => {
+    if (totalPercentage > 100) {
+      Alert.alert("Ошибка", "Сумма процентов не может превышать 100%");
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      for (const goal of activeGoals) {
+        const newPercentage = parseInt(percentages[goal.id]) || 0;
+        if (newPercentage !== goal.allocationPercentage) {
+          await updateGoal.mutateAsync({
+            id: goal.id,
+            allocationPercentage: newPercentage,
+          });
+        }
+      }
+      onClose();
+    } catch (error) {
+      Alert.alert("Ошибка", "Не удалось сохранить настройки");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <BlurView
+      intensity={20}
+      tint={isDark ? "dark" : "light"}
+      style={modalStyles.blurContainer}
+    >
+      <Pressable style={modalStyles.overlay} onPress={onClose} />
+      
+      <View
+        style={[
+          modalStyles.modalContent,
+          {
+            backgroundColor: theme.backgroundContent,
+            paddingBottom: insets.bottom + Spacing.xl,
+          },
+        ]}
+      >
+        <View style={modalStyles.handle} />
+        
+        <View style={modalStyles.header}>
+          <ThemedText type="h4" style={modalStyles.title}>
+            Автораспределение
+          </ThemedText>
+          <Pressable onPress={onClose} style={modalStyles.closeButton}>
+            <Feather name="x" size={24} color={theme.text} />
+          </Pressable>
+        </View>
+
+        <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
+          Укажите процент от заработка для каждой цели. При записи смены суммы заполнятся автоматически.
+        </ThemedText>
+
+        <ScrollView
+          style={modalStyles.listContainer}
+          contentContainerStyle={modalStyles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {activeGoals.length === 0 ? (
+            <View style={modalStyles.emptyState}>
+              <View style={[modalStyles.emptyIcon, { backgroundColor: theme.accentLight }]}>
+                <Feather name="target" size={32} color={theme.accent} />
+              </View>
+              <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.lg, textAlign: "center" }}>
+                Нет активных целей
+              </ThemedText>
+            </View>
+          ) : (
+            <>
+              {activeGoals.map((goal) => (
+                <View
+                  key={goal.id}
+                  style={[
+                    autoAllocationStyles.goalRow,
+                    { 
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <View style={autoAllocationStyles.goalInfo}>
+                    <View style={[autoAllocationStyles.goalIcon, { backgroundColor: goal.iconBgColor }]}>
+                      <Feather
+                        name={(goal.iconKey || "target") as keyof typeof Feather.glyphMap}
+                        size={14}
+                        color={goal.iconColor}
+                      />
+                    </View>
+                    <ThemedText type="body" style={{ flex: 1 }} numberOfLines={1}>
+                      {goal.name}
+                    </ThemedText>
+                  </View>
+                  <View style={autoAllocationStyles.percentageInput}>
+                    <TextInput
+                      style={[
+                        autoAllocationStyles.input,
+                        { 
+                          backgroundColor: theme.backgroundContent,
+                          color: theme.text,
+                          borderColor: theme.border,
+                        },
+                      ]}
+                      value={percentages[goal.id] || "0"}
+                      onChangeText={(text) => handlePercentageChange(goal.id, text)}
+                      keyboardType="numeric"
+                      maxLength={3}
+                      selectTextOnFocus
+                    />
+                    <ThemedText type="body" style={{ color: theme.textSecondary }}>%</ThemedText>
+                  </View>
+                </View>
+              ))}
+
+              <View style={[autoAllocationStyles.totalRow, { borderColor: theme.border }]}>
+                <ThemedText type="body" style={{ fontWeight: '600' }}>Итого</ThemedText>
+                <ThemedText 
+                  type="body" 
+                  style={{ 
+                    fontWeight: '600',
+                    color: totalPercentage > 100 ? '#EF4444' : (totalPercentage === 100 ? theme.success : theme.text),
+                  }}
+                >
+                  {totalPercentage}%
+                </ThemedText>
+              </View>
+
+              {totalPercentage < 100 && (
+                <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+                  {100 - totalPercentage}% останется в свободном балансе
+                </ThemedText>
+              )}
+
+              <Pressable
+                style={({ pressed }) => [
+                  autoAllocationStyles.saveButton,
+                  { backgroundColor: theme.accent },
+                  (pressed || saving) && { opacity: 0.7 },
+                ]}
+                onPress={handleSave}
+                disabled={saving || totalPercentage > 100}
+              >
+                <ThemedText type="body" style={{ color: '#fff', fontWeight: '600' }}>
+                  {saving ? "Сохранение..." : "Сохранить"}
+                </ThemedText>
+              </Pressable>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </BlurView>
+  );
+}
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
   const [showHiddenGoals, setShowHiddenGoals] = useState(false);
+  const [showAutoAllocation, setShowAutoAllocation] = useState(false);
   const { data: shifts = [] } = useShifts();
+  const { data: goals = [] } = useGoals();
   const { data: hiddenGoals = [] } = useHiddenGoals();
 
   const hiddenShiftsCount = useMemo(() => {
     return shifts.filter(s => s.status === "canceled").length;
   }, [shifts]);
+
+  const activeGoals = useMemo(() => {
+    return goals.filter(g => g.status === "active");
+  }, [goals]);
+
+  const totalAllocationPercentage = useMemo(() => {
+    return activeGoals.reduce((sum, g) => sum + (g.allocationPercentage || 0), 0);
+  }, [activeGoals]);
 
   return (
     <View style={styles.container}>
@@ -412,6 +619,17 @@ export default function SettingsScreen() {
           </View>
           <ThemedText type="body" style={{ fontWeight: '600' }}>Пользователь</ThemedText>
         </View>
+
+        <View style={[styles.separator, { backgroundColor: theme.border }]} />
+
+        <SettingsItem
+          icon="pie-chart"
+          iconColor="#10B981"
+          iconBgColor="#D1FAE5"
+          title="Автораспределение"
+          value={totalAllocationPercentage > 0 ? `${totalAllocationPercentage}%` : "Выкл"}
+          onPress={() => setShowAutoAllocation(true)}
+        />
 
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
@@ -479,6 +697,11 @@ export default function SettingsScreen() {
       <HiddenGoalsModal
         visible={showHiddenGoals}
         onClose={() => setShowHiddenGoals(false)}
+      />
+
+      <AutoAllocationModal
+        visible={showAutoAllocation}
+        onClose={() => setShowAutoAllocation(false)}
       />
     </View>
   );
@@ -619,5 +842,58 @@ const modalStyles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: BorderRadius.sm,
     marginTop: Spacing.md,
+  },
+});
+
+const autoAllocationStyles = StyleSheet.create({
+  goalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  goalInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: Spacing.sm,
+  },
+  goalIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  percentageInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  input: {
+    width: 56,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  totalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    borderTopWidth: 1,
+    marginTop: Spacing.sm,
+  },
+  saveButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.lg,
   },
 });
