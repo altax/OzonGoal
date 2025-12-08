@@ -7,6 +7,9 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isAnonymous: boolean;
+  signInAnonymously: () => Promise<{ error: Error | null }>;
+  linkEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -20,25 +23,120 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+  const isAnonymous = user?.is_anonymous ?? false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+  const createUserRecord = async (userId: string, username: string) => {
+    try {
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (!existingUser) {
+        await supabase.from('users').insert({
+          id: userId,
+          username,
+          password: '',
+          balance: 0,
+        });
+      }
+    } catch (error) {
+      console.log('User record creation skipped or failed:', error);
+    }
+  };
+
+  const signInAnonymously = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      
+      if (!error && data.user) {
+        await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
+      }
+      
+      return { error };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!mounted) return;
+
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+        setLoading(false);
+      } else {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (!mounted) return;
+        
+        if (!error && data.session) {
+          setSession(data.session);
+          setUser(data.user);
+          if (data.user) {
+            await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
+          }
+        }
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
       
       if (event === 'SIGNED_OUT') {
         queryClient.clear();
+        
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (!mounted) return;
+        
+        if (!error && data.session) {
+          setSession(data.session);
+          setUser(data.user);
+          if (data.user) {
+            await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
+          }
+        }
       }
+      
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [queryClient]);
+
+  const linkEmail = useCallback(async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email,
+        password,
+      });
+      
+      if (!error && user) {
+        await supabase.from('users').update({
+          username: email.split('@')[0],
+        }).eq('id', user.id);
+      }
+      
+      return { error };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  }, [user]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
@@ -62,12 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!error) {
         const { data: { user: newUser } } = await supabase.auth.getUser();
         if (newUser) {
-          await supabase.from('users').insert({
-            id: newUser.id,
-            username: email.split('@')[0],
-            password: '',
-            balance: 0,
-          });
+          await createUserRecord(newUser.id, email.split('@')[0]);
         }
       }
       
@@ -83,7 +176,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      isAnonymous,
+      signInAnonymously,
+      linkEmail,
+      signIn, 
+      signUp, 
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -600,6 +600,220 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
   );
 }
 
+function LinkEmailModal({ 
+  visible, 
+  onClose, 
+  onLink 
+}: { 
+  visible: boolean; 
+  onClose: () => void;
+  onLink: (email: string, password: string) => Promise<{ error: Error | null }>;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <ThemeProvider>
+        <LinkEmailModalContent onClose={onClose} onLink={onLink} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function LinkEmailModalContent({ 
+  onClose, 
+  onLink 
+}: { 
+  onClose: () => void;
+  onLink: (email: string, password: string) => Promise<{ error: Error | null }>;
+}) {
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleLink = async () => {
+    if (!email || !password) {
+      Alert.alert('Ошибка', 'Заполните все поля');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Ошибка', 'Пароли не совпадают');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Ошибка', 'Пароль должен содержать минимум 6 символов');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await onLink(email, password);
+      if (error) {
+        let message = error.message;
+        if (message.includes('already registered') || message.includes('already exists')) {
+          message = 'Этот email уже используется';
+        } else if (message.includes('Invalid email')) {
+          message = 'Неверный формат email';
+        }
+        Alert.alert('Ошибка', message);
+      } else {
+        Alert.alert(
+          'Успешно!',
+          'Email привязан к вашему аккаунту. Проверьте почту для подтверждения.',
+          [{ text: 'OK', onPress: onClose }]
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <BlurView
+      intensity={20}
+      tint={isDark ? "dark" : "light"}
+      style={modalStyles.blurContainer}
+    >
+      <Pressable style={modalStyles.overlay} onPress={onClose} />
+      
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ width: '100%' }}
+      >
+        <View
+          style={[
+            modalStyles.modalContent,
+            {
+              backgroundColor: theme.backgroundContent,
+              paddingBottom: insets.bottom + Spacing.xl,
+            },
+          ]}
+        >
+          <View style={modalStyles.handle} />
+          
+          <View style={modalStyles.header}>
+            <ThemedText type="h4" style={modalStyles.title}>
+              Привязать email
+            </ThemedText>
+            <Pressable onPress={onClose} style={modalStyles.closeButton}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+
+          <View style={{ paddingHorizontal: Spacing.xl }}>
+            <View style={[linkEmailStyles.infoBox, { backgroundColor: theme.accentLight }]}>
+              <Feather name="info" size={16} color={theme.accent} />
+              <ThemedText type="caption" style={{ color: theme.accent, marginLeft: Spacing.sm, flex: 1 }}>
+                После привязки email вы сможете синхронизировать данные между устройствами
+              </ThemedText>
+            </View>
+
+            <View style={linkEmailStyles.inputContainer}>
+              <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                <Feather name="mail" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+                <TextInput
+                  style={[linkEmailStyles.input, { color: theme.text }]}
+                  placeholder="Email"
+                  placeholderTextColor={theme.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
+            </View>
+
+            <View style={linkEmailStyles.inputContainer}>
+              <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+                <TextInput
+                  style={[linkEmailStyles.input, { color: theme.text }]}
+                  placeholder="Пароль"
+                  placeholderTextColor={theme.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <Pressable onPress={() => setShowPassword(!showPassword)}>
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={theme.textSecondary} />
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={linkEmailStyles.inputContainer}>
+              <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+                <TextInput
+                  style={[linkEmailStyles.input, { color: theme.text }]}
+                  placeholder="Подтвердите пароль"
+                  placeholderTextColor={theme.textSecondary}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                />
+              </View>
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                linkEmailStyles.submitButton,
+                { backgroundColor: theme.accent },
+                (pressed || loading) && { opacity: 0.8 },
+              ]}
+              onPress={handleLink}
+              disabled={loading}
+            >
+              <Feather name="link" size={18} color="#FFFFFF" style={{ marginRight: Spacing.sm }} />
+              <ThemedText type="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                {loading ? 'Привязка...' : 'Привязать email'}
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </BlurView>
+  );
+}
+
+const linkEmailStyles = StyleSheet.create({
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.xl,
+  },
+  inputContainer: {
+    marginBottom: Spacing.md,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: Spacing.xs,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+});
+
 function DeleteConfirmationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
@@ -760,11 +974,12 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden } = useSettings();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAnonymous, linkEmail } = useAuth();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
   const [showHiddenGoals, setShowHiddenGoals] = useState(false);
   const [showAutoAllocation, setShowAutoAllocation] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showLinkEmail, setShowLinkEmail] = useState(false);
   const { data: shifts = [] } = useShifts();
   const { data: goals = [] } = useGoals();
   const { data: hiddenGoals = [] } = useHiddenGoals();
@@ -801,17 +1016,32 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileSection}>
-          <View style={[styles.avatarContainer, { backgroundColor: theme.accentLight }]}>
-            <Feather name="user" size={20} color={theme.accent} />
+          <View style={[styles.avatarContainer, { backgroundColor: isAnonymous ? '#FEF3C7' : theme.accentLight }]}>
+            <Feather name={isAnonymous ? "user-x" : "user"} size={20} color={isAnonymous ? '#F59E0B' : theme.accent} />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <ThemedText type="body" style={{ fontWeight: '600' }}>
-              {user?.email?.split('@')[0] || 'Пользователь'}
+              {isAnonymous ? 'Гостевой аккаунт' : (user?.email?.split('@')[0] || 'Пользователь')}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {user?.email || ''}
+              {isAnonymous ? 'Данные хранятся локально' : (user?.email || '')}
             </ThemedText>
           </View>
+          {isAnonymous && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.linkEmailButton,
+                { backgroundColor: theme.accent },
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={() => setShowLinkEmail(true)}
+            >
+              <Feather name="link" size={14} color="#FFFFFF" />
+              <ThemedText type="caption" style={{ color: '#FFFFFF', marginLeft: 4, fontWeight: '600' }}>
+                Привязать
+              </ThemedText>
+            </Pressable>
+          )}
         </View>
 
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
@@ -937,12 +1167,14 @@ export default function SettingsScreen() {
 
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
-        <SettingsItem
-          icon="log-out"
-          title="Выйти из аккаунта"
-          danger
-          onPress={handleLogout}
-        />
+        {!isAnonymous && (
+          <SettingsItem
+            icon="log-out"
+            title="Выйти из аккаунта"
+            danger
+            onPress={handleLogout}
+          />
+        )}
       </ScrollView>
 
       <HiddenShiftsModal
@@ -963,6 +1195,12 @@ export default function SettingsScreen() {
       <DeleteConfirmationModal
         visible={showDeleteConfirmation}
         onClose={() => setShowDeleteConfirmation(false)}
+      />
+
+      <LinkEmailModal
+        visible={showLinkEmail}
+        onClose={() => setShowLinkEmail(false)}
+        onLink={linkEmail}
       />
 
     </View>
@@ -1050,6 +1288,13 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: "#E5E7EB",
     marginHorizontal: Spacing.xs,
+  },
+  linkEmailButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
   },
   hideButton: {
     width: 44,
