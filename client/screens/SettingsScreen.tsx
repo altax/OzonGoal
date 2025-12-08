@@ -400,18 +400,22 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
   const updateGoal = useUpdateGoal();
   const [percentages, setPercentages] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   const activeGoals = useMemo(() => {
     return goals.filter(g => g.status === "active").sort((a, b) => a.orderIndex - b.orderIndex);
   }, [goals]);
 
   useEffect(() => {
+    if (initialized || activeGoals.length === 0) return;
+    
     const initial: Record<string, string> = {};
     activeGoals.forEach(g => {
       initial[g.id] = String(g.allocationPercentage || 0);
     });
     setPercentages(initial);
-  }, [activeGoals]);
+    setInitialized(true);
+  }, [activeGoals, initialized]);
 
   const totalPercentage = useMemo(() => {
     return Object.values(percentages).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
