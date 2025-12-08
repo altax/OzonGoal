@@ -260,12 +260,22 @@ export function useDeleteAllData() {
   
   return useMutation({
     mutationFn: async () => {
-      const { error: allocationsError } = await supabase
-        .from('goal_allocations')
-        .delete()
+      const { data: userShifts, error: shiftsSelectError } = await supabase
+        .from('shifts')
+        .select('id')
         .eq('user_id', DEFAULT_USER_ID);
       
-      if (allocationsError) throw new Error(allocationsError.message);
+      if (shiftsSelectError) throw new Error(shiftsSelectError.message);
+      
+      if (userShifts && userShifts.length > 0) {
+        const shiftIds = userShifts.map(s => s.id);
+        const { error: allocationsError } = await supabase
+          .from('goal_allocations')
+          .delete()
+          .in('shift_id', shiftIds);
+        
+        if (allocationsError) throw new Error(allocationsError.message);
+      }
 
       const { error: shiftsError } = await supabase
         .from('shifts')
@@ -281,6 +291,13 @@ export function useDeleteAllData() {
       
       if (goalsError) throw new Error(goalsError.message);
 
+      const { error: resetBalanceError } = await supabase
+        .from('users')
+        .update({ balance: 0 })
+        .eq('id', DEFAULT_USER_ID);
+      
+      if (resetBalanceError) throw new Error(resetBalanceError.message);
+
       return { success: true };
     },
     onSuccess: () => {
@@ -288,6 +305,7 @@ export function useDeleteAllData() {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
       queryClient.invalidateQueries({ queryKey: ["user"] });
       queryClient.invalidateQueries({ queryKey: ["earnings-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["balance"] });
     },
   });
 }

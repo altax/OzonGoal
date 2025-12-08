@@ -2,6 +2,7 @@ import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
+import { useSettings, type BalancePosition } from "@/contexts/SettingsContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
@@ -91,6 +92,31 @@ function pluralizeDays(count: number): string {
 
 export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceHeaderProps) {
   const { theme, isDark, toggleTheme } = useTheme();
+  const { balancePosition, isBalanceHidden, toggleBalanceVisibility } = useSettings();
+
+  const getBalanceAlignment = (): "flex-start" | "center" | "flex-end" => {
+    switch (balancePosition) {
+      case "left":
+        return "flex-start";
+      case "center":
+        return "center";
+      case "right":
+      default:
+        return "flex-end";
+    }
+  };
+
+  const getBalanceMargin = (): { marginLeft?: number; marginRight?: number } => {
+    switch (balancePosition) {
+      case "left":
+        return { marginLeft: Spacing.md };
+      case "center":
+        return {};
+      case "right":
+      default:
+        return { marginRight: Spacing.md };
+    }
+  };
 
   const renderTabInfo = () => {
     if (!tabInfo) return null;
@@ -159,16 +185,32 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
       <Pressable 
         style={({ pressed }) => [
           styles.balanceSection,
+          { alignItems: getBalanceAlignment(), ...getBalanceMargin() },
           pressed && onBalancePress && { opacity: 0.7 },
         ]}
         onPress={onBalancePress}
         disabled={!onBalancePress}
       >
-        <ThemedText type="caption" style={[styles.balanceLabel, { color: theme.textSecondary }]}>
-          БАЛАНС
-        </ThemedText>
+        <View style={styles.balanceLabelRow}>
+          <ThemedText type="caption" style={[styles.balanceLabel, { color: theme.textSecondary }]}>
+            БАЛАНС
+          </ThemedText>
+          <Pressable
+            style={({ pressed }) => [
+              styles.hideToggle,
+              pressed && { opacity: 0.7 },
+            ]}
+            onPress={toggleBalanceVisibility}
+          >
+            <Feather
+              name={isBalanceHidden ? "eye-off" : "eye"}
+              size={14}
+              color={theme.textSecondary}
+            />
+          </Pressable>
+        </View>
         <ThemedText type="h1" style={[styles.balanceAmount, { color: theme.text }]}>
-          {formatBalance(balance)} ₽
+          {isBalanceHidden ? "••••••" : `${formatBalance(balance)} ₽`}
         </ThemedText>
         {renderTabInfo()}
       </Pressable>
@@ -200,11 +242,18 @@ const styles = StyleSheet.create({
   balanceSection: {
     alignItems: "flex-end",
     paddingVertical: Spacing.lg,
-    marginRight: Spacing.md,
+  },
+  balanceLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   balanceLabel: {
     letterSpacing: 1.5,
-    marginBottom: Spacing.sm,
+  },
+  hideToggle: {
+    padding: Spacing.xs,
   },
   balanceAmount: {
     fontSize: 44,

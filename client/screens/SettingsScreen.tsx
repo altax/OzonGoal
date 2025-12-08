@@ -6,6 +6,7 @@ import { BlurView } from "expo-blur";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { useSettings, SettingsProvider, type BalancePosition } from "@/contexts/SettingsContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useShifts, useUpdateShift, useGoals, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals, useDeleteAllData } from "@/api";
@@ -598,6 +599,141 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
   );
 }
 
+function BalancePositionModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <ThemeProvider>
+        <SettingsProvider>
+          <BalancePositionModalContent onClose={onClose} />
+        </SettingsProvider>
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function BalancePositionModalContent({ onClose }: { onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden } = useSettings();
+
+  const positions: { value: BalancePosition; label: string; icon: keyof typeof Feather.glyphMap }[] = [
+    { value: "left", label: "Слева", icon: "align-left" },
+    { value: "center", label: "По центру", icon: "align-center" },
+    { value: "right", label: "Справа", icon: "align-right" },
+  ];
+
+  const handlePositionSelect = (position: BalancePosition) => {
+    setBalancePosition(position);
+  };
+
+  return (
+    <BlurView
+      intensity={20}
+      tint={isDark ? "dark" : "light"}
+      style={modalStyles.blurContainer}
+    >
+      <Pressable style={modalStyles.overlay} onPress={onClose} />
+      
+      <View
+        style={[
+          modalStyles.modalContent,
+          {
+            backgroundColor: theme.backgroundContent,
+            paddingBottom: insets.bottom + Spacing.xl,
+          },
+        ]}
+      >
+        <View style={modalStyles.handle} />
+        
+        <View style={modalStyles.header}>
+          <ThemedText type="h4" style={modalStyles.title}>
+            Отображение баланса
+          </ThemedText>
+          <Pressable onPress={onClose} style={modalStyles.closeButton}>
+            <Feather name="x" size={24} color={theme.text} />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          style={modalStyles.listContainer}
+          contentContainerStyle={modalStyles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+            Позиция баланса
+          </ThemedText>
+          
+          {positions.map((pos) => (
+            <Pressable
+              key={pos.value}
+              style={({ pressed }) => [
+                balancePositionStyles.option,
+                {
+                  backgroundColor: balancePosition === pos.value ? theme.accentLight : theme.backgroundSecondary,
+                  borderColor: balancePosition === pos.value ? theme.accent : theme.border,
+                },
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => handlePositionSelect(pos.value)}
+            >
+              <View style={[balancePositionStyles.optionIcon, { backgroundColor: balancePosition === pos.value ? theme.accent : theme.backgroundDefault }]}>
+                <Feather
+                  name={pos.icon}
+                  size={18}
+                  color={balancePosition === pos.value ? "#FFFFFF" : theme.textSecondary}
+                />
+              </View>
+              <ThemedText type="body" style={{ flex: 1 }}>
+                {pos.label}
+              </ThemedText>
+              {balancePosition === pos.value && (
+                <Feather name="check" size={20} color={theme.accent} />
+              )}
+            </Pressable>
+          ))}
+
+          <View style={[balancePositionStyles.separator, { backgroundColor: theme.border }]} />
+
+          <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+            Приватность
+          </ThemedText>
+
+          <Pressable
+            style={({ pressed }) => [
+              balancePositionStyles.option,
+              {
+                backgroundColor: theme.backgroundSecondary,
+                borderColor: theme.border,
+              },
+              pressed && { opacity: 0.7 },
+            ]}
+            onPress={() => setIsBalanceHidden(!isBalanceHidden)}
+          >
+            <View style={[balancePositionStyles.optionIcon, { backgroundColor: isBalanceHidden ? theme.accent : theme.backgroundDefault }]}>
+              <Feather
+                name={isBalanceHidden ? "eye-off" : "eye"}
+                size={18}
+                color={isBalanceHidden ? "#FFFFFF" : theme.textSecondary}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ThemedText type="body">
+                Скрывать баланс
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                Баланс будет скрыт от посторонних глаз
+              </ThemedText>
+            </View>
+            <View style={[balancePositionStyles.toggle, { backgroundColor: isBalanceHidden ? theme.accent : theme.border }]}>
+              <View style={[balancePositionStyles.toggleThumb, { left: isBalanceHidden ? 20 : 2 }]} />
+            </View>
+          </Pressable>
+        </ScrollView>
+      </View>
+    </BlurView>
+  );
+}
+
 function DeleteConfirmationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
@@ -757,13 +893,23 @@ function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { balancePosition, isBalanceHidden } = useSettings();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
   const [showHiddenGoals, setShowHiddenGoals] = useState(false);
   const [showAutoAllocation, setShowAutoAllocation] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showBalancePosition, setShowBalancePosition] = useState(false);
   const { data: shifts = [] } = useShifts();
   const { data: goals = [] } = useGoals();
   const { data: hiddenGoals = [] } = useHiddenGoals();
+
+  const getBalancePositionLabel = () => {
+    switch (balancePosition) {
+      case "left": return "Слева";
+      case "center": return "По центру";
+      case "right": return "Справа";
+    }
+  };
 
   const hiddenShiftsCount = useMemo(() => {
     return shifts.filter(s => s.status === "canceled").length;
@@ -819,6 +965,17 @@ export default function SettingsScreen() {
           title="Скрытые цели"
           value={hiddenGoals.length > 0 ? `${hiddenGoals.length}` : undefined}
           onPress={() => setShowHiddenGoals(true)}
+        />
+
+        <View style={[styles.separator, { backgroundColor: theme.border }]} />
+
+        <SettingsItem
+          icon="credit-card"
+          iconColor="#8B5CF6"
+          iconBgColor="#EDE9FE"
+          title="Отображение баланса"
+          value={`${getBalancePositionLabel()}${isBalanceHidden ? " • Скрыт" : ""}`}
+          onPress={() => setShowBalancePosition(true)}
         />
 
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
@@ -883,6 +1040,11 @@ export default function SettingsScreen() {
       <DeleteConfirmationModal
         visible={showDeleteConfirmation}
         onClose={() => setShowDeleteConfirmation(false)}
+      />
+
+      <BalancePositionModal
+        visible={showBalancePosition}
+        onClose={() => setShowBalancePosition(false)}
       />
     </View>
   );
@@ -1212,5 +1374,41 @@ const deleteStyles = StyleSheet.create({
     justifyContent: "center",
     height: 52,
     borderRadius: BorderRadius.sm,
+  },
+});
+
+const balancePositionStyles = StyleSheet.create({
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    marginBottom: Spacing.sm,
+  },
+  optionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  separator: {
+    height: 1,
+    marginVertical: Spacing.lg,
+  },
+  toggle: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+  },
+  toggleThumb: {
+    position: "absolute",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
   },
 });
