@@ -42,32 +42,25 @@ function SettingsItem({
       style={({ pressed }) => [
         styles.settingsItem,
         { 
-          backgroundColor: pressed ? theme.backgroundSecondary : theme.backgroundContent,
+          backgroundColor: pressed ? theme.backgroundSecondary : 'transparent',
         },
       ]}
       onPress={onPress}
     >
       <View style={[styles.settingsItemIcon, { backgroundColor: finalIconBgColor }]}>
-        <Feather name={icon} size={18} color={finalIconColor} />
+        <Feather name={icon} size={14} color={finalIconColor} />
       </View>
-      <View style={styles.settingsItemContent}>
-        <ThemedText type="body" style={[danger && { color: "#EF4444" }]}>
-          {title}
-        </ThemedText>
-        {subtitle && (
-          <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-            {subtitle}
-          </ThemedText>
-        )}
-      </View>
+      <ThemedText type="body" style={[styles.settingsItemText, danger && { color: "#EF4444" }]}>
+        {title}
+      </ThemedText>
       <View style={styles.settingsItemRight}>
         {value && (
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             {value}
           </ThemedText>
         )}
         {showChevron && (
-          <Feather name="chevron-right" size={18} color={theme.textSecondary} style={{ marginLeft: Spacing.sm }} />
+          <Feather name="chevron-right" size={16} color={theme.textSecondary} style={{ marginLeft: Spacing.xs }} />
         )}
       </View>
     </Pressable>
@@ -413,75 +406,63 @@ export default function SettingsScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.profileSection, { backgroundColor: theme.backgroundContent }]}>
+        <View style={styles.profileSection}>
           <View style={[styles.avatarContainer, { backgroundColor: theme.accentLight }]}>
-            <Feather name="user" size={28} color={theme.accent} />
+            <Feather name="user" size={20} color={theme.accent} />
           </View>
-          <View style={styles.profileInfo}>
-            <ThemedText type="h4">Пользователь</ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-              Управление профилем
-            </ThemedText>
-          </View>
+          <ThemedText type="body" style={{ fontWeight: '600' }}>Пользователь</ThemedText>
         </View>
 
-        <View style={styles.sectionDivider} />
+        <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
         <SettingsItem
           icon="eye-off"
           title="Скрытые смены"
-          subtitle="Восстановить или удалить"
           value={hiddenShiftsCount > 0 ? `${hiddenShiftsCount}` : undefined}
           onPress={() => setShowHiddenShifts(true)}
         />
-
         <SettingsItem
           icon="eye-off"
           title="Скрытые цели"
-          subtitle="Восстановить или удалить"
           value={hiddenGoals.length > 0 ? `${hiddenGoals.length}` : undefined}
           onPress={() => setShowHiddenGoals(true)}
         />
 
-        <View style={styles.sectionDivider} />
+        <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
         <SettingsItem
           icon="moon"
-          title="Оформление"
-          value="Системная"
+          title="Тема"
+          value="Авто"
         />
-
         <SettingsItem
           icon="globe"
           title="Язык"
           value="Русский"
         />
-
         <SettingsItem
           icon="bell"
           title="Уведомления"
         />
 
-        <View style={styles.sectionDivider} />
+        <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
         <SettingsItem
           icon="download"
-          title="Экспорт данных"
+          title="Экспорт"
         />
-
         <SettingsItem
           icon="help-circle"
           title="Помощь"
         />
-
         <SettingsItem
           icon="info"
           title="О приложении"
-          value="v1.0.0"
+          value="1.0.0"
           showChevron={false}
         />
 
-        <View style={styles.sectionDivider} />
+        <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
         <SettingsItem
           icon="trash-2"
@@ -513,38 +494,36 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.md,
   },
   avatarContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.md,
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: Spacing.lg,
   },
-  profileInfo: {
-    flex: 1,
-  },
-  sectionDivider: {
-    height: Spacing.lg,
+  separator: {
+    height: 1,
+    marginVertical: Spacing.md,
   },
   settingsItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.sm,
-    marginBottom: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+    borderRadius: BorderRadius.xs,
   },
   settingsItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: Spacing.lg,
+    marginRight: Spacing.md,
   },
-  settingsItemContent: {
+  settingsItemText: {
     flex: 1,
   },
   settingsItemRight: {
