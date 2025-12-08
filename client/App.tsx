@@ -13,6 +13,7 @@ import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useThemeContext } from "@/contexts/ThemeContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 
 function AppContent() {
@@ -39,9 +40,11 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <SettingsProvider>
-            <AppContent />
-          </SettingsProvider>
+          <AuthProvider>
+            <SettingsProvider>
+              <AppContent />
+            </SettingsProvider>
+          </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>

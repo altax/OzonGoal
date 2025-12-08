@@ -4,10 +4,10 @@
 A mobile application for tracking financial goals and work shifts. Built with Expo and React Native for iOS, Android, and web platforms.
 
 ## Current State
-**Version:** 1.0.0 (Initial Setup)
-**Status:** Skeleton/Framework complete
+**Version:** 1.1.0 (Authentication Update)
+**Status:** Production-ready with multi-user authentication
 
-The app is in its initial skeleton state with the following 4 tabs implemented:
+The app features full Supabase Auth integration with multi-user support. Each user has isolated data storage for goals, shifts, and allocations. The following 4 tabs are implemented:
 1. **Цели (Goals)** - For tracking financial goals with empty state
 2. **Смены (Shifts)** - For logging work shifts with empty state
 3. **Статистика (Statistics)** - For viewing analytics with placeholder charts
@@ -135,9 +135,25 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
   - Goal forecasts with estimated completion dates
   - Daily average earnings for forecasting
 
+## Authentication System (Dec 8, 2025)
+- **Supabase Auth Integration**: Full email/password authentication with Supabase
+- **Multi-user Data Isolation**: All API queries use `getCurrentUserId()` for user-scoped data access
+- **AuthContext**: React context providing `user`, `session`, `signIn`, `signUp`, `signOut` functions
+- **AuthScreen**: Login/registration screen in Russian with validation and error handling
+- **React Query Cache Clearing**: Cache is cleared on sign-out to prevent data leakage between users
+- **Logout Button**: Added "Выйти из аккаунта" option in Settings screen
+- **User Profile Display**: Email displayed in Settings screen profile section
+
+### Key Files
+- `client/contexts/AuthContext.tsx` - Authentication context and hooks
+- `client/screens/AuthScreen.tsx` - Login/registration UI
+- `client/lib/supabase.ts` - Supabase client with `getCurrentUserId()` helper
+- `client/api/index.ts` - All queries use dynamic user ID for isolation
+
 ## Next Steps (Future Development)
-1. Add user authentication
-2. Add notifications for goal milestones
-3. Add export functionality for reports
-4. Add calendar view for shift planning
-5. Add comparison charts between periods
+1. Add notifications for goal milestones
+2. Add export functionality for reports
+3. Add calendar view for shift planning
+4. Add comparison charts between periods
+5. Add password reset flow
+6. Add social authentication (Google, Apple)

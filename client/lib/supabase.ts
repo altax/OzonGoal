@@ -7,6 +7,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000001';
 
+export async function getCurrentUserId(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id || DEFAULT_USER_ID;
+}
+
 export type Goal = {
   id: string;
   user_id: string | null;

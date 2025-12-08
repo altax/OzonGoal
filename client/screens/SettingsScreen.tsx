@@ -7,6 +7,7 @@ import { BlurView } from "expo-blur";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useShifts, useUpdateShift, useGoals, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals, useDeleteAllData } from "@/api";
@@ -759,6 +760,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden } = useSettings();
+  const { user, signOut } = useAuth();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
   const [showHiddenGoals, setShowHiddenGoals] = useState(false);
   const [showAutoAllocation, setShowAutoAllocation] = useState(false);
@@ -766,6 +768,13 @@ export default function SettingsScreen() {
   const { data: shifts = [] } = useShifts();
   const { data: goals = [] } = useGoals();
   const { data: hiddenGoals = [] } = useHiddenGoals();
+
+  const handleLogout = () => {
+    const confirmed = window.confirm("Вы уверены, что хотите выйти из аккаунта?");
+    if (confirmed) {
+      signOut();
+    }
+  };
 
 
   const hiddenShiftsCount = useMemo(() => {
@@ -795,7 +804,14 @@ export default function SettingsScreen() {
           <View style={[styles.avatarContainer, { backgroundColor: theme.accentLight }]}>
             <Feather name="user" size={20} color={theme.accent} />
           </View>
-          <ThemedText type="body" style={{ fontWeight: '600' }}>Пользователь</ThemedText>
+          <View>
+            <ThemedText type="body" style={{ fontWeight: '600' }}>
+              {user?.email?.split('@')[0] || 'Пользователь'}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {user?.email || ''}
+            </ThemedText>
+          </View>
         </View>
 
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
@@ -917,6 +933,15 @@ export default function SettingsScreen() {
           title="Очистить данные"
           danger
           onPress={() => setShowDeleteConfirmation(true)}
+        />
+
+        <View style={[styles.separator, { backgroundColor: theme.border }]} />
+
+        <SettingsItem
+          icon="log-out"
+          title="Выйти из аккаунта"
+          danger
+          onPress={handleLogout}
         />
       </ScrollView>
 

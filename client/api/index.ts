@@ -1,22 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, DEFAULT_USER_ID, toClientGoal, toClientShift, toClientUser, type Goal as SupabaseGoal, type Shift as SupabaseShift, type User as SupabaseUser } from "../lib/supabase";
+import { supabase, getCurrentUserId, DEFAULT_USER_ID, toClientGoal, toClientShift, toClientUser, type Goal as SupabaseGoal, type Shift as SupabaseShift, type User as SupabaseUser } from "../lib/supabase";
 
 type Goal = ReturnType<typeof toClientGoal>;
 type Shift = ReturnType<typeof toClientShift>;
 type User = ReturnType<typeof toClientUser>;
 
-async function ensureDefaultUser() {
+async function ensureUser(userId: string) {
   const { data: existingUser } = await supabase
     .from('users')
     .select('*')
-    .eq('id', DEFAULT_USER_ID)
+    .eq('id', userId)
     .single();
 
   if (!existingUser) {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
     await supabase.from('users').insert({
-      id: DEFAULT_USER_ID,
-      username: 'default',
-      password: 'default',
+      id: userId,
+      username: authUser?.email?.split('@')[0] || 'user',
+      password: '',
       balance: 0,
     });
   }
@@ -26,11 +27,12 @@ export function useUser() {
   return useQuery<User>({
     queryKey: ["user"],
     queryFn: async () => {
-      await ensureDefaultUser();
+      const userId = await getCurrentUserId();
+      await ensureUser(userId);
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('id', DEFAULT_USER_ID)
+        .eq('id', userId)
         .single();
       
       if (error) throw new Error(error.message);
@@ -43,10 +45,11 @@ export function useGoals() {
   return useQuery<Goal[]>({
     queryKey: ["goals"],
     queryFn: async () => {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('goals')
         .select('*')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .order('is_primary', { ascending: false })
         .order('order_index', { ascending: true })
         .order('created_at', { ascending: false });
@@ -62,10 +65,11 @@ export function useGoalsSummary() {
   return useQuery<{ count: number; totalTarget: number; totalCurrent: number }>({
     queryKey: ["goals", "summary"],
     queryFn: async () => {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('goals')
         .select('target_amount, current_amount')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'active');
       
       if (error) throw new Error(error.message);
@@ -91,10 +95,11 @@ export function useCreateGoal() {
       iconColor?: string;
       iconBgColor?: string;
     }) => {
+      const userId = await getCurrentUserId();
       const { data: maxOrderData } = await supabase
         .from('goals')
         .select('order_index')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .order('order_index', { ascending: false })
         .limit(1);
       
@@ -103,7 +108,7 @@ export function useCreateGoal() {
       const { data: newGoal, error } = await supabase
         .from('goals')
         .insert({
-          user_id: DEFAULT_USER_ID,
+          user_id: userId,
           name: data.name,
           target_amount: parseFloat(data.targetAmount),
           icon_key: data.iconKey || 'target',
@@ -202,10 +207,11 @@ export function useHiddenGoals() {
   return useQuery<Goal[]>({
     queryKey: ["goals", "hidden"],
     queryFn: async () => {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('goals')
         .select('*')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'hidden')
         .order('updated_at', { ascending: false });
       
@@ -220,10 +226,11 @@ export function useDeleteAllHiddenGoals() {
   
   return useMutation({
     mutationFn: async () => {
+      const userId = await getCurrentUserId();
       const { error } = await supabase
         .from('goals')
         .delete()
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'hidden');
       
       if (error) throw new Error(error.message);
@@ -240,10 +247,11 @@ export function useDeleteAllHiddenShifts() {
   
   return useMutation({
     mutationFn: async () => {
+      const userId = await getCurrentUserId();
       const { error } = await supabase
         .from('shifts')
         .delete()
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'canceled');
       
       if (error) throw new Error(error.message);
@@ -260,10 +268,11 @@ export function useDeleteAllData() {
   
   return useMutation({
     mutationFn: async () => {
+      const userId = await getCurrentUserId();
       const { data: userShifts, error: shiftsSelectError } = await supabase
         .from('shifts')
         .select('id')
-        .eq('user_id', DEFAULT_USER_ID);
+        .eq('user_id', userId);
       
       if (shiftsSelectError) throw new Error(shiftsSelectError.message);
       
@@ -280,21 +289,21 @@ export function useDeleteAllData() {
       const { error: shiftsError } = await supabase
         .from('shifts')
         .delete()
-        .eq('user_id', DEFAULT_USER_ID);
+        .eq('user_id', userId);
       
       if (shiftsError) throw new Error(shiftsError.message);
 
       const { error: goalsError } = await supabase
         .from('goals')
         .delete()
-        .eq('user_id', DEFAULT_USER_ID);
+        .eq('user_id', userId);
       
       if (goalsError) throw new Error(goalsError.message);
 
       const { error: resetBalanceError } = await supabase
         .from('users')
         .update({ balance: 0 })
-        .eq('id', DEFAULT_USER_ID);
+        .eq('id', userId);
       
       if (resetBalanceError) throw new Error(resetBalanceError.message);
 
@@ -315,12 +324,13 @@ export function useReorderGoals() {
   
   return useMutation({
     mutationFn: async (goalIds: string[]) => {
+      const userId = await getCurrentUserId();
       for (let i = 0; i < goalIds.length; i++) {
         await supabase
           .from('goals')
           .update({ order_index: i })
           .eq('id', goalIds[i])
-          .eq('user_id', DEFAULT_USER_ID);
+          .eq('user_id', userId);
       }
       return { success: true };
     },
@@ -335,16 +345,17 @@ export function useSetPrimaryGoal() {
   
   return useMutation({
     mutationFn: async (goalId: string) => {
+      const userId = await getCurrentUserId();
       await supabase
         .from('goals')
         .update({ is_primary: false })
-        .eq('user_id', DEFAULT_USER_ID);
+        .eq('user_id', userId);
       
       await supabase
         .from('goals')
         .update({ is_primary: true })
         .eq('id', goalId)
-        .eq('user_id', DEFAULT_USER_ID);
+        .eq('user_id', userId);
       
       return { success: true };
     },
@@ -354,13 +365,13 @@ export function useSetPrimaryGoal() {
   });
 }
 
-async function autoUpdateShiftStatuses() {
+async function autoUpdateShiftStatuses(userId: string) {
   const now = new Date().toISOString();
   
   const { data: expiredInProgressShifts } = await supabase
     .from('shifts')
     .select('id')
-    .eq('user_id', DEFAULT_USER_ID)
+    .eq('user_id', userId)
     .eq('status', 'in_progress')
     .lt('scheduled_end', now);
   
@@ -376,7 +387,7 @@ async function autoUpdateShiftStatuses() {
   const { data: missedScheduledShifts } = await supabase
     .from('shifts')
     .select('id')
-    .eq('user_id', DEFAULT_USER_ID)
+    .eq('user_id', userId)
     .eq('status', 'scheduled')
     .lt('scheduled_end', now);
   
@@ -392,7 +403,7 @@ async function autoUpdateShiftStatuses() {
   const { data: startedShifts } = await supabase
     .from('shifts')
     .select('id')
-    .eq('user_id', DEFAULT_USER_ID)
+    .eq('user_id', userId)
     .eq('status', 'scheduled')
     .lte('scheduled_start', now)
     .gt('scheduled_end', now);
@@ -432,12 +443,13 @@ export function useShifts() {
   return useQuery<Shift[]>({
     queryKey: ["shifts"],
     queryFn: async () => {
-      await autoUpdateShiftStatuses();
+      const userId = await getCurrentUserId();
+      await autoUpdateShiftStatuses(userId);
       
       const { data, error } = await supabase
         .from('shifts')
         .select('*')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .order('scheduled_start', { ascending: false });
       
       if (error) throw new Error(error.message);
@@ -450,26 +462,27 @@ export function useShiftsSummary() {
   return useQuery<{ past: number; scheduled: number; current: Shift | null }>({
     queryKey: ["shifts", "summary"],
     queryFn: async () => {
-      await autoUpdateShiftStatuses();
+      const userId = await getCurrentUserId();
+      await autoUpdateShiftStatuses(userId);
       const now = new Date().toISOString();
       
       const { data: pastData } = await supabase
         .from('shifts')
         .select('id', { count: 'exact' })
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'completed');
       
       const { data: scheduledData } = await supabase
         .from('shifts')
         .select('id', { count: 'exact' })
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'scheduled')
         .gte('scheduled_start', now);
       
       const { data: currentData } = await supabase
         .from('shifts')
         .select('*')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'in_progress')
         .limit(1);
       
@@ -494,10 +507,11 @@ export function useCreateShift() {
       const date = new Date(data.scheduledDate);
       const dateStr = date.toISOString().split('T')[0];
       
+      const userId = await getCurrentUserId();
       const { data: existingShifts, error: conflictError } = await supabase
         .from('shifts')
         .select('id')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('shift_type', data.shiftType)
         .neq('status', 'canceled')
         .gte('scheduled_date', `${dateStr}T00:00:00`)
@@ -530,7 +544,7 @@ export function useCreateShift() {
       const { data: newShift, error } = await supabase
         .from('shifts')
         .insert({
-          user_id: DEFAULT_USER_ID,
+          user_id: userId,
           operation_type: data.operationType,
           shift_type: data.shiftType,
           scheduled_date: date.toISOString(),
@@ -662,10 +676,11 @@ export function useBalanceHistory() {
   }[]>({
     queryKey: ["balance", "history"],
     queryFn: async () => {
+      const userId = await getCurrentUserId();
       const { data: shifts, error: shiftsError } = await supabase
         .from('shifts')
         .select('id, earnings, earnings_recorded_at, shift_type, operation_type')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'completed')
         .not('earnings', 'is', null)
         .order('earnings_recorded_at', { ascending: false })
@@ -910,12 +925,13 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
   return useQuery<EarningsStats>({
     queryKey: ["earnings", "stats", period],
     queryFn: async () => {
+      const userId = await getCurrentUserId();
       const { start, end } = getDateRange(period);
       
       const { data: completedShifts, error: shiftsError } = await supabase
         .from('shifts')
         .select('*')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'completed')
         .not('earnings', 'is', null)
         .gte('earnings_recorded_at', start.toISOString())
@@ -931,7 +947,7 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
       const { data: goals, error: goalsError } = await supabase
         .from('goals')
         .select('*')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'active');
       
       if (goalsError) throw new Error(goalsError.message);
@@ -943,7 +959,7 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
       const { data: user } = await supabase
         .from('users')
         .select('balance')
-        .eq('id', DEFAULT_USER_ID)
+        .eq('id', userId)
         .single();
       
       const freeBalance = safeParseNumber(user?.balance);
@@ -989,7 +1005,7 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
       const { data: allShifts } = await supabase
         .from('shifts')
         .select('*')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .neq('status', 'canceled');
       
       const futureShifts = (allShifts || []).filter(s => 
@@ -1068,7 +1084,7 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
       const { data: prevShifts } = await supabase
         .from('shifts')
         .select('earnings')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'completed')
         .not('earnings', 'is', null)
         .gte('earnings_recorded_at', prevStart.toISOString())
@@ -1146,7 +1162,7 @@ export function useEarningsStats(period: StatsPeriod = 'month') {
       const { data: allCompletedShifts } = await supabase
         .from('shifts')
         .select('*')
-        .eq('user_id', DEFAULT_USER_ID)
+        .eq('user_id', userId)
         .eq('status', 'completed')
         .not('earnings', 'is', null)
         .order('earnings', { ascending: false });
