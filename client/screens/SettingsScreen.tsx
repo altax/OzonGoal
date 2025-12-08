@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -600,6 +600,209 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
   );
 }
 
+function GuestAuthModal({ 
+  visible, 
+  onClose,
+  signIn,
+  signUp,
+}: { 
+  visible: boolean; 
+  onClose: () => void;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <ThemeProvider>
+        <GuestAuthModalContent onClose={onClose} signIn={signIn} signUp={signUp} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function GuestAuthModalContent({ 
+  onClose,
+  signIn,
+  signUp,
+}: { 
+  onClose: () => void;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+}) {
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!email || !password) {
+      Alert.alert('Ошибка', 'Заполните все поля');
+      return;
+    }
+
+    if (isSignUp && password !== confirmPassword) {
+      Alert.alert('Ошибка', 'Пароли не совпадают');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Ошибка', 'Пароль должен содержать минимум 6 символов');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = isSignUp 
+        ? await signUp(email, password)
+        : await signIn(email, password);
+      
+      if (error) {
+        let message = error.message;
+        if (message.includes('Invalid login credentials')) {
+          message = 'Неверный email или пароль';
+        } else if (message.includes('already registered') || message.includes('already exists')) {
+          message = 'Этот email уже зарегистрирован';
+        } else if (message.includes('Invalid email')) {
+          message = 'Неверный формат email';
+        }
+        Alert.alert('Ошибка', message);
+      } else {
+        onClose();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <BlurView
+      intensity={20}
+      tint={isDark ? "dark" : "light"}
+      style={modalStyles.blurContainer}
+    >
+      <Pressable style={modalStyles.overlay} onPress={onClose} />
+      
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ width: '100%' }}
+      >
+        <View
+          style={[
+            modalStyles.modalContent,
+            {
+              backgroundColor: theme.backgroundContent,
+              paddingBottom: insets.bottom + Spacing.xl,
+            },
+          ]}
+        >
+          <View style={modalStyles.handle} />
+          
+          <View style={modalStyles.header}>
+            <ThemedText type="h4" style={modalStyles.title}>
+              {isSignUp ? 'Создать аккаунт' : 'Войти в аккаунт'}
+            </ThemedText>
+            <Pressable onPress={onClose} style={modalStyles.closeButton}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+
+          <View style={{ paddingHorizontal: Spacing.xl }}>
+            <View style={[linkEmailStyles.infoBox, { backgroundColor: theme.accentLight }]}>
+              <Feather name="info" size={16} color={theme.accent} />
+              <ThemedText type="caption" style={{ color: theme.accent, marginLeft: Spacing.sm, flex: 1 }}>
+                Ваши локальные данные будут автоматически перенесены в облако
+              </ThemedText>
+            </View>
+
+            <View style={linkEmailStyles.inputContainer}>
+              <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                <Feather name="mail" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+                <TextInput
+                  style={[linkEmailStyles.input, { color: theme.text }]}
+                  placeholder="Email"
+                  placeholderTextColor={theme.textSecondary}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
+            </View>
+
+            <View style={linkEmailStyles.inputContainer}>
+              <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+                <TextInput
+                  style={[linkEmailStyles.input, { color: theme.text }]}
+                  placeholder="Пароль"
+                  placeholderTextColor={theme.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <Pressable onPress={() => setShowPassword(!showPassword)}>
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={theme.textSecondary} />
+                </Pressable>
+              </View>
+            </View>
+
+            {isSignUp && (
+              <View style={linkEmailStyles.inputContainer}>
+                <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                  <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+                  <TextInput
+                    style={[linkEmailStyles.input, { color: theme.text }]}
+                    placeholder="Подтвердите пароль"
+                    placeholderTextColor={theme.textSecondary}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showPassword}
+                  />
+                </View>
+              </View>
+            )}
+
+            <Pressable
+              style={({ pressed }) => [
+                linkEmailStyles.submitButton,
+                { backgroundColor: theme.accent },
+                (pressed || loading) && { opacity: 0.7 },
+              ]}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Feather name={isSignUp ? 'user-plus' : 'log-in'} size={18} color="#FFFFFF" style={{ marginRight: Spacing.sm }} />
+                  <ThemedText type="body" style={{ color: '#fff', fontWeight: '600' }}>
+                    {isSignUp ? 'Зарегистрироваться' : 'Войти'}
+                  </ThemedText>
+                </>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={{ alignItems: 'center', marginTop: Spacing.md }}
+              onPress={() => setIsSignUp(!isSignUp)}
+            >
+              <ThemedText type="caption" style={{ color: theme.accent }}>
+                {isSignUp ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </BlurView>
+  );
+}
+
 function LinkEmailModal({ 
   visible, 
   onClose, 
@@ -974,12 +1177,13 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden } = useSettings();
-  const { user, signOut, isAnonymous, linkEmail } = useAuth();
+  const { user, signOut, signIn, signUp, isAnonymous, isGuestMode, linkEmail } = useAuth();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
   const [showHiddenGoals, setShowHiddenGoals] = useState(false);
   const [showAutoAllocation, setShowAutoAllocation] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showLinkEmail, setShowLinkEmail] = useState(false);
+  const [showGuestAuth, setShowGuestAuth] = useState(false);
   const { data: shifts = [] } = useShifts();
   const { data: goals = [] } = useGoals();
   const { data: hiddenGoals = [] } = useHiddenGoals();
@@ -1016,18 +1220,33 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileSection}>
-          <View style={[styles.avatarContainer, { backgroundColor: isAnonymous ? '#FEF3C7' : theme.accentLight }]}>
-            <Feather name={isAnonymous ? "user-x" : "user"} size={20} color={isAnonymous ? '#F59E0B' : theme.accent} />
+          <View style={[styles.avatarContainer, { backgroundColor: (isAnonymous || isGuestMode) ? '#FEF3C7' : theme.accentLight }]}>
+            <Feather name={(isAnonymous || isGuestMode) ? "user-x" : "user"} size={20} color={(isAnonymous || isGuestMode) ? '#F59E0B' : theme.accent} />
           </View>
           <View style={{ flex: 1 }}>
             <ThemedText type="body" style={{ fontWeight: '600' }}>
-              {isAnonymous ? 'Гостевой аккаунт' : (user?.email?.split('@')[0] || 'Пользователь')}
+              {(isAnonymous || isGuestMode) ? 'Гостевой режим' : (user?.email?.split('@')[0] || 'Пользователь')}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {isAnonymous ? 'Данные хранятся локально' : (user?.email || '')}
+              {(isAnonymous || isGuestMode) ? 'Данные хранятся локально' : (user?.email || '')}
             </ThemedText>
           </View>
-          {isAnonymous && (
+          {isGuestMode && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.linkEmailButton,
+                { backgroundColor: theme.accent },
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={() => setShowGuestAuth(true)}
+            >
+              <Feather name="log-in" size={14} color="#FFFFFF" />
+              <ThemedText type="caption" style={{ color: '#FFFFFF', marginLeft: 4, fontWeight: '600' }}>
+                Войти
+              </ThemedText>
+            </Pressable>
+          )}
+          {isAnonymous && !isGuestMode && (
             <Pressable
               style={({ pressed }) => [
                 styles.linkEmailButton,
@@ -1201,6 +1420,13 @@ export default function SettingsScreen() {
         visible={showLinkEmail}
         onClose={() => setShowLinkEmail(false)}
         onLink={linkEmail}
+      />
+
+      <GuestAuthModal
+        visible={showGuestAuth}
+        onClose={() => setShowGuestAuth(false)}
+        signIn={signIn}
+        signUp={signUp}
       />
 
     </View>
