@@ -1,18 +1,23 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { migrateLocalDataToCloud, checkAndPromptMigration } from '@/lib/dataMigration';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isAuthenticated: boolean;
   isAnonymous: boolean;
+  isGuestMode: boolean;
   signInAnonymously: () => Promise<{ error: Error | null }>;
   linkEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  continueAsGuest: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,7 +27,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [guestMode, setGuestMode] = useState(false);
 
+  const isAuthenticated = !!user && !user.is_anonymous;
   const isAnonymous = user?.is_anonymous ?? false;
 
   const createUserRecord = async (userId: string, username: string) => {
@@ -46,6 +53,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleMigration = async (userId: string) => {
+    try {
+      const hasLocalData = await checkAndPromptMigration();
+      if (hasLocalData) {
+        console.log('[Auth] Local data found, starting migration...');
+        const result = await migrateLocalDataToCloud(userId);
+        if (result.success && (result.migratedGoals > 0 || result.migratedShifts > 0)) {
+          Alert.alert(
+            'Данные перенесены',
+            `Ваши локальные данные успешно синхронизированы с облаком:\n` +
+            `- Целей: ${result.migratedGoals}\n` +
+            `- Смен: ${result.migratedShifts}`,
+            [{ text: 'OK' }]
+          );
+          queryClient.invalidateQueries();
+        }
+      }
+    } catch (error) {
+      console.error('[Auth] Migration error:', error);
+    }
+  };
+
   const signInAnonymously = useCallback(async () => {
     try {
       const { data, error } = await supabase.auth.signInAnonymously();
@@ -60,6 +89,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const continueAsGuest = useCallback(() => {
+    setGuestMode(true);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
@@ -71,6 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setSession(session);
         setUser(session.user);
+        setGuestMode(false);
+        
+        if (!session.user.is_anonymous) {
+          await handleMigration(session.user.id);
+        }
       } else {
         setSession(null);
         setUser(null);
@@ -89,9 +128,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         queryClient.clear();
         setSession(null);
         setUser(null);
+        setGuestMode(false);
       } else if (session) {
         setSession(session);
         setUser(session.user);
+        setGuestMode(false);
+        
+        if (event === 'SIGNED_IN' && !session.user.is_anonymous) {
+          await handleMigration(session.user.id);
+        }
       }
       
       setLoading(false);
@@ -124,10 +169,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      if (!error && data.user) {
+        await handleMigration(data.user.id);
+      }
+      
       return { error };
     } catch (error) {
       return { error: error as Error };
@@ -136,16 +186,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
       });
       
-      if (!error) {
-        const { data: { user: newUser } } = await supabase.auth.getUser();
-        if (newUser) {
-          await createUserRecord(newUser.id, email.split('@')[0]);
-        }
+      if (!error && data.user) {
+        await createUserRecord(data.user.id, email.split('@')[0]);
+        await handleMigration(data.user.id);
       }
       
       return { error };
@@ -161,15 +209,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      user, 
-      session, 
+      user: guestMode ? null : user, 
+      session: guestMode ? null : session, 
       loading, 
-      isAnonymous,
+      isAuthenticated: guestMode ? false : isAuthenticated,
+      isAnonymous: guestMode ? false : isAnonymous,
+      isGuestMode: guestMode,
       signInAnonymously,
       linkEmail,
       signIn, 
       signUp, 
-      signOut 
+      signOut,
+      continueAsGuest,
     }}>
       {children}
     </AuthContext.Provider>

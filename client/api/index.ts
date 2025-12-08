@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, getCurrentUserId, DEFAULT_USER_ID, toClientGoal, toClientShift, toClientUser, type Goal as SupabaseGoal, type Shift as SupabaseShift, type User as SupabaseUser } from "../lib/supabase";
+import { dataService, DataMode } from "../lib/dataService";
+import { useDataMode } from "../contexts/DataModeContext";
 
 type Goal = ReturnType<typeof toClientGoal>;
 type Shift = ReturnType<typeof toClientShift>;
@@ -24,45 +26,28 @@ async function ensureUser(userId: string) {
 }
 
 export function useUser() {
+  const { mode } = useDataMode();
+  
   return useQuery<User>({
-    queryKey: ["user"],
+    queryKey: ["user", mode],
     queryFn: async () => {
-      const userId = await getCurrentUserId();
-      await ensureUser(userId);
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      if (error) throw new Error(error.message);
-      return toClientUser(data as SupabaseUser);
+      return await dataService.getUser(mode);
     },
   });
 }
 
 export function useGoals() {
+  const { mode } = useDataMode();
+  
   return useQuery<Goal[]>({
-    queryKey: ["goals"],
+    queryKey: ["goals", mode],
     queryFn: async () => {
-      const userId = await getCurrentUserId();
-      console.log('[API] Fetching goals for user:', userId);
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', userId)
-        .order('is_primary', { ascending: false })
-        .order('order_index', { ascending: true })
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('[API] Goals fetch error:', error.message);
-        throw new Error(error.message);
-      }
-      console.log('[API] Goals fetched:', data?.length || 0);
-      return (data as SupabaseGoal[]).map(toClientGoal);
+      console.log('[API] Fetching goals, mode:', mode);
+      const goals = await dataService.getGoals(mode);
+      console.log('[API] Goals fetched:', goals.length);
+      return goals;
     },
-    refetchInterval: 5000,
+    refetchInterval: mode === 'cloud' ? 5000 : false,
   });
 }
 
@@ -91,6 +76,7 @@ export function useGoalsSummary() {
 
 export function useCreateGoal() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async (data: {
@@ -100,32 +86,7 @@ export function useCreateGoal() {
       iconColor?: string;
       iconBgColor?: string;
     }) => {
-      const userId = await getCurrentUserId();
-      const { data: maxOrderData } = await supabase
-        .from('goals')
-        .select('order_index')
-        .eq('user_id', userId)
-        .order('order_index', { ascending: false })
-        .limit(1);
-      
-      const maxOrder = maxOrderData?.[0]?.order_index || 0;
-      
-      const { data: newGoal, error } = await supabase
-        .from('goals')
-        .insert({
-          user_id: userId,
-          name: data.name,
-          target_amount: parseFloat(data.targetAmount),
-          icon_key: data.iconKey || 'target',
-          icon_color: data.iconColor || '#3B82F6',
-          icon_bg_color: data.iconBgColor || '#E0E7FF',
-          order_index: maxOrder + 1,
-        })
-        .select()
-        .single();
-      
-      if (error) throw new Error(error.message);
-      return toClientGoal(newGoal as SupabaseGoal);
+      return await dataService.createGoal(mode, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
@@ -136,6 +97,7 @@ export function useCreateGoal() {
 
 export function useUpdateGoal() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<{
@@ -150,36 +112,7 @@ export function useUpdateGoal() {
       orderIndex: number;
       allocationPercentage: number;
     }>) => {
-      const updateData: Record<string, unknown> = {};
-      if (data.name !== undefined) updateData.name = data.name;
-      if (data.targetAmount !== undefined) updateData.target_amount = parseFloat(data.targetAmount);
-      if (data.currentAmount !== undefined) updateData.current_amount = parseFloat(data.currentAmount);
-      if (data.iconKey !== undefined) updateData.icon_key = data.iconKey;
-      if (data.iconColor !== undefined) updateData.icon_color = data.iconColor;
-      if (data.iconBgColor !== undefined) updateData.icon_bg_color = data.iconBgColor;
-      if (data.status !== undefined) {
-        updateData.status = data.status;
-        if (data.status === 'completed') {
-          updateData.completed_at = new Date().toISOString();
-        }
-      }
-      if (data.isPrimary !== undefined) updateData.is_primary = data.isPrimary;
-      if (data.orderIndex !== undefined) updateData.order_index = data.orderIndex;
-      if (data.allocationPercentage !== undefined) updateData.allocation_percentage = data.allocationPercentage;
-      
-      const { data: updatedGoal, error } = await supabase
-        .from('goals')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('[useUpdateGoal] Error:', error);
-        throw new Error(error.message);
-      }
-      
-      return toClientGoal(updatedGoal as SupabaseGoal);
+      return await dataService.updateGoal(mode, id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
@@ -445,20 +378,17 @@ export function useCompleteShift() {
 }
 
 export function useShifts() {
+  const { mode } = useDataMode();
+  
   return useQuery<Shift[]>({
-    queryKey: ["shifts"],
+    queryKey: ["shifts", mode],
     queryFn: async () => {
-      const userId = await getCurrentUserId();
-      await autoUpdateShiftStatuses(userId);
+      if (mode === 'cloud') {
+        const userId = await getCurrentUserId();
+        await autoUpdateShiftStatuses(userId);
+      }
       
-      const { data, error } = await supabase
-        .from('shifts')
-        .select('*')
-        .eq('user_id', userId)
-        .order('scheduled_start', { ascending: false });
-      
-      if (error) throw new Error(error.message);
-      return (data as SupabaseShift[]).map(toClientShift);
+      return await dataService.getShifts(mode);
     },
   });
 }
@@ -502,6 +432,7 @@ export function useShiftsSummary() {
 
 export function useCreateShift() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async (data: {
@@ -509,59 +440,9 @@ export function useCreateShift() {
       shiftType: "day" | "night";
       scheduledDate: string;
     }) => {
-      const date = new Date(data.scheduledDate);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      const userId = await getCurrentUserId();
-      const { data: existingShifts, error: conflictError } = await supabase
-        .from('shifts')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('shift_type', data.shiftType)
-        .neq('status', 'canceled')
-        .gte('scheduled_date', `${dateStr}T00:00:00`)
-        .lt('scheduled_date', `${dateStr}T23:59:59`);
-      
-      if (conflictError) throw new Error(conflictError.message);
-      if (existingShifts && existingShifts.length > 0) {
-        throw new Error("Смена на этот день и время уже существует");
-      }
-      
-      let scheduledStart: Date;
-      let scheduledEnd: Date;
-      
-      if (data.shiftType === "day") {
-        scheduledStart = new Date(date);
-        scheduledStart.setHours(8, 0, 0, 0);
-        scheduledEnd = new Date(date);
-        scheduledEnd.setHours(20, 0, 0, 0);
-      } else {
-        scheduledStart = new Date(date);
-        scheduledStart.setHours(20, 0, 0, 0);
-        scheduledEnd = new Date(date);
-        scheduledEnd.setDate(scheduledEnd.getDate() + 1);
-        scheduledEnd.setHours(8, 0, 0, 0);
-      }
-      
-      const now = new Date();
-      const status = scheduledStart <= now && now < scheduledEnd ? "in_progress" : "scheduled";
-      
-      const { data: newShift, error } = await supabase
-        .from('shifts')
-        .insert({
-          user_id: userId,
-          operation_type: data.operationType,
-          shift_type: data.shiftType,
-          scheduled_date: date.toISOString(),
-          scheduled_start: scheduledStart.toISOString(),
-          scheduled_end: scheduledEnd.toISOString(),
-          status,
-        })
-        .select()
-        .single();
-      
-      if (error) throw new Error(error.message);
-      return toClientShift(newShift as SupabaseShift);
+      const shift = await dataService.createShift(mode, data);
+      if (!shift) throw new Error("Не удалось создать смену");
+      return shift;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });

@@ -21,26 +21,17 @@ import { Spacing, BorderRadius } from '@/constants/theme';
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { signIn, signUp, signInAnonymously } = useAuth();
+  const { signIn, signUp, continueAsGuest } = useAuth();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleGuestLogin = async () => {
-    setGuestLoading(true);
-    try {
-      const { error } = await signInAnonymously();
-      if (error) {
-        Alert.alert('Ошибка', 'Не удалось войти как гость. Попробуйте еще раз.');
-      }
-    } finally {
-      setGuestLoading(false);
-    }
+  const handleGuestLogin = () => {
+    continueAsGuest();
   };
 
   const handleSubmit = async () => {
@@ -205,22 +196,15 @@ export default function AuthScreen() {
             { 
               backgroundColor: theme.backgroundSecondary,
               borderColor: theme.border,
-              opacity: pressed || guestLoading ? 0.7 : 1 
+              opacity: pressed ? 0.7 : 1 
             },
           ]}
           onPress={handleGuestLogin}
-          disabled={guestLoading}
         >
-          {guestLoading ? (
-            <ActivityIndicator color={theme.textSecondary} />
-          ) : (
-            <>
-              <Feather name="user" size={18} color={theme.textSecondary} style={{ marginRight: 8 }} />
-              <ThemedText type="body" style={{ color: theme.textSecondary }}>
-                Продолжить как гость
-              </ThemedText>
-            </>
-          )}
+          <Feather name="user" size={18} color={theme.textSecondary} style={{ marginRight: 8 }} />
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            Продолжить как гость
+          </ThemedText>
         </Pressable>
       </View>
     </KeyboardAvoidingView>

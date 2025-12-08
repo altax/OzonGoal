@@ -7,6 +7,7 @@ import AuthScreen from "@/screens/AuthScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
+import { DataModeProvider } from "@/contexts/DataModeContext";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -17,7 +18,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootStackNavigator() {
   const screenOptions = useScreenOptions();
-  const { loading, user } = useAuth();
+  const { loading, user, isAuthenticated, isGuestMode } = useAuth();
   const { theme } = useTheme();
 
   if (loading) {
@@ -28,22 +29,26 @@ export default function RootStackNavigator() {
     );
   }
 
+  const showMainApp = user !== null || isGuestMode;
+
   return (
-    <Stack.Navigator screenOptions={screenOptions}>
-      {user ? (
-        <Stack.Screen
-          name="Main"
-          component={MainTabNavigator}
-          options={{ headerShown: false }}
-        />
-      ) : (
-        <Stack.Screen
-          name="Auth"
-          component={AuthScreen}
-          options={{ headerShown: false }}
-        />
-      )}
-    </Stack.Navigator>
+    <DataModeProvider isAuthenticated={isAuthenticated} userId={user?.id}>
+      <Stack.Navigator screenOptions={screenOptions}>
+        {showMainApp ? (
+          <Stack.Screen
+            name="Main"
+            component={MainTabNavigator}
+            options={{ headerShown: false }}
+          />
+        ) : (
+          <Stack.Screen
+            name="Auth"
+            component={AuthScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+      </Stack.Navigator>
+    </DataModeProvider>
   );
 }
 
