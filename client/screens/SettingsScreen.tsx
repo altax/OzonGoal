@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { useShifts, useUpdateShift, useGoals, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals } from "@/api";
+import { useShifts, useUpdateShift, useGoals, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals, useDeleteAllData } from "@/api";
 
 interface SettingsItemProps {
   icon: keyof typeof Feather.glyphMap;
@@ -598,12 +598,169 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
   );
 }
 
+function DeleteConfirmationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+      <ThemeProvider>
+        <DeleteConfirmationModalContent onClose={onClose} />
+      </ThemeProvider>
+    </Modal>
+  );
+}
+
+function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const deleteAllData = useDeleteAllData();
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const CONFIRM_PHRASE = "Да, удалить";
+  const isConfirmed = confirmText.trim() === CONFIRM_PHRASE;
+
+  const handleDelete = async () => {
+    if (!isConfirmed) return;
+    
+    setDeleting(true);
+    try {
+      await deleteAllData.mutateAsync();
+      Alert.alert("Готово", "Все данные успешно удалены", [
+        { text: "OK", onPress: onClose }
+      ]);
+    } catch (error) {
+      console.error('[DeleteAllData] Error:', error);
+      Alert.alert("Ошибка", "Не удалось удалить данные. Попробуйте ещё раз.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[deleteStyles.container, { backgroundColor: theme.backgroundRoot }]}
+    >
+      <View style={[deleteStyles.header, { paddingTop: insets.top + Spacing.md }]}>
+        <Pressable
+          style={({ pressed }) => [
+            deleteStyles.closeButton,
+            { backgroundColor: theme.backgroundSecondary },
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={onClose}
+        >
+          <Feather name="x" size={20} color={theme.text} />
+        </Pressable>
+        <ThemedText type="h4" style={deleteStyles.headerTitle}>
+          Очистить данные
+        </ThemedText>
+        <View style={deleteStyles.headerSpacer} />
+      </View>
+
+      <ScrollView
+        style={deleteStyles.content}
+        contentContainerStyle={[
+          deleteStyles.contentContainer,
+          { paddingBottom: insets.bottom + Spacing["4xl"] },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[deleteStyles.warningBox, { backgroundColor: '#FEE2E2' }]}>
+          <Feather name="alert-triangle" size={24} color="#EF4444" />
+          <ThemedText type="body" style={{ color: '#EF4444', marginTop: Spacing.md, textAlign: 'center', fontWeight: '600' }}>
+            Внимание!
+          </ThemedText>
+          <ThemedText type="body" style={{ color: '#7F1D1D', marginTop: Spacing.sm, textAlign: 'center' }}>
+            Это действие удалит все ваши цели, смены и распределения. Данные невозможно будет восстановить.
+          </ThemedText>
+        </View>
+
+        <View style={deleteStyles.inputGroup}>
+          <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: 'center', marginBottom: Spacing.lg }}>
+            Для подтверждения введите:
+          </ThemedText>
+          <View style={[deleteStyles.phraseBox, { backgroundColor: theme.backgroundSecondary }]}>
+            <ThemedText type="body" style={{ fontWeight: '600', color: theme.text }}>
+              {CONFIRM_PHRASE}
+            </ThemedText>
+          </View>
+          <TextInput
+            style={[
+              deleteStyles.input,
+              {
+                backgroundColor: theme.backgroundDefault,
+                color: theme.text,
+                borderColor: isConfirmed ? '#10B981' : theme.border,
+                borderWidth: isConfirmed ? 2 : 1,
+              },
+            ]}
+            placeholder="Введите фразу..."
+            placeholderTextColor={theme.textSecondary}
+            value={confirmText}
+            onChangeText={setConfirmText}
+            autoCapitalize="sentences"
+            autoCorrect={false}
+          />
+          {confirmText.length > 0 && !isConfirmed && (
+            <ThemedText type="caption" style={{ color: '#EF4444', marginTop: Spacing.sm, textAlign: 'center' }}>
+              Фраза не совпадает
+            </ThemedText>
+          )}
+          {isConfirmed && (
+            <ThemedText type="caption" style={{ color: '#10B981', marginTop: Spacing.sm, textAlign: 'center' }}>
+              Фраза совпадает
+            </ThemedText>
+          )}
+        </View>
+      </ScrollView>
+
+      <View
+        style={[
+          deleteStyles.footer,
+          {
+            backgroundColor: theme.backgroundRoot,
+            paddingBottom: insets.bottom + Spacing.lg,
+          },
+        ]}
+      >
+        <Pressable
+          style={({ pressed }) => [
+            deleteStyles.deleteButton,
+            { backgroundColor: isConfirmed ? '#EF4444' : theme.backgroundSecondary },
+            (pressed || deleting) && { opacity: 0.7 },
+          ]}
+          onPress={handleDelete}
+          disabled={!isConfirmed || deleting}
+        >
+          <Feather 
+            name="trash-2" 
+            size={18} 
+            color={isConfirmed ? "#FFFFFF" : theme.textSecondary} 
+            style={{ marginRight: Spacing.sm }} 
+          />
+          <ThemedText 
+            type="body" 
+            style={{ 
+              color: isConfirmed ? '#FFFFFF' : theme.textSecondary, 
+              fontWeight: '600' 
+            }}
+          >
+            {deleting ? "Удаление..." : "Удалить все данные"}
+          </ThemedText>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
   const [showHiddenGoals, setShowHiddenGoals] = useState(false);
   const [showAutoAllocation, setShowAutoAllocation] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const { data: shifts = [] } = useShifts();
   const { data: goals = [] } = useGoals();
   const { data: hiddenGoals = [] } = useHiddenGoals();
@@ -704,6 +861,7 @@ export default function SettingsScreen() {
           icon="trash-2"
           title="Очистить данные"
           danger
+          onPress={() => setShowDeleteConfirmation(true)}
         />
       </ScrollView>
 
@@ -720,6 +878,11 @@ export default function SettingsScreen() {
       <AutoAllocationModal
         visible={showAutoAllocation}
         onClose={() => setShowAutoAllocation(false)}
+      />
+
+      <DeleteConfirmationModal
+        visible={showDeleteConfirmation}
+        onClose={() => setShowDeleteConfirmation(false)}
       />
     </View>
   );
@@ -977,6 +1140,73 @@ const autoAllocationStyles = StyleSheet.create({
     paddingTop: Spacing.lg,
   },
   fullScreenSaveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 52,
+    borderRadius: BorderRadius.sm,
+  },
+});
+
+const deleteStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing["2xl"],
+    paddingBottom: Spacing.lg,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: Spacing["2xl"],
+    paddingTop: Spacing.lg,
+  },
+  warningBox: {
+    padding: Spacing["2xl"],
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    marginBottom: Spacing["2xl"],
+  },
+  inputGroup: {
+    marginTop: Spacing.lg,
+  },
+  phraseBox: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  input: {
+    height: 52,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.sm,
+    fontSize: 16,
+    textAlign: "center",
+  },
+  footer: {
+    paddingHorizontal: Spacing["2xl"],
+    paddingTop: Spacing.lg,
+  },
+  deleteButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

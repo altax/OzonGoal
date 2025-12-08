@@ -255,6 +255,43 @@ export function useDeleteAllHiddenShifts() {
   });
 }
 
+export function useDeleteAllData() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { error: allocationsError } = await supabase
+        .from('goal_allocations')
+        .delete()
+        .eq('user_id', DEFAULT_USER_ID);
+      
+      if (allocationsError) throw new Error(allocationsError.message);
+
+      const { error: shiftsError } = await supabase
+        .from('shifts')
+        .delete()
+        .eq('user_id', DEFAULT_USER_ID);
+      
+      if (shiftsError) throw new Error(shiftsError.message);
+
+      const { error: goalsError } = await supabase
+        .from('goals')
+        .delete()
+        .eq('user_id', DEFAULT_USER_ID);
+      
+      if (goalsError) throw new Error(goalsError.message);
+
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      queryClient.invalidateQueries({ queryKey: ["shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: ["earnings-stats"] });
+    },
+  });
+}
+
 export function useReorderGoals() {
   const queryClient = useQueryClient();
   
