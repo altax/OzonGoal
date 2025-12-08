@@ -71,26 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setSession(session);
         setUser(session.user);
-        setLoading(false);
       } else {
-        try {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          if (!mounted) return;
-          
-          if (error) {
-            console.error('[Auth] Anonymous sign-in failed:', error.message);
-          } else if (data.session) {
-            setSession(data.session);
-            setUser(data.user);
-            if (data.user) {
-              await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
-            }
-          }
-        } catch (err) {
-          console.error('[Auth] Error during initial anonymous sign-in:', err);
-        }
-        setLoading(false);
+        setSession(null);
+        setUser(null);
       }
+      setLoading(false);
     };
 
     initAuth();
@@ -98,30 +83,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      setSession(session);
-      setUser(session?.user ?? null);
+      console.log('[Auth] State change:', event);
       
       if (event === 'SIGNED_OUT') {
         queryClient.clear();
         setSession(null);
         setUser(null);
-        
-        try {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          if (!mounted) return;
-          
-          if (error) {
-            console.warn('[Auth] Anonymous sign-in not available:', error.message);
-          } else if (data.session) {
-            setSession(data.session);
-            setUser(data.user);
-            if (data.user) {
-              await createUserRecord(data.user.id, `user_${data.user.id.slice(0, 8)}`);
-            }
-          }
-        } catch (err) {
-          console.warn('[Auth] Anonymous sign-in error:', err);
-        }
+      } else if (session) {
+        setSession(session);
+        setUser(session.user);
       }
       
       setLoading(false);
@@ -186,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     queryClient.clear();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
   }, [queryClient]);
 
   return (
