@@ -489,9 +489,23 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
           </Pressable>
         </View>
 
-        <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
-          Укажите процент от заработка для каждой цели. При записи смены суммы заполнятся автоматически.
-        </ThemedText>
+        <View style={autoAllocationStyles.infoSection}>
+          <View style={[autoAllocationStyles.infoHeader, { backgroundColor: theme.accentLight }]}>
+            <Feather name="info" size={16} color={theme.accent} />
+            <ThemedText type="body" style={{ color: theme.accent, fontWeight: '600', marginLeft: Spacing.sm }}>
+              Как это работает
+            </ThemedText>
+          </View>
+          <View style={[autoAllocationStyles.infoContent, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, lineHeight: 18 }}>
+              • Укажите процент от заработка для каждой цели{'\n'}
+              • При записи смены суммы заполнятся автоматически{'\n'}
+              • Если сумма превысит остаток до цели — начислится только недостающая часть{'\n'}
+              • Если общий % больше 100% — суммы масштабируются пропорционально{'\n'}
+              • Вы всегда можете изменить значения вручную
+            </ThemedText>
+          </View>
+        </View>
 
         <ScrollView
           style={modalStyles.listContainer}
@@ -908,5 +922,23 @@ const autoAllocationStyles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
     marginTop: Spacing.lg,
+  },
+  infoSection: {
+    marginBottom: Spacing.lg,
+  },
+  infoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderTopLeftRadius: BorderRadius.sm,
+    borderTopRightRadius: BorderRadius.sm,
+  },
+  infoContent: {
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: BorderRadius.sm,
+    borderBottomRightRadius: BorderRadius.sm,
   },
 });

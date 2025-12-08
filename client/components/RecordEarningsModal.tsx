@@ -90,6 +90,12 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
     
     const newAllocations: Record<string, string> = { ...currentAllocations };
     
+    const goalsToAllocate = activeGoals.filter(g => !editedGoals.has(g.id) && (g.allocationPercentage || 0) > 0);
+    
+    const totalPercentage = goalsToAllocate.reduce((sum, g) => sum + (g.allocationPercentage || 0), 0);
+    
+    const scaleFactor = totalPercentage > 100 ? 100 / totalPercentage : 1;
+    
     for (const goal of activeGoals) {
       if (editedGoals.has(goal.id)) {
         continue;
@@ -101,7 +107,8 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
         const targetAmount = parseFloat(goal.targetAmount) || 0;
         const goalRemaining = Math.max(0, targetAmount - currentAmount);
         
-        const calculatedAmount = Math.floor(earnedAmount * (percentage / 100));
+        const scaledPercentage = percentage * scaleFactor;
+        const calculatedAmount = Math.floor(earnedAmount * (scaledPercentage / 100));
         const finalAmount = Math.min(calculatedAmount, goalRemaining);
         
         if (finalAmount > 0) {
