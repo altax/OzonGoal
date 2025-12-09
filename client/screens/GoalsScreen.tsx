@@ -62,10 +62,6 @@ export default function GoalsScreen() {
     AsyncStorage.setItem(GOAL_VIEW_MODE_KEY, viewMode).catch(() => {});
   }, [viewMode]);
   
-  useEffect(() => {
-    indicatorPosition.value = filter === "active" ? 0 : 1;
-  }, []);
-  
   const handleFilterChange = (newFilter: GoalFilter) => {
     indicatorPosition.value = withTiming(newFilter === "active" ? 0 : 1, {
       duration: 200,
