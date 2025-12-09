@@ -689,123 +689,122 @@ function GuestAuthModalContent({
 
   return (
     <BlurView
-      intensity={20}
+      intensity={30}
       tint={isDark ? "dark" : "light"}
-      style={modalStyles.blurContainer}
+      style={authModalStyles.blurContainer}
     >
-      <Pressable style={modalStyles.overlay} onPress={onClose} />
+      <Pressable style={authModalStyles.overlay} onPress={onClose} />
       
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ width: '100%' }}
+        style={authModalStyles.keyboardView}
       >
         <View
           style={[
-            modalStyles.modalContent,
+            authModalStyles.modalContent,
             {
               backgroundColor: theme.backgroundContent,
-              paddingBottom: insets.bottom + Spacing.xl,
+              marginBottom: insets.bottom + Spacing.xl,
             },
           ]}
         >
-          <View style={[modalStyles.handle, { backgroundColor: theme.border }]} />
+          <Pressable onPress={onClose} style={authModalStyles.closeButton}>
+            <Feather name="x" size={24} color={theme.text} />
+          </Pressable>
           
-          <View style={modalStyles.header}>
-            <ThemedText type="h4" style={modalStyles.title}>
-              {isSignUp ? 'Создать аккаунт' : 'Войти в аккаунт'}
-            </ThemedText>
-            <Pressable onPress={onClose} style={modalStyles.closeButton}>
-              <Feather name="x" size={24} color={theme.text} />
-            </Pressable>
+          <View style={authModalStyles.iconContainer}>
+            <Feather name={isSignUp ? 'user-plus' : 'log-in'} size={32} color={theme.accent} />
           </View>
 
-          <View style={{ paddingHorizontal: Spacing.xl }}>
-            <View style={[linkEmailStyles.infoBox, { backgroundColor: theme.accentLight }]}>
-              <Feather name="info" size={16} color={theme.accent} />
-              <ThemedText type="caption" style={{ color: theme.accent, marginLeft: Spacing.sm, flex: 1 }}>
-                Ваши локальные данные будут автоматически перенесены в облако
-              </ThemedText>
-            </View>
+          <ThemedText type="h3" style={authModalStyles.title}>
+            {isSignUp ? 'Создать аккаунт' : 'Войти в аккаунт'}
+          </ThemedText>
 
-            <View style={linkEmailStyles.inputContainer}>
-              <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                <Feather name="mail" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
-                <TextInput
-                  style={[linkEmailStyles.input, { color: theme.text }]}
-                  placeholder="Email"
-                  placeholderTextColor={theme.textSecondary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                />
-              </View>
-            </View>
+          <View style={[authModalStyles.infoBox, { backgroundColor: theme.accentLight }]}>
+            <Feather name="info" size={16} color={theme.accent} />
+            <ThemedText type="caption" style={{ color: theme.accent, marginLeft: Spacing.sm, flex: 1 }}>
+              Ваши локальные данные будут автоматически перенесены в облако
+            </ThemedText>
+          </View>
 
-            <View style={linkEmailStyles.inputContainer}>
-              <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+          <View style={authModalStyles.inputContainer}>
+            <View style={[authModalStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+              <Feather name="mail" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+              <TextInput
+                style={[authModalStyles.input, { color: theme.text }]}
+                placeholder="Email"
+                placeholderTextColor={theme.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
+          </View>
+
+          <View style={authModalStyles.inputContainer}>
+            <View style={[authModalStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+              <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+              <TextInput
+                style={[authModalStyles.input, { color: theme.text }]}
+                placeholder="Пароль"
+                placeholderTextColor={theme.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <Pressable onPress={() => setShowPassword(!showPassword)}>
+                <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+          </View>
+
+          {isSignUp && (
+            <View style={authModalStyles.inputContainer}>
+              <View style={[authModalStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
                 <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
                 <TextInput
-                  style={[linkEmailStyles.input, { color: theme.text }]}
-                  placeholder="Пароль"
+                  style={[authModalStyles.input, { color: theme.text }]}
+                  placeholder="Подтвердите пароль"
                   placeholderTextColor={theme.textSecondary}
-                  value={password}
-                  onChangeText={setPassword}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
                 />
-                <Pressable onPress={() => setShowPassword(!showPassword)}>
-                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={theme.textSecondary} />
-                </Pressable>
               </View>
             </View>
+          )}
 
-            {isSignUp && (
-              <View style={linkEmailStyles.inputContainer}>
-                <View style={[linkEmailStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-                  <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
-                  <TextInput
-                    style={[linkEmailStyles.input, { color: theme.text }]}
-                    placeholder="Подтвердите пароль"
-                    placeholderTextColor={theme.textSecondary}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showPassword}
-                  />
-                </View>
-              </View>
+          <Pressable
+            style={({ pressed }) => [
+              authModalStyles.submitButton,
+              { backgroundColor: theme.accent },
+              (pressed || loading) && { opacity: 0.7 },
+            ]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Feather name={isSignUp ? 'user-plus' : 'log-in'} size={18} color="#FFFFFF" style={{ marginRight: Spacing.sm }} />
+                <ThemedText type="body" style={{ color: '#fff', fontWeight: '600' }}>
+                  {isSignUp ? 'Зарегистрироваться' : 'Войти'}
+                </ThemedText>
+              </>
             )}
+          </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [
-                linkEmailStyles.submitButton,
-                { backgroundColor: theme.accent },
-                (pressed || loading) && { opacity: 0.7 },
-              ]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <>
-                  <Feather name={isSignUp ? 'user-plus' : 'log-in'} size={18} color="#FFFFFF" style={{ marginRight: Spacing.sm }} />
-                  <ThemedText type="body" style={{ color: '#fff', fontWeight: '600' }}>
-                    {isSignUp ? 'Зарегистрироваться' : 'Войти'}
-                  </ThemedText>
-                </>
-              )}
-            </Pressable>
-
-            <Pressable
-              style={{ alignItems: 'center', marginTop: Spacing.md }}
-              onPress={() => setIsSignUp(!isSignUp)}
-            >
-              <ThemedText type="caption" style={{ color: theme.accent }}>
-                {isSignUp ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
-              </ThemedText>
-            </Pressable>
-          </View>
+          <Pressable
+            style={{ alignItems: 'center', marginTop: Spacing.md }}
+            onPress={() => setIsSignUp(!isSignUp)}
+          >
+            <ThemedText type="caption" style={{ color: theme.accent }}>
+              {isSignUp ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+            </ThemedText>
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </BlurView>
@@ -1019,6 +1018,81 @@ const linkEmailStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+});
+
+const authModalStyles = StyleSheet.create({
+  blurContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  keyboardView: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '100%',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing['2xl'],
+  },
+  closeButton: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    padding: Spacing.xs,
+    zIndex: 1,
+  },
+  iconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: '#E0E7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: Spacing.xl,
+  },
+  title: {
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.xl,
+  },
+  inputContainer: {
+    marginBottom: Spacing.md,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: Spacing.xs,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md + 2,
     borderRadius: BorderRadius.md,
     marginTop: Spacing.md,
   },
