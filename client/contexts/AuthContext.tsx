@@ -332,6 +332,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error) {
           secureError(`${LOG_PREFIX} Error getting session:`, error);
+          // Auto-start in guest mode on error
+          setGuestMode(true);
           setLoading(false);
           return;
         }
@@ -346,15 +348,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await performMigration(session.user.id);
           }
         } else {
-          secureLog(`${LOG_PREFIX} No existing session`);
+          // No session - automatically start in guest mode (no login screen)
+          secureLog(`${LOG_PREFIX} No existing session, auto-starting guest mode`);
           setSession(null);
           setUser(null);
+          setGuestMode(true);
         }
         
         setLoading(false);
       } catch (error) {
         secureError(`${LOG_PREFIX} Init auth exception:`, error);
         if (mounted) {
+          // Auto-start in guest mode on exception
+          setGuestMode(true);
           setLoading(false);
         }
       }

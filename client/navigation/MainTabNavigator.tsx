@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -10,7 +10,9 @@ import { useTheme } from "@/hooks/useTheme";
 import { BalanceHeader, TabInfo } from "@/components/BalanceHeader";
 import { BalanceHistoryModal } from "@/components/BalanceHistoryModal";
 import { SegmentedTabs, TabKey } from "@/components/SegmentedTabs";
+import { GuestOnboardingModal } from "@/components/GuestOnboardingModal";
 import { useGoalsSummary, useShiftsSummary, useUser } from "@/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 
 export type MainTabParamList = {
@@ -25,10 +27,15 @@ export default function MainTabNavigator() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabKey>("goals");
   const [showBalanceHistory, setShowBalanceHistory] = useState(false);
+  const { isGuestMode } = useAuth();
 
   const { data: goalsSummary } = useGoalsSummary();
   const { data: shiftsSummary } = useShiftsSummary();
   const { data: user } = useUser();
+
+  const handleOpenAuth = useCallback(() => {
+    setActiveTab("settings");
+  }, []);
 
   const tabInfo: TabInfo | undefined = useMemo(() => {
     switch (activeTab) {
@@ -93,6 +100,10 @@ export default function MainTabNavigator() {
       <BalanceHistoryModal
         visible={showBalanceHistory}
         onClose={() => setShowBalanceHistory(false)}
+      />
+      <GuestOnboardingModal
+        isGuestMode={isGuestMode}
+        onOpenAuth={handleOpenAuth}
       />
     </View>
   );

@@ -1408,7 +1408,7 @@ export default function SettingsScreen() {
 
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
-        {!isAnonymous && (
+        {!isAnonymous && !isGuestMode && (
           <SettingsItem
             icon="log-out"
             title="Выйти из аккаунта"
