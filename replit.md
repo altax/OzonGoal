@@ -150,10 +150,13 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Idempotent Migration**: Duplicate detection using composite keys (goals: name|target_amount, shifts: date|type|operation)
 - **Balance Safety**: Balance only added when new data actually migrates (no inflation on retries)
 - **Snapshot Preservation**: Data captured before auth calls to prevent race conditions during session upgrade
+- **Guest Mode Limitations**: Statistics screen shows empty data in guest mode (advanced analytics require account)
 - **Key Files**:
   - `client/lib/localStorage.ts` - Local storage service with HAS_LOCAL_DATA markers
   - `client/lib/dataMigration.ts` - Migration logic with duplicate detection and ID mapping
   - `client/contexts/AuthContext.tsx` - Captures snapshot and triggers migration on auth
+  - `client/contexts/DataModeContext.tsx` - Provides mode context (local vs cloud) to all components
+  - `client/lib/dataService.ts` - Unified data service that routes to local or cloud storage based on mode
 
 ## Next Steps (Future Development)
 1. Add notifications for goal milestones
