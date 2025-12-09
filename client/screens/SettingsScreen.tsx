@@ -37,8 +37,8 @@ function SettingsItem({
   danger = false,
 }: SettingsItemProps) {
   const { theme } = useTheme();
-  const finalIconColor = danger ? "#EF4444" : (iconColor || theme.accent);
-  const finalIconBgColor = danger ? "#FEE2E2" : (iconBgColor || theme.accentLight);
+  const finalIconColor = danger ? theme.error : (iconColor || theme.accent);
+  const finalIconBgColor = danger ? theme.errorLight : (iconBgColor || theme.accentLight);
   
   return (
     <Pressable
@@ -53,7 +53,7 @@ function SettingsItem({
       <View style={[styles.settingsItemIcon, { backgroundColor: finalIconBgColor }]}>
         <Feather name={icon} size={14} color={finalIconColor} />
       </View>
-      <ThemedText type="body" style={[styles.settingsItemText, danger && { color: "#EF4444" }]}>
+      <ThemedText type="body" style={[styles.settingsItemText, danger && { color: theme.error }]}>
         {title}
       </ThemedText>
       <View style={styles.settingsItemRight}>
@@ -150,7 +150,7 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
           },
         ]}
       >
-        <View style={modalStyles.handle} />
+        <View style={[modalStyles.handle, { backgroundColor: theme.border }]} />
         
         <View style={modalStyles.header}>
           <ThemedText type="h4" style={modalStyles.title}>
@@ -220,13 +220,13 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
               <Pressable
                 style={({ pressed }) => [
                   modalStyles.deleteAllButton,
-                  { backgroundColor: "#FEE2E2" },
+                  { backgroundColor: theme.errorLight },
                   pressed && { opacity: 0.7 },
                 ]}
                 onPress={handleDeleteAll}
               >
-                <Feather name="trash-2" size={18} color="#EF4444" />
-                <ThemedText type="body" style={{ color: "#EF4444", marginLeft: Spacing.sm }}>
+                <Feather name="trash-2" size={18} color={theme.error} />
+                <ThemedText type="body" style={{ color: theme.error, marginLeft: Spacing.sm }}>
                   Удалить все
                 </ThemedText>
               </Pressable>
@@ -310,7 +310,7 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
           },
         ]}
       >
-        <View style={modalStyles.handle} />
+        <View style={[modalStyles.handle, { backgroundColor: theme.border }]} />
         
         <View style={modalStyles.header}>
           <ThemedText type="h4" style={modalStyles.title}>
@@ -381,14 +381,14 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
               <Pressable
                 style={({ pressed }) => [
                   modalStyles.deleteAllButton,
-                  { backgroundColor: "#FEE2E2" },
+                  { backgroundColor: theme.errorLight },
                   (pressed || deleteAllHiddenGoals.isPending) && { opacity: 0.5 },
                 ]}
                 onPress={handleDeleteAll}
                 disabled={deleteAllHiddenGoals.isPending}
               >
-                <Feather name="trash-2" size={18} color="#EF4444" />
-                <ThemedText type="body" style={{ color: "#EF4444", marginLeft: Spacing.sm }}>
+                <Feather name="trash-2" size={18} color={theme.error} />
+                <ThemedText type="body" style={{ color: theme.error, marginLeft: Spacing.sm }}>
                   Удалить все
                 </ThemedText>
               </Pressable>
@@ -569,7 +569,7 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
                 type="body" 
                 style={{ 
                   fontWeight: '600',
-                  color: totalPercentage > 100 ? '#EF4444' : (totalPercentage === 100 ? theme.success : theme.text),
+                  color: totalPercentage > 100 ? theme.error : (totalPercentage === 100 ? theme.success : theme.text),
                 }}
               >
                 {totalPercentage}%
@@ -714,7 +714,7 @@ function GuestAuthModalContent({
             },
           ]}
         >
-          <View style={modalStyles.handle} />
+          <View style={[modalStyles.handle, { backgroundColor: theme.border }]} />
           
           <View style={modalStyles.header}>
             <ThemedText type="h4" style={modalStyles.title}>
@@ -911,7 +911,7 @@ function LinkEmailModalContent({
             },
           ]}
         >
-          <View style={modalStyles.handle} />
+          <View style={[modalStyles.handle, { backgroundColor: theme.border }]} />
           
           <View style={modalStyles.header}>
             <ThemedText type="h4" style={modalStyles.title}>
@@ -1100,12 +1100,12 @@ function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={[deleteStyles.warningBox, { backgroundColor: '#FEE2E2' }]}>
-          <Feather name="alert-triangle" size={24} color="#EF4444" />
-          <ThemedText type="body" style={{ color: '#EF4444', marginTop: Spacing.md, textAlign: 'center', fontWeight: '600' }}>
+        <View style={[deleteStyles.warningBox, { backgroundColor: theme.errorLight }]}>
+          <Feather name="alert-triangle" size={24} color={theme.error} />
+          <ThemedText type="body" style={{ color: theme.error, marginTop: Spacing.md, textAlign: 'center', fontWeight: '600' }}>
             Внимание!
           </ThemedText>
-          <ThemedText type="body" style={{ color: '#7F1D1D', marginTop: Spacing.sm, textAlign: 'center' }}>
+          <ThemedText type="body" style={{ color: theme.error, marginTop: Spacing.sm, textAlign: 'center' }}>
             Это действие удалит все ваши цели, смены и распределения. Данные невозможно будет восстановить.
           </ThemedText>
         </View>
@@ -1125,7 +1125,7 @@ function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
               {
                 backgroundColor: theme.backgroundDefault,
                 color: theme.text,
-                borderColor: isConfirmed ? '#10B981' : theme.border,
+                borderColor: isConfirmed ? theme.success : theme.border,
                 borderWidth: isConfirmed ? 2 : 1,
               },
             ]}
@@ -1137,12 +1137,12 @@ function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
             autoCorrect={false}
           />
           {confirmText.length > 0 && !isConfirmed && (
-            <ThemedText type="caption" style={{ color: '#EF4444', marginTop: Spacing.sm, textAlign: 'center' }}>
+            <ThemedText type="caption" style={{ color: theme.error, marginTop: Spacing.sm, textAlign: 'center' }}>
               Фраза не совпадает
             </ThemedText>
           )}
           {isConfirmed && (
-            <ThemedText type="caption" style={{ color: '#10B981', marginTop: Spacing.sm, textAlign: 'center' }}>
+            <ThemedText type="caption" style={{ color: theme.success, marginTop: Spacing.sm, textAlign: 'center' }}>
               Фраза совпадает
             </ThemedText>
           )}
@@ -1161,7 +1161,7 @@ function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
         <Pressable
           style={({ pressed }) => [
             deleteStyles.deleteButton,
-            { backgroundColor: isConfirmed ? '#EF4444' : theme.backgroundSecondary },
+            { backgroundColor: isConfirmed ? theme.error : theme.backgroundSecondary },
             (pressed || deleting) && { opacity: 0.7 },
           ]}
           onPress={handleDelete}
@@ -1387,7 +1387,7 @@ export default function SettingsScreen() {
                   />
                 </Pressable>
               ))}
-              <View style={styles.positionDivider} />
+              <View style={[styles.positionDivider, { backgroundColor: theme.border }]} />
               <Pressable
                 style={[
                   styles.hideButton,

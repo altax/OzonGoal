@@ -128,7 +128,7 @@ function RescheduleShiftModalContent({ visible, shift, onClose }: RescheduleShif
             },
           ]}
         >
-          <View style={styles.handle} />
+          <View style={[styles.handle, { backgroundColor: theme.border }]} />
           
           <View style={styles.header}>
             <ThemedText type="h4" style={styles.title}>
