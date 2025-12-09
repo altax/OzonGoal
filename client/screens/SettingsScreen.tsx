@@ -1177,7 +1177,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden } = useSettings();
-  const { user, signOut, signIn, signUp, isAnonymous, isGuestMode, linkEmail } = useAuth();
+  const { user, signOut, signIn, signUp, isAnonymous, isGuestMode, upgradeGuestToUser } = useAuth();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
   const [showHiddenGoals, setShowHiddenGoals] = useState(false);
   const [showAutoAllocation, setShowAutoAllocation] = useState(false);
@@ -1419,7 +1419,7 @@ export default function SettingsScreen() {
       <LinkEmailModal
         visible={showLinkEmail}
         onClose={() => setShowLinkEmail(false)}
-        onLink={linkEmail}
+        onLink={upgradeGuestToUser}
       />
 
       <GuestAuthModal
