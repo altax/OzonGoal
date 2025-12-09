@@ -788,7 +788,7 @@ export default function StatisticsScreen() {
   if (hasNoData) {
     return (
       <ScrollView
-        style={[styles.container, { backgroundColor: theme.backgroundContent }]}
+        style={[styles.container, { backgroundColor: theme.backgroundContent, borderTopLeftRadius: BorderRadius["2xl"], borderTopRightRadius: BorderRadius["2xl"] }]}
         contentContainerStyle={{
           paddingTop: Spacing.md,
           paddingHorizontal: Spacing.lg,
@@ -841,7 +841,7 @@ export default function StatisticsScreen() {
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: theme.backgroundContent }]}
+      style={[styles.container, { backgroundColor: theme.backgroundContent, borderTopLeftRadius: BorderRadius["2xl"], borderTopRightRadius: BorderRadius["2xl"] }]}
       contentContainerStyle={{
         paddingTop: Spacing.md,
         paddingHorizontal: Spacing.lg,
