@@ -1,6 +1,8 @@
 import { supabase } from './supabase';
 import { localStorageService, LocalGoal, LocalShift, LocalGoalAllocation } from './localStorage';
 
+const LOG_PREFIX = '[DataMigration]';
+
 export interface MigrationResult {
   success: boolean;
   migratedGoals: number;
@@ -9,20 +11,37 @@ export interface MigrationResult {
   error?: string;
 }
 
-export async function getLocalDataSnapshot(): Promise<{
+export interface LocalDataSnapshot {
   user: { balance: number };
   goals: LocalGoal[];
   shifts: LocalShift[];
   allocations: LocalGoalAllocation[];
-} | null> {
+}
+
+export async function getLocalDataSnapshot(): Promise<LocalDataSnapshot | null> {
   try {
-    const hasData = await localStorageService.hasLocalData();
-    if (!hasData) return null;
+    console.log(`${LOG_PREFIX} Getting local data snapshot`);
     
-    const data = await localStorageService.getAllLocalData();
-    if (data.goals.length === 0 && data.shifts.length === 0 && data.user.balance === 0) {
+    const hasData = await localStorageService.hasLocalData();
+    if (!hasData) {
+      console.log(`${LOG_PREFIX} No local data flag set`);
       return null;
     }
+    
+    const data = await localStorageService.getAllLocalData();
+    
+    const hasContent = data.goals.length > 0 || data.shifts.length > 0 || data.user.balance > 0;
+    if (!hasContent) {
+      console.log(`${LOG_PREFIX} No meaningful local data found`);
+      return null;
+    }
+    
+    console.log(`${LOG_PREFIX} Snapshot created:`, {
+      goals: data.goals.length,
+      shifts: data.shifts.length,
+      allocations: data.allocations.length,
+      balance: data.user.balance,
+    });
     
     return {
       user: { balance: data.user.balance },
@@ -31,21 +50,16 @@ export async function getLocalDataSnapshot(): Promise<{
       allocations: [...data.allocations],
     };
   } catch (error) {
-    console.error('[Migration] Error getting snapshot:', error);
+    console.error(`${LOG_PREFIX} Error getting snapshot:`, error);
     return null;
   }
 }
 
 export async function migrateLocalDataToCloud(
   userId: string,
-  snapshot?: {
-    user: { balance: number };
-    goals: LocalGoal[];
-    shifts: LocalShift[];
-    allocations: LocalGoalAllocation[];
-  } | null
+  snapshot?: LocalDataSnapshot | null
 ): Promise<MigrationResult> {
-  console.log('[Migration] Starting migration for user:', userId);
+  console.log(`${LOG_PREFIX} Starting migration for user:`, userId);
   
   const result: MigrationResult = {
     success: false,
@@ -55,67 +69,123 @@ export async function migrateLocalDataToCloud(
   };
 
   try {
-    const localData = snapshot || await (async () => {
-      const hasData = await localStorageService.hasLocalData();
-      if (!hasData) return null;
-      const data = await localStorageService.getAllLocalData();
-      if (data.goals.length === 0 && data.shifts.length === 0 && data.user.balance === 0) {
-        return null;
-      }
-      return data;
-    })();
+    const localData = snapshot || await getLocalDataSnapshot();
 
     if (!localData) {
-      console.log('[Migration] No local data to migrate');
+      console.log(`${LOG_PREFIX} No local data to migrate`);
       result.success = true;
       return result;
     }
 
-    console.log('[Migration] Local data found:', {
+    console.log(`${LOG_PREFIX} Processing migration:`, {
       goals: localData.goals.length,
       shifts: localData.shifts.length,
       allocations: localData.allocations.length,
       balance: localData.user.balance,
     });
 
-    const { data: existingUser } = await supabase
+    const userResult = await ensureUserExists(userId, localData.user.balance);
+    if (!userResult.success) {
+      throw new Error('Failed to ensure user exists');
+    }
+
+    const goalIdMapping = await migrateGoals(userId, localData.goals);
+    result.migratedGoals = Object.keys(goalIdMapping).length;
+
+    const shiftIdMapping = await migrateShifts(userId, localData.shifts);
+    result.migratedShifts = Object.keys(shiftIdMapping).length;
+
+    result.migratedAllocations = await migrateAllocations(
+      localData.allocations,
+      goalIdMapping,
+      shiftIdMapping
+    );
+
+    if (localData.user.balance > 0 && result.migratedGoals + result.migratedShifts > 0) {
+      await updateUserBalance(userId, localData.user.balance);
+    }
+
+    await localStorageService.clearAllLocalData();
+    console.log(`${LOG_PREFIX} Local data cleared after successful migration`);
+
+    result.success = true;
+    console.log(`${LOG_PREFIX} Migration completed successfully:`, result);
+    
+    return result;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`${LOG_PREFIX} Migration failed:`, errorMessage);
+    result.error = errorMessage;
+    return result;
+  }
+}
+
+async function ensureUserExists(userId: string, initialBalance: number): Promise<{ success: boolean }> {
+  try {
+    console.log(`${LOG_PREFIX} Ensuring user exists:`, userId);
+    
+    const { data: existingUser, error: selectError } = await supabase
       .from('users')
       .select('id, balance')
       .eq('id', userId)
       .single();
 
-    const userExisted = !!existingUser;
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error(`${LOG_PREFIX} Error checking user:`, selectError);
+    }
     
     if (!existingUser) {
-      const { error: userError } = await supabase.from('users').insert({
+      console.log(`${LOG_PREFIX} Creating new user record`);
+      const { error: insertError } = await supabase.from('users').insert({
         id: userId,
         username: 'user',
         password: '',
-        balance: localData.user.balance,
+        balance: initialBalance,
       });
-      if (userError) {
-        console.error('[Migration] Error creating user:', userError);
+      
+      if (insertError) {
+        console.error(`${LOG_PREFIX} Error creating user:`, insertError);
+        return { success: false };
       }
     }
-
-    const { data: existingGoals } = await supabase
-      .from('goals')
-      .select('id, name, target_amount')
-      .eq('user_id', userId);
     
-    const existingGoalMap = new Map<string, string>();
-    for (const g of existingGoals || []) {
-      existingGoalMap.set(`${g.name}|${g.target_amount}`, g.id);
-    }
+    return { success: true };
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error in ensureUserExists:`, error);
+    return { success: false };
+  }
+}
 
-    const goalIdMapping: Record<string, string> = {};
-    
-    for (const localGoal of localData.goals) {
+async function migrateGoals(
+  userId: string,
+  localGoals: LocalGoal[]
+): Promise<Record<string, string>> {
+  const goalIdMapping: Record<string, string> = {};
+  
+  if (localGoals.length === 0) {
+    console.log(`${LOG_PREFIX} No goals to migrate`);
+    return goalIdMapping;
+  }
+
+  console.log(`${LOG_PREFIX} Migrating ${localGoals.length} goals`);
+
+  const { data: existingGoals } = await supabase
+    .from('goals')
+    .select('id, name, target_amount')
+    .eq('user_id', userId);
+  
+  const existingGoalMap = new Map<string, string>();
+  for (const g of existingGoals || []) {
+    existingGoalMap.set(`${g.name}|${g.target_amount}`, g.id);
+  }
+
+  for (const localGoal of localGoals) {
+    try {
       const goalKey = `${localGoal.name}|${localGoal.targetAmount}`;
       const existingId = existingGoalMap.get(goalKey);
       
       if (existingId) {
-        console.log('[Migration] Goal already exists, mapping to existing:', localGoal.name);
+        console.log(`${LOG_PREFIX} Goal already exists, mapping:`, localGoal.name);
         goalIdMapping[localGoal.id] = existingId;
         continue;
       }
@@ -130,44 +200,65 @@ export async function migrateLocalDataToCloud(
           icon_bg_color: localGoal.iconBgColor,
           target_amount: localGoal.targetAmount,
           current_amount: localGoal.currentAmount,
-          status: localGoal.status,
+          status: localGoal.status === 'hidden' ? 'active' : localGoal.status,
           is_primary: localGoal.isPrimary,
           order_index: localGoal.orderIndex,
-          allocation_percentage: localGoal.allocationPercentage,
+          allocation_percentage: localGoal.allocationPercentage || 0,
           completed_at: localGoal.completedAt,
         })
         .select('id')
         .single();
 
       if (error) {
-        console.error('[Migration] Error migrating goal:', error);
+        console.error(`${LOG_PREFIX} Error migrating goal ${localGoal.name}:`, error);
         continue;
       }
 
       if (newGoal) {
         goalIdMapping[localGoal.id] = newGoal.id;
-        result.migratedGoals++;
+        console.log(`${LOG_PREFIX} Migrated goal:`, localGoal.name);
       }
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Exception migrating goal:`, error);
     }
+  }
 
-    const { data: existingShifts } = await supabase
-      .from('shifts')
-      .select('id, scheduled_date, shift_type, operation_type')
-      .eq('user_id', userId);
-    
-    const existingShiftMap = new Map<string, string>();
-    for (const s of existingShifts || []) {
-      existingShiftMap.set(`${s.scheduled_date}|${s.shift_type}|${s.operation_type}`, s.id);
-    }
+  console.log(`${LOG_PREFIX} Goals migration complete:`, Object.keys(goalIdMapping).length);
+  return goalIdMapping;
+}
 
-    const shiftIdMapping: Record<string, string> = {};
+async function migrateShifts(
+  userId: string,
+  localShifts: LocalShift[]
+): Promise<Record<string, string>> {
+  const shiftIdMapping: Record<string, string> = {};
+  
+  if (localShifts.length === 0) {
+    console.log(`${LOG_PREFIX} No shifts to migrate`);
+    return shiftIdMapping;
+  }
 
-    for (const localShift of localData.shifts) {
-      const shiftKey = `${localShift.scheduledDate}|${localShift.shiftType}|${localShift.operationType}`;
+  console.log(`${LOG_PREFIX} Migrating ${localShifts.length} shifts`);
+
+  const { data: existingShifts } = await supabase
+    .from('shifts')
+    .select('id, scheduled_date, shift_type, operation_type')
+    .eq('user_id', userId);
+  
+  const existingShiftMap = new Map<string, string>();
+  for (const s of existingShifts || []) {
+    const dateKey = new Date(s.scheduled_date).toISOString().split('T')[0];
+    existingShiftMap.set(`${dateKey}|${s.shift_type}|${s.operation_type}`, s.id);
+  }
+
+  for (const localShift of localShifts) {
+    try {
+      const dateKey = new Date(localShift.scheduledDate).toISOString().split('T')[0];
+      const shiftKey = `${dateKey}|${localShift.shiftType}|${localShift.operationType}`;
       const existingId = existingShiftMap.get(shiftKey);
       
       if (existingId) {
-        console.log('[Migration] Shift already exists, mapping to existing:', shiftKey);
+        console.log(`${LOG_PREFIX} Shift already exists, mapping:`, shiftKey);
         shiftIdMapping[localShift.id] = existingId;
         continue;
       }
@@ -189,22 +280,44 @@ export async function migrateLocalDataToCloud(
         .single();
 
       if (error) {
-        console.error('[Migration] Error migrating shift:', error);
+        console.error(`${LOG_PREFIX} Error migrating shift:`, error);
         continue;
       }
 
       if (newShift) {
         shiftIdMapping[localShift.id] = newShift.id;
-        result.migratedShifts++;
+        console.log(`${LOG_PREFIX} Migrated shift:`, shiftKey);
       }
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Exception migrating shift:`, error);
     }
+  }
 
-    for (const localAllocation of localData.allocations) {
-      const newShiftId = shiftIdMapping[localAllocation.shiftId];
-      const newGoalId = goalIdMapping[localAllocation.goalId];
+  console.log(`${LOG_PREFIX} Shifts migration complete:`, Object.keys(shiftIdMapping).length);
+  return shiftIdMapping;
+}
+
+async function migrateAllocations(
+  localAllocations: LocalGoalAllocation[],
+  goalIdMapping: Record<string, string>,
+  shiftIdMapping: Record<string, string>
+): Promise<number> {
+  let migratedCount = 0;
+  
+  if (localAllocations.length === 0) {
+    console.log(`${LOG_PREFIX} No allocations to migrate`);
+    return migratedCount;
+  }
+
+  console.log(`${LOG_PREFIX} Migrating ${localAllocations.length} allocations`);
+
+  for (const allocation of localAllocations) {
+    try {
+      const newShiftId = shiftIdMapping[allocation.shiftId];
+      const newGoalId = goalIdMapping[allocation.goalId];
 
       if (!newShiftId || !newGoalId) {
-        console.warn('[Migration] Skipping allocation - missing mapping for shift or goal');
+        console.warn(`${LOG_PREFIX} Skipping allocation - missing mapping`);
         continue;
       }
 
@@ -216,7 +329,7 @@ export async function migrateLocalDataToCloud(
         .single();
 
       if (existingAlloc) {
-        console.log('[Migration] Allocation already exists, skipping');
+        console.log(`${LOG_PREFIX} Allocation already exists, skipping`);
         continue;
       }
 
@@ -225,45 +338,46 @@ export async function migrateLocalDataToCloud(
         .insert({
           shift_id: newShiftId,
           goal_id: newGoalId,
-          amount: localAllocation.amount,
+          amount: allocation.amount,
         });
 
       if (error) {
-        console.error('[Migration] Error migrating allocation:', error);
+        console.error(`${LOG_PREFIX} Error migrating allocation:`, error);
         continue;
       }
 
-      result.migratedAllocations++;
+      migratedCount++;
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Exception migrating allocation:`, error);
     }
+  }
 
-    const somethingWasMigrated = result.migratedGoals > 0 || result.migratedShifts > 0 || result.migratedAllocations > 0;
+  console.log(`${LOG_PREFIX} Allocations migration complete:`, migratedCount);
+  return migratedCount;
+}
+
+async function updateUserBalance(userId: string, additionalBalance: number): Promise<void> {
+  try {
+    console.log(`${LOG_PREFIX} Updating user balance by:`, additionalBalance);
     
-    if (userExisted && localData.user.balance > 0 && somethingWasMigrated) {
-      const { data: currentUser } = await supabase
-        .from('users')
-        .select('balance')
-        .eq('id', userId)
-        .single();
+    const { data: currentUser } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', userId)
+      .single();
+    
+    if (currentUser) {
+      const newBalance = (parseFloat(String(currentUser.balance)) || 0) + additionalBalance;
       
-      if (currentUser) {
-        await supabase
-          .from('users')
-          .update({ balance: (parseFloat(String(currentUser.balance)) || 0) + localData.user.balance })
-          .eq('id', userId);
-        console.log('[Migration] Updated user balance:', localData.user.balance);
-      }
+      await supabase
+        .from('users')
+        .update({ balance: newBalance })
+        .eq('id', userId);
+        
+      console.log(`${LOG_PREFIX} User balance updated to:`, newBalance);
     }
-
-    await localStorageService.clearAllLocalData();
-
-    result.success = true;
-    console.log('[Migration] Migration completed successfully:', result);
-    
-    return result;
   } catch (error) {
-    console.error('[Migration] Migration failed:', error);
-    result.error = error instanceof Error ? error.message : 'Unknown error';
-    return result;
+    console.error(`${LOG_PREFIX} Error updating balance:`, error);
   }
 }
 
