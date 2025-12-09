@@ -783,6 +783,62 @@ export default function StatisticsScreen() {
     );
   }
 
+  const hasNoData = !stats?.completedShiftsCount && !stats?.totalEarnings;
+
+  if (hasNoData) {
+    return (
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.backgroundContent }]}
+        contentContainerStyle={{
+          paddingTop: Spacing.md,
+          paddingHorizontal: Spacing.lg,
+          paddingBottom: Spacing.xl + insets.bottom,
+          flex: 1,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.periodTabs, { backgroundColor: theme.backgroundSecondary }]}>
+          <Animated.View 
+            style={[
+              styles.periodIndicator, 
+              { backgroundColor: theme.backgroundContent },
+              animatedIndicatorStyle,
+            ]} 
+          />
+          {PERIOD_OPTIONS.map((option, index) => (
+            <Pressable
+              key={option.key}
+              style={styles.periodTab}
+              onPress={() => handlePeriodChange(option.key, index)}
+            >
+              <ThemedText
+                style={[
+                  styles.periodText,
+                  { color: period === option.key ? theme.text : theme.textSecondary },
+                  period === option.key && { fontWeight: "600" },
+                ]}
+              >
+                {option.label}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.emptyStateContainer}>
+          <View style={[styles.emptyStateIcon, { backgroundColor: theme.accentLight }]}>
+            <Feather name="bar-chart-2" size={32} color={theme.accent} />
+          </View>
+          <ThemedText type="h4" style={styles.emptyStateTitle}>
+            Нет данных
+          </ThemedText>
+          <ThemedText type="body" style={[styles.emptyStateText, { color: theme.textSecondary }]}>
+            Здесь появится статистика после того, как вы завершите хотя бы одну смену
+          </ThemedText>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.backgroundContent }]}
@@ -928,9 +984,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
+  },
+  emptyStateIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  emptyStateTitle: {
+    textAlign: "center",
+    marginBottom: Spacing.sm,
+  },
+  emptyStateText: {
+    textAlign: "center",
+    lineHeight: 22,
+  },
   periodTabs: {
     flexDirection: "row",
-    borderRadius: BorderRadius.xs,
+    borderRadius: BorderRadius.sm,
     padding: 3,
     marginBottom: Spacing.md,
     position: "relative",
@@ -941,16 +1019,18 @@ const styles = StyleSheet.create({
     bottom: 3,
     left: 3,
     width: "48%",
-    borderRadius: BorderRadius.xs - 2,
+    borderRadius: BorderRadius.sm - 2,
   },
   periodTab: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.md,
     zIndex: 1,
   },
   periodText: {
     fontSize: 12,
+    fontWeight: "600",
   },
   heroSection: {
     marginBottom: Spacing.lg,
@@ -983,7 +1063,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: Spacing.md,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.sm,
     marginBottom: Spacing.sm,
   },
   chartCard: {

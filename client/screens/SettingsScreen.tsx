@@ -1605,8 +1605,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   balanceSettingContainer: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
   },
   balanceSettingHeader: {
     flexDirection: "row",
@@ -1614,8 +1614,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   settingsIconContainer: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
