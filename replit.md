@@ -75,6 +75,11 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Bug Fixes (Dec 9, 2025):**
+  - Fixed Delete All buttons in Settings to use Alert.alert instead of window.confirm for cross-platform compatibility
+  - Fixed Logout confirmation to use Alert.alert instead of window.confirm
+  - Added duplicate shift detection - prevents creating shifts on same day/time that already exist
+  - Added "Forgot Password" link to login screen with email-based password reset
 - **Balance Display Settings (Dec 8, 2025):**
   - Added inline balance position selector with 4 compact buttons (left, center, right + hide toggle)
   - Balance updates immediately when user selects a position
@@ -163,5 +168,4 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 2. Add export functionality for reports
 3. Add calendar view for shift planning
 4. Add comparison charts between periods
-5. Add password reset flow
-6. Add social authentication (Google, Apple)
+5. Add social authentication (Google, Apple)

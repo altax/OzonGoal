@@ -21,7 +21,7 @@ import { Spacing, BorderRadius } from '@/constants/theme';
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { signIn, signUp, continueAsGuest } = useAuth();
+  const { signIn, signUp, continueAsGuest, resetPassword } = useAuth();
   
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -29,6 +29,7 @@ export default function AuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -56,6 +57,33 @@ export default function AuthScreen() {
 
   const handleGuestLogin = () => {
     continueAsGuest();
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Введите email', 'Укажите email для восстановления пароля');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert('Ошибка', 'Неверный формат email');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const { error } = await resetPassword(email);
+      if (error) {
+        Alert.alert('Ошибка', error.message);
+      } else {
+        Alert.alert(
+          'Письмо отправлено',
+          'Проверьте почту для восстановления пароля'
+        );
+      }
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -181,6 +209,18 @@ export default function AuthScreen() {
                 />
               </View>
             </View>
+          )}
+
+          {isLogin && (
+            <Pressable
+              onPress={handleForgotPassword}
+              disabled={resetLoading}
+              style={{ alignSelf: 'flex-end', marginTop: Spacing.xs, marginBottom: Spacing.sm }}
+            >
+              <ThemedText type="caption" style={{ color: theme.accent }}>
+                {resetLoading ? 'Отправка...' : 'Забыли пароль?'}
+              </ThemedText>
+            </Pressable>
           )}
 
           <Pressable

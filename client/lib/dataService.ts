@@ -271,6 +271,19 @@ export const dataService = {
     const status = scheduledStart <= now && now < scheduledEnd ? 'in_progress' : 'scheduled';
     
     if (mode === 'local') {
+      const existingShifts = await localStorageService.getShifts();
+      const dateStr = date.toDateString();
+      const duplicate = existingShifts.find(s => {
+        const sDate = new Date(s.scheduledDate).toDateString();
+        return sDate === dateStr && 
+               s.shiftType === shiftData.shiftType && 
+               s.status !== 'canceled';
+      });
+      
+      if (duplicate) {
+        throw new Error('Смена на этот день и время уже существует');
+      }
+      
       const newShift = await localStorageService.createShift({
         operationType: shiftData.operationType,
         shiftType: shiftData.shiftType,
@@ -285,6 +298,24 @@ export const dataService = {
       return localShiftToClient(newShift);
     } else {
       const userId = await getCurrentUserId();
+      
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      const { data: existingShifts } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('shift_type', shiftData.shiftType)
+        .gte('scheduled_date', startOfDay.toISOString())
+        .lte('scheduled_date', endOfDay.toISOString())
+        .neq('status', 'canceled');
+      
+      if (existingShifts && existingShifts.length > 0) {
+        throw new Error('Смена на этот день и время уже существует');
+      }
       
       const { data: newShift, error } = await supabase
         .from('shifts')
