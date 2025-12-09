@@ -1188,6 +1188,41 @@ function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
   );
 }
 
+function SettingsSection({ title, children }: { title?: string; children: React.ReactNode }) {
+  const { theme } = useTheme();
+  return (
+    <View style={sectionStyles.container}>
+      {title && (
+        <ThemedText type="caption" style={[sectionStyles.title, { color: theme.textSecondary }]}>
+          {title}
+        </ThemedText>
+      )}
+      <View style={[sectionStyles.card, { backgroundColor: theme.backgroundContent, borderColor: theme.border }]}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+const sectionStyles = StyleSheet.create({
+  container: {
+    marginBottom: Spacing.lg,
+  },
+  title: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: Spacing.sm,
+    marginLeft: Spacing.xs,
+  },
+  card: {
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+});
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -1219,7 +1254,6 @@ export default function SettingsScreen() {
     );
   };
 
-
   const hiddenShiftsCount = useMemo(() => {
     return shifts.filter(s => s.status === "canceled").length;
   }, [shifts]);
@@ -1237,199 +1271,198 @@ export default function SettingsScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{
-          paddingTop: Spacing.xl,
-          paddingHorizontal: Spacing["2xl"],
+          paddingTop: Spacing.lg,
+          paddingHorizontal: Spacing.lg,
           paddingBottom: Spacing["4xl"] + insets.bottom,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.profileSection}>
-          <View style={[styles.avatarContainer, { backgroundColor: (isAnonymous || isGuestMode) ? '#FEF3C7' : theme.accentLight }]}>
-            <Feather name={(isAnonymous || isGuestMode) ? "user-x" : "user"} size={20} color={(isAnonymous || isGuestMode) ? '#F59E0B' : theme.accent} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <ThemedText type="body" style={{ fontWeight: '600' }}>
-              {(isAnonymous || isGuestMode) ? 'Гостевой режим' : (user?.email?.split('@')[0] || 'Пользователь')}
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {(isAnonymous || isGuestMode) ? 'Данные хранятся локально' : (user?.email || '')}
-            </ThemedText>
-          </View>
-          {isGuestMode && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.linkEmailButton,
-                { backgroundColor: theme.accent },
-                pressed && { opacity: 0.8 },
-              ]}
-              onPress={() => setShowGuestAuth(true)}
-            >
-              <Feather name="log-in" size={14} color="#FFFFFF" />
-              <ThemedText type="caption" style={{ color: '#FFFFFF', marginLeft: 4, fontWeight: '600' }}>
-                Войти
-              </ThemedText>
-            </Pressable>
-          )}
-          {isAnonymous && !isGuestMode && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.linkEmailButton,
-                { backgroundColor: theme.accent },
-                pressed && { opacity: 0.8 },
-              ]}
-              onPress={() => setShowLinkEmail(true)}
-            >
-              <Feather name="link" size={14} color="#FFFFFF" />
-              <ThemedText type="caption" style={{ color: '#FFFFFF', marginLeft: 4, fontWeight: '600' }}>
-                Привязать
-              </ThemedText>
-            </Pressable>
-          )}
-        </View>
-
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        <SettingsItem
-          icon="pie-chart"
-          iconColor="#10B981"
-          iconBgColor="#D1FAE5"
-          title="Автораспределение"
-          value={totalAllocationPercentage > 0 ? `${totalAllocationPercentage}%` : "Выкл"}
-          onPress={() => setShowAutoAllocation(true)}
-        />
-
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        <SettingsItem
-          icon="eye-off"
-          title="Скрытые смены"
-          value={hiddenShiftsCount > 0 ? `${hiddenShiftsCount}` : undefined}
-          onPress={() => setShowHiddenShifts(true)}
-        />
-        <SettingsItem
-          icon="eye-off"
-          title="Скрытые цели"
-          value={hiddenGoals.length > 0 ? `${hiddenGoals.length}` : undefined}
-          onPress={() => setShowHiddenGoals(true)}
-        />
-
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        <View style={styles.balanceSettingContainer}>
-          <View style={styles.balanceSettingHeader}>
-            <View style={[styles.settingsIconContainer, { backgroundColor: "#EDE9FE" }]}>
-              <Feather name="credit-card" size={18} color="#8B5CF6" />
+        <SettingsSection>
+          <View style={styles.profileSection}>
+            <View style={[styles.avatarContainer, { backgroundColor: (isAnonymous || isGuestMode) ? '#FEF3C7' : theme.accentLight }]}>
+              <Feather name={(isAnonymous || isGuestMode) ? "user-x" : "user"} size={18} color={(isAnonymous || isGuestMode) ? '#F59E0B' : theme.accent} />
             </View>
-            <ThemedText type="body" style={{ fontWeight: "500" }}>Отображение баланса</ThemedText>
-          </View>
-          
-          <View style={styles.balancePositionButtons}>
-            {(["left", "center", "right"] as const).map((pos) => (
+            <View style={{ flex: 1 }}>
+              <ThemedText type="body" style={{ fontWeight: '600', fontSize: 14 }}>
+                {(isAnonymous || isGuestMode) ? 'Гостевой режим' : (user?.email?.split('@')[0] || 'Пользователь')}
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, fontSize: 12 }}>
+                {(isAnonymous || isGuestMode) ? 'Данные хранятся локально' : (user?.email || '')}
+              </ThemedText>
+            </View>
+            {isGuestMode && (
               <Pressable
-                key={pos}
+                style={({ pressed }) => [
+                  styles.linkEmailButton,
+                  { backgroundColor: theme.accent },
+                  pressed && { opacity: 0.8 },
+                ]}
+                onPress={() => setShowGuestAuth(true)}
+              >
+                <Feather name="log-in" size={12} color="#FFFFFF" />
+                <ThemedText type="caption" style={{ color: '#FFFFFF', marginLeft: 4, fontWeight: '600', fontSize: 11 }}>
+                  Войти
+                </ThemedText>
+              </Pressable>
+            )}
+            {isAnonymous && !isGuestMode && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.linkEmailButton,
+                  { backgroundColor: theme.accent },
+                  pressed && { opacity: 0.8 },
+                ]}
+                onPress={() => setShowLinkEmail(true)}
+              >
+                <Feather name="link" size={12} color="#FFFFFF" />
+                <ThemedText type="caption" style={{ color: '#FFFFFF', marginLeft: 4, fontWeight: '600', fontSize: 11 }}>
+                  Привязать
+                </ThemedText>
+              </Pressable>
+            )}
+          </View>
+        </SettingsSection>
+
+        <SettingsSection title="Финансы">
+          <SettingsItem
+            icon="pie-chart"
+            iconColor="#10B981"
+            iconBgColor="#D1FAE5"
+            title="Автораспределение"
+            value={totalAllocationPercentage > 0 ? `${totalAllocationPercentage}%` : "Выкл"}
+            onPress={() => setShowAutoAllocation(true)}
+          />
+          <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.balanceSettingContainer}>
+            <View style={styles.balanceSettingHeader}>
+              <View style={[styles.settingsIconContainer, { backgroundColor: "#EDE9FE" }]}>
+                <Feather name="credit-card" size={14} color="#8B5CF6" />
+              </View>
+              <ThemedText type="body" style={{ fontWeight: "500", fontSize: 14 }}>Баланс</ThemedText>
+            </View>
+            <View style={styles.balancePositionButtons}>
+              {(["left", "center", "right"] as const).map((pos) => (
+                <Pressable
+                  key={pos}
+                  style={[
+                    styles.positionButton,
+                    { 
+                      backgroundColor: balancePosition === pos ? theme.accent : theme.backgroundSecondary,
+                      borderColor: balancePosition === pos ? theme.accent : theme.border,
+                    }
+                  ]}
+                  onPress={() => setBalancePosition(pos)}
+                >
+                  <Feather 
+                    name={pos === "left" ? "align-left" : pos === "center" ? "align-center" : "align-right"} 
+                    size={14} 
+                    color={balancePosition === pos ? "#FFFFFF" : theme.textSecondary} 
+                  />
+                </Pressable>
+              ))}
+              <View style={styles.positionDivider} />
+              <Pressable
                 style={[
-                  styles.positionButton,
+                  styles.hideButton,
                   { 
-                    backgroundColor: balancePosition === pos ? theme.accent : theme.backgroundSecondary,
-                    borderColor: balancePosition === pos ? theme.accent : theme.border,
+                    backgroundColor: isBalanceHidden ? theme.accent : theme.backgroundSecondary,
+                    borderColor: isBalanceHidden ? theme.accent : theme.border,
                   }
                 ]}
-                onPress={() => setBalancePosition(pos)}
+                onPress={() => setIsBalanceHidden(!isBalanceHidden)}
               >
                 <Feather 
-                  name={pos === "left" ? "align-left" : pos === "center" ? "align-center" : "align-right"} 
-                  size={16} 
-                  color={balancePosition === pos ? "#FFFFFF" : theme.textSecondary} 
+                  name={isBalanceHidden ? "eye-off" : "eye"} 
+                  size={14} 
+                  color={isBalanceHidden ? "#FFFFFF" : theme.textSecondary} 
                 />
               </Pressable>
-            ))}
-            
-            <View style={styles.positionDivider} />
-            
-            <Pressable
-              style={[
-                styles.hideButton,
-                { 
-                  backgroundColor: isBalanceHidden ? theme.accent : theme.backgroundSecondary,
-                  borderColor: isBalanceHidden ? theme.accent : theme.border,
-                }
-              ]}
-              onPress={() => setIsBalanceHidden(!isBalanceHidden)}
-            >
-              <Feather 
-                name={isBalanceHidden ? "eye-off" : "eye"} 
-                size={16} 
-                color={isBalanceHidden ? "#FFFFFF" : theme.textSecondary} 
-              />
-            </Pressable>
+            </View>
           </View>
-        </View>
+        </SettingsSection>
 
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        <SettingsItem
-          icon="lock"
-          iconColor="#3B82F6"
-          iconBgColor="#DBEAFE"
-          title="PIN-код"
-          value={isPinLockEnabled ? "Вкл" : "Выкл"}
-          onPress={() => setShowPinSetup(true)}
-        />
-
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        <SettingsItem
-          icon="moon"
-          title="Тема"
-          value="Авто"
-        />
-        <SettingsItem
-          icon="globe"
-          title="Язык"
-          value="Русский"
-        />
-        <SettingsItem
-          icon="bell"
-          title="Уведомления"
-        />
-
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        <SettingsItem
-          icon="download"
-          title="Экспорт"
-        />
-        <SettingsItem
-          icon="help-circle"
-          title="Помощь"
-        />
-        <SettingsItem
-          icon="info"
-          title="О приложении"
-          value="1.0.0"
-          showChevron={false}
-        />
-
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        {(goals.length > 0 || shifts.length > 0) && (
+        <SettingsSection title="Данные">
           <SettingsItem
-            icon="trash-2"
-            title="Очистить данные"
-            danger
-            onPress={() => setShowDeleteConfirmation(true)}
+            icon="eye-off"
+            iconColor="#6366F1"
+            iconBgColor="#E0E7FF"
+            title="Скрытые смены"
+            value={hiddenShiftsCount > 0 ? `${hiddenShiftsCount}` : "—"}
+            onPress={() => setShowHiddenShifts(true)}
           />
-        )}
-
-        <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-        {!isAnonymous && !isGuestMode && (
+          <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
           <SettingsItem
-            icon="log-out"
-            title="Выйти из аккаунта"
-            danger
-            onPress={handleLogout}
+            icon="eye-off"
+            iconColor="#6366F1"
+            iconBgColor="#E0E7FF"
+            title="Скрытые цели"
+            value={hiddenGoals.length > 0 ? `${hiddenGoals.length}` : "—"}
+            onPress={() => setShowHiddenGoals(true)}
           />
+          <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
+          <SettingsItem
+            icon="download"
+            iconColor="#0EA5E9"
+            iconBgColor="#E0F2FE"
+            title="Экспорт данных"
+            onPress={() => {}}
+          />
+        </SettingsSection>
+
+        <SettingsSection title="Безопасность">
+          <SettingsItem
+            icon="lock"
+            iconColor="#3B82F6"
+            iconBgColor="#DBEAFE"
+            title="PIN-код"
+            value={isPinLockEnabled ? "Вкл" : "Выкл"}
+            onPress={() => setShowPinSetup(true)}
+          />
+        </SettingsSection>
+
+        <SettingsSection title="Приложение">
+          <SettingsItem
+            icon="help-circle"
+            iconColor="#8B5CF6"
+            iconBgColor="#EDE9FE"
+            title="Помощь"
+            onPress={() => {}}
+          />
+          <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
+          <SettingsItem
+            icon="info"
+            iconColor="#64748B"
+            iconBgColor="#F1F5F9"
+            title="О приложении"
+            value="1.0.0"
+            showChevron={false}
+          />
+        </SettingsSection>
+
+        {((goals.length > 0 || shifts.length > 0) || (!isAnonymous && !isGuestMode)) && (
+          <SettingsSection>
+            {(goals.length > 0 || shifts.length > 0) && (
+              <>
+                <SettingsItem
+                  icon="trash-2"
+                  title="Очистить данные"
+                  danger
+                  onPress={() => setShowDeleteConfirmation(true)}
+                />
+                {!isAnonymous && !isGuestMode && (
+                  <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
+                )}
+              </>
+            )}
+            {!isAnonymous && !isGuestMode && (
+              <SettingsItem
+                icon="log-out"
+                title="Выйти из аккаунта"
+                danger
+                onPress={handleLogout}
+              />
+            )}
+          </SettingsSection>
         )}
       </ScrollView>
 
@@ -1485,30 +1518,29 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: Spacing.sm,
+    padding: Spacing.md,
     gap: Spacing.md,
   },
   avatarContainer: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  separator: {
+  itemDivider: {
     height: 1,
-    marginVertical: Spacing.md,
+    marginLeft: 44,
   },
   settingsItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
-    borderRadius: BorderRadius.xs,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
   },
   settingsItemIcon: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
