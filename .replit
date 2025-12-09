@@ -108,8 +108,4 @@ waitForPort = 5000
 [userenv]
 
 [userenv.shared]
-EXPO_PUBLIC_SUPABASE_URL = "https://eezztfypfcndhdlopfyr.supabase.co"
-EXPO_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlenp0ZnlwZmNuZGhkbG9wZnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDgzNTAsImV4cCI6MjA4MDU4NDM1MH0.tO5v-PypKNIE7JejvNhkLWeAnnpEv9zeGVZURHU6JY8"
-SUPABASE_URL = "https://eezztfypfcndhdlopfyr.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlenp0ZnlwZmNuZGhkbG9wZnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMDgzNTAsImV4cCI6MjA4MDU4NDM1MH0.tO5v-PypKNIE7JejvNhkLWeAnnpEv9zeGVZURHU6JY8"
 
