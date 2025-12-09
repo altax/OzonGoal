@@ -45,7 +45,6 @@ function localUserToClient(user: LocalUser) {
   return {
     id: user.id,
     username: user.username,
-    password: '',
     balance: String(user.balance),
     createdAt: new Date(user.createdAt),
   };

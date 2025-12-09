@@ -30,6 +30,30 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string): { valid: boolean; message: string } => {
+    if (password.length < 8) {
+      return { valid: false, message: 'Пароль должен содержать минимум 8 символов' };
+    }
+    if (!/[A-Z]/.test(password)) {
+      return { valid: false, message: 'Пароль должен содержать хотя бы одну заглавную букву' };
+    }
+    if (!/[a-z]/.test(password)) {
+      return { valid: false, message: 'Пароль должен содержать хотя бы одну строчную букву' };
+    }
+    if (!/[0-9]/.test(password)) {
+      return { valid: false, message: 'Пароль должен содержать хотя бы одну цифру' };
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return { valid: false, message: 'Пароль должен содержать хотя бы один спецсимвол (!@#$%^&*...)' };
+    }
+    return { valid: true, message: '' };
+  };
+
   const handleGuestLogin = () => {
     continueAsGuest();
   };
@@ -40,14 +64,22 @@ export default function AuthScreen() {
       return;
     }
 
+    if (!validateEmail(email)) {
+      Alert.alert('Ошибка', 'Неверный формат email');
+      return;
+    }
+
     if (!isLogin && password !== confirmPassword) {
       Alert.alert('Ошибка', 'Пароли не совпадают');
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Ошибка', 'Пароль должен содержать минимум 6 символов');
-      return;
+    if (!isLogin) {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.valid) {
+        Alert.alert('Ошибка', passwordValidation.message);
+        return;
+      }
     }
 
     setLoading(true);

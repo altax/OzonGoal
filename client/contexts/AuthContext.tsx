@@ -18,11 +18,31 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   continueAsGuest: () => void;
   upgradeGuestToUser: (email: string, password: string) => Promise<{ error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LOG_PREFIX = '[AuthContext]';
+const IS_DEV = __DEV__;
+
+function secureLog(message: string, ...args: unknown[]) {
+  if (IS_DEV) {
+    console.log(message, ...args);
+  }
+}
+
+function secureWarn(message: string, ...args: unknown[]) {
+  if (IS_DEV) {
+    console.warn(message, ...args);
+  }
+}
+
+function secureError(message: string, ...args: unknown[]) {
+  if (IS_DEV) {
+    console.error(message, ...args);
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
@@ -39,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const createUserRecord = useCallback(async (userId: string, username: string) => {
     try {
-      console.log(`${LOG_PREFIX} Creating user record for:`, userId);
+      secureLog(`${LOG_PREFIX} Creating user record for:`, userId);
       
       const { data: existingUser, error: selectError } = await supabase
         .from('users')
@@ -48,27 +68,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (selectError && selectError.code !== 'PGRST116') {
-        console.error(`${LOG_PREFIX} Error checking existing user:`, selectError);
+        secureError(`${LOG_PREFIX} Error checking existing user:`, selectError);
       }
 
       if (!existingUser) {
         const { error: insertError } = await supabase.from('users').insert({
           id: userId,
           username,
-          password: '',
           balance: 0,
         });
         
         if (insertError) {
-          console.error(`${LOG_PREFIX} Error creating user record:`, insertError);
+          secureError(`${LOG_PREFIX} Error creating user record:`, insertError);
         } else {
-          console.log(`${LOG_PREFIX} User record created successfully`);
+          secureLog(`${LOG_PREFIX} User record created successfully`);
         }
       } else {
-        console.log(`${LOG_PREFIX} User record already exists`);
+        secureLog(`${LOG_PREFIX} User record already exists`);
       }
     } catch (error) {
-      console.error(`${LOG_PREFIX} Failed to create user record:`, error);
+      secureError(`${LOG_PREFIX} Failed to create user record:`, error);
     }
   }, []);
 
@@ -77,22 +96,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     snapshot?: Awaited<ReturnType<typeof getLocalDataSnapshot>>
   ) => {
     if (migrationInProgress.current) {
-      console.log(`${LOG_PREFIX} Migration already in progress, skipping`);
+      secureLog(`${LOG_PREFIX} Migration already in progress, skipping`);
       return;
     }
 
     try {
       migrationInProgress.current = true;
-      console.log(`${LOG_PREFIX} Starting migration check for user:`, userId);
+      secureLog(`${LOG_PREFIX} Starting migration check for user:`, userId);
       
       const dataToMigrate = snapshot || await getLocalDataSnapshot();
       
       if (!dataToMigrate) {
-        console.log(`${LOG_PREFIX} No local data to migrate`);
+        secureLog(`${LOG_PREFIX} No local data to migrate`);
         return;
       }
 
-      console.log(`${LOG_PREFIX} Found local data to migrate:`, {
+      secureLog(`${LOG_PREFIX} Found local data to migrate:`, {
         goals: dataToMigrate.goals.length,
         shifts: dataToMigrate.shifts.length,
         allocations: dataToMigrate.allocations.length,
@@ -102,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await migrateLocalDataToCloud(userId, dataToMigrate);
       
       if (result.success) {
-        console.log(`${LOG_PREFIX} Migration completed:`, result);
+        secureLog(`${LOG_PREFIX} Migration completed:`, result);
         
         if (result.migratedGoals > 0 || result.migratedShifts > 0) {
           Alert.alert(
@@ -115,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           queryClient.invalidateQueries();
         }
       } else {
-        console.error(`${LOG_PREFIX} Migration failed:`, result.error);
+        secureError(`${LOG_PREFIX} Migration failed:`, result.error);
         Alert.alert(
           'Ошибка миграции',
           'Не удалось перенести локальные данные. Попробуйте снова позже.',
@@ -123,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
     } catch (error) {
-      console.error(`${LOG_PREFIX} Migration error:`, error);
+      secureError(`${LOG_PREFIX} Migration error:`, error);
     } finally {
       migrationInProgress.current = false;
       pendingMigrationSnapshot.current = null;
@@ -131,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   const continueAsGuest = useCallback(() => {
-    console.log(`${LOG_PREFIX} User continuing as guest`);
+    secureLog(`${LOG_PREFIX} User continuing as guest`);
     setGuestMode(true);
     setUser(null);
     setSession(null);
@@ -139,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    console.log(`${LOG_PREFIX} Attempting sign in for:`, email);
+    secureLog(`${LOG_PREFIX} Attempting sign in for:`, email);
     
     try {
       const snapshot = guestMode ? await getLocalDataSnapshot() : null;
@@ -150,11 +169,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        console.error(`${LOG_PREFIX} Sign in error:`, error.message);
+        secureError(`${LOG_PREFIX} Sign in error:`, error.message);
         return { error };
       }
 
-      console.log(`${LOG_PREFIX} Sign in successful`);
+      secureLog(`${LOG_PREFIX} Sign in successful`);
       
       if (data.user && snapshot) {
         pendingMigrationSnapshot.current = snapshot;
@@ -164,13 +183,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (error) {
-      console.error(`${LOG_PREFIX} Sign in exception:`, error);
+      secureError(`${LOG_PREFIX} Sign in exception:`, error);
       return { error: error as Error };
     }
   }, [guestMode, performMigration]);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    console.log(`${LOG_PREFIX} Attempting sign up for:`, email);
+    secureLog(`${LOG_PREFIX} Attempting sign up for:`, email);
     
     try {
       const snapshot = guestMode ? await getLocalDataSnapshot() : null;
@@ -181,11 +200,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        console.error(`${LOG_PREFIX} Sign up error:`, error.message);
+        secureError(`${LOG_PREFIX} Sign up error:`, error.message);
         return { error };
       }
 
-      console.log(`${LOG_PREFIX} Sign up successful`);
+      secureLog(`${LOG_PREFIX} Sign up successful`);
       
       if (data.user) {
         await createUserRecord(data.user.id, email.split('@')[0]);
@@ -199,22 +218,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (error) {
-      console.error(`${LOG_PREFIX} Sign up exception:`, error);
+      secureError(`${LOG_PREFIX} Sign up exception:`, error);
       return { error: error as Error };
     }
   }, [guestMode, createUserRecord, performMigration]);
 
   const upgradeGuestToUser = useCallback(async (email: string, password: string) => {
-    console.log(`${LOG_PREFIX} Upgrading guest to registered user:`, email);
+    secureLog(`${LOG_PREFIX} Upgrading guest to registered user:`, email);
     
     if (!guestMode) {
-      console.log(`${LOG_PREFIX} Not in guest mode, using regular sign up`);
+      secureLog(`${LOG_PREFIX} Not in guest mode, using regular sign up`);
       return signUp(email, password);
     }
 
     try {
       const snapshot = await getLocalDataSnapshot();
-      console.log(`${LOG_PREFIX} Guest data snapshot:`, snapshot ? 'has data' : 'no data');
+      secureLog(`${LOG_PREFIX} Guest data snapshot:`, snapshot ? 'has data' : 'no data');
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -222,16 +241,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        console.error(`${LOG_PREFIX} Upgrade error:`, error.message);
+        secureError(`${LOG_PREFIX} Upgrade error:`, error.message);
         return { error };
       }
 
       if (data.user) {
-        console.log(`${LOG_PREFIX} User created, setting up account`);
+        secureLog(`${LOG_PREFIX} User created, setting up account`);
         await createUserRecord(data.user.id, email.split('@')[0]);
         
         if (snapshot) {
-          console.log(`${LOG_PREFIX} Migrating guest data to new account`);
+          secureLog(`${LOG_PREFIX} Migrating guest data to new account`);
           setGuestMode(false);
           await performMigration(data.user.id, snapshot);
         }
@@ -239,19 +258,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (error) {
-      console.error(`${LOG_PREFIX} Upgrade exception:`, error);
+      secureError(`${LOG_PREFIX} Upgrade exception:`, error);
       return { error: error as Error };
     }
   }, [guestMode, signUp, createUserRecord, performMigration]);
 
   const signOut = useCallback(async () => {
-    console.log(`${LOG_PREFIX} Signing out`);
+    secureLog(`${LOG_PREFIX} Signing out`);
     
     try {
       queryClient.clear();
       
       if (guestMode) {
-        console.log(`${LOG_PREFIX} Clearing guest mode state`);
+        secureLog(`${LOG_PREFIX} Clearing guest mode state`);
         setGuestMode(false);
         setUser(null);
         setSession(null);
@@ -261,23 +280,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signOut({ scope: 'local' });
       
       if (error) {
-        console.error(`${LOG_PREFIX} Sign out error:`, error);
+        secureError(`${LOG_PREFIX} Sign out error:`, error);
       } else {
-        console.log(`${LOG_PREFIX} Sign out successful`);
+        secureLog(`${LOG_PREFIX} Sign out successful`);
       }
     } catch (error) {
-      console.error(`${LOG_PREFIX} Sign out exception:`, error);
+      secureError(`${LOG_PREFIX} Sign out exception:`, error);
     }
   }, [guestMode, queryClient]);
+
+  const resetPassword = useCallback(async (email: string) => {
+    secureLog(`${LOG_PREFIX} Requesting password reset for email`);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        secureError(`${LOG_PREFIX} Password reset error:`, error.message);
+        return { error };
+      }
+
+      secureLog(`${LOG_PREFIX} Password reset email sent`);
+      return { error: null };
+    } catch (error) {
+      secureError(`${LOG_PREFIX} Password reset exception:`, error);
+      return { error: error as Error };
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
     const initAuth = async () => {
-      console.log(`${LOG_PREFIX} Initializing authentication`);
+      secureLog(`${LOG_PREFIX} Initializing authentication`);
       
       if (!isSupabaseConfigured()) {
-        console.warn(`${LOG_PREFIX} Supabase not configured, falling back to guest mode`);
+        secureWarn(`${LOG_PREFIX} Supabase not configured, falling back to guest mode`);
         if (mounted) {
           setGuestMode(true);
           setLoading(false);
@@ -291,13 +331,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
 
         if (error) {
-          console.error(`${LOG_PREFIX} Error getting session:`, error);
+          secureError(`${LOG_PREFIX} Error getting session:`, error);
           setLoading(false);
           return;
         }
 
         if (session) {
-          console.log(`${LOG_PREFIX} Existing session found for:`, session.user.email || session.user.id);
+          secureLog(`${LOG_PREFIX} Existing session found for:`, session.user.email || session.user.id);
           setSession(session);
           setUser(session.user);
           setGuestMode(false);
@@ -306,14 +346,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await performMigration(session.user.id);
           }
         } else {
-          console.log(`${LOG_PREFIX} No existing session`);
+          secureLog(`${LOG_PREFIX} No existing session`);
           setSession(null);
           setUser(null);
         }
         
         setLoading(false);
       } catch (error) {
-        console.error(`${LOG_PREFIX} Init auth exception:`, error);
+        secureError(`${LOG_PREFIX} Init auth exception:`, error);
         if (mounted) {
           setLoading(false);
         }
@@ -325,11 +365,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
-      console.log(`${LOG_PREFIX} Auth state change:`, event, session?.user?.email || session?.user?.id || 'no user');
+      secureLog(`${LOG_PREFIX} Auth state change:`, event, session?.user?.email || session?.user?.id || 'no user');
       
       switch (event) {
         case 'SIGNED_OUT':
-          console.log(`${LOG_PREFIX} User signed out`);
+          secureLog(`${LOG_PREFIX} User signed out`);
           queryClient.clear();
           setSession(null);
           setUser(null);
@@ -337,7 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           break;
           
         case 'SIGNED_IN':
-          console.log(`${LOG_PREFIX} User signed in`);
+          secureLog(`${LOG_PREFIX} User signed in`);
           if (session) {
             setSession(session);
             setUser(session.user);
@@ -350,7 +390,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           break;
           
         case 'TOKEN_REFRESHED':
-          console.log(`${LOG_PREFIX} Token refreshed`);
+          secureLog(`${LOG_PREFIX} Token refreshed`);
           if (session) {
             setSession(session);
             setUser(session.user);
@@ -358,7 +398,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           break;
           
         case 'USER_UPDATED':
-          console.log(`${LOG_PREFIX} User updated`);
+          secureLog(`${LOG_PREFIX} User updated`);
           if (session) {
             setSession(session);
             setUser(session.user);
@@ -393,6 +433,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     continueAsGuest,
     upgradeGuestToUser,
+    resetPassword,
   };
 
   return (

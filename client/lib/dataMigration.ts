@@ -139,7 +139,6 @@ async function ensureUserExists(userId: string, initialBalance: number): Promise
       const { error: insertError } = await supabase.from('users').insert({
         id: userId,
         username: 'user',
-        password: '',
         balance: initialBalance,
       });
       
