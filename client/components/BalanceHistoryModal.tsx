@@ -9,7 +9,6 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -43,6 +42,8 @@ function formatBalance(amount: number): string {
 }
 
 export function BalanceHistoryModal({ visible, onClose }: BalanceHistoryModalProps) {
+  const { theme } = useTheme();
+  
   return (
     <Modal
       visible={visible}
@@ -50,9 +51,9 @@ export function BalanceHistoryModal({ visible, onClose }: BalanceHistoryModalPro
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <ThemeProvider>
+      <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
         <BalanceHistoryModalContent onClose={onClose} />
-      </ThemeProvider>
+      </View>
     </Modal>
   );
 }

@@ -8,7 +8,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/hooks/useTheme';
 import { ThemedText } from '@/components/ThemedText';
 import { Spacing, BorderRadius } from '@/constants/theme';
-import { ThemeProvider } from '@/contexts/ThemeContext';
 
 const ONBOARDING_SEEN_KEY = '@guest_onboarding_seen';
 
@@ -55,12 +54,10 @@ export function GuestOnboardingModal({ isGuestMode, onOpenAuth }: GuestOnboardin
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={handleClose}>
-      <ThemeProvider>
-        <GuestOnboardingContent 
-          onClose={handleClose} 
-          onCreateAccount={handleCreateAccount}
-        />
-      </ThemeProvider>
+      <GuestOnboardingContent 
+        onClose={handleClose} 
+        onCreateAccount={handleCreateAccount}
+      />
     </Modal>
   );
 }

@@ -10,7 +10,6 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -72,6 +71,8 @@ function isTomorrow(date: Date): boolean {
 }
 
 export function AddShiftModal({ visible, onClose }: AddShiftModalProps) {
+  const { theme } = useTheme();
+  
   return (
     <Modal
       visible={visible}
@@ -79,9 +80,9 @@ export function AddShiftModal({ visible, onClose }: AddShiftModalProps) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <ThemeProvider>
+      <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
         <AddShiftModalContent onClose={onClose} />
-      </ThemeProvider>
+      </View>
     </Modal>
   );
 }

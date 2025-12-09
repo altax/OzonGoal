@@ -12,7 +12,6 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -37,6 +36,8 @@ const iconOptions: { key: string; icon: keyof typeof Feather.glyphMap; label: st
 ];
 
 export function AddGoalModal({ visible, onClose }: AddGoalModalProps) {
+  const { theme } = useTheme();
+  
   return (
     <Modal
       visible={visible}
@@ -44,9 +45,9 @@ export function AddGoalModal({ visible, onClose }: AddGoalModalProps) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <ThemeProvider>
+      <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
         <AddGoalModalContent onClose={onClose} />
-      </ThemeProvider>
+      </View>
     </Modal>
   );
 }

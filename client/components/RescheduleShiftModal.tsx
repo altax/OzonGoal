@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 
 import { useTheme } from "@/hooks/useTheme";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useUpdateShift, useShifts } from "@/api";
@@ -228,11 +227,7 @@ function RescheduleShiftModalContent({ visible, shift, onClose }: RescheduleShif
 }
 
 export function RescheduleShiftModal(props: RescheduleShiftModalProps) {
-  return (
-    <ThemeProvider>
-      <RescheduleShiftModalContent {...props} />
-    </ThemeProvider>
-  );
+  return <RescheduleShiftModalContent {...props} />;
 }
 
 const styles = StyleSheet.create({

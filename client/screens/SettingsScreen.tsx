@@ -5,7 +5,6 @@ import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 
 import { useTheme } from "@/hooks/useTheme";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemedText } from "@/components/ThemedText";
@@ -73,9 +72,7 @@ function SettingsItem({
 function HiddenShiftsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <ThemeProvider>
-        <HiddenShiftsModalContent onClose={onClose} />
-      </ThemeProvider>
+      <HiddenShiftsModalContent onClose={onClose} />
     </Modal>
   );
 }
@@ -241,9 +238,7 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
 function HiddenGoalsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <ThemeProvider>
-        <HiddenGoalsModalContent onClose={onClose} />
-      </ThemeProvider>
+      <HiddenGoalsModalContent onClose={onClose} />
     </Modal>
   );
 }
@@ -401,11 +396,12 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
 }
 
 function AutoAllocationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { theme } = useTheme();
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-      <ThemeProvider>
+      <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
         <AutoAllocationModalContent onClose={onClose} />
-      </ThemeProvider>
+      </View>
     </Modal>
   );
 }
@@ -628,9 +624,7 @@ function GuestAuthModal({
 }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <ThemeProvider>
-        <GuestAuthModalContent onClose={onClose} signIn={signIn} signUp={signUp} />
-      </ThemeProvider>
+      <GuestAuthModalContent onClose={onClose} signIn={signIn} signUp={signUp} />
     </Modal>
   );
 }
@@ -829,9 +823,7 @@ function LinkEmailModal({
 }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <ThemeProvider>
-        <LinkEmailModalContent onClose={onClose} onLink={onLink} />
-      </ThemeProvider>
+      <LinkEmailModalContent onClose={onClose} onLink={onLink} />
     </Modal>
   );
 }
@@ -1033,11 +1025,12 @@ const linkEmailStyles = StyleSheet.create({
 });
 
 function DeleteConfirmationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { theme } = useTheme();
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-      <ThemeProvider>
+      <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
         <DeleteConfirmationModalContent onClose={onClose} />
-      </ThemeProvider>
+      </View>
     </Modal>
   );
 }
@@ -1353,8 +1346,6 @@ export default function SettingsScreen() {
         <SettingsSection title="Финансы">
           <SettingsItem
             icon="pie-chart"
-            iconColor="#10B981"
-            iconBgColor="#D1FAE5"
             title="Автораспределение"
             value={totalAllocationPercentage > 0 ? `${totalAllocationPercentage}%` : "Выкл"}
             onPress={() => setShowAutoAllocation(true)}
@@ -1362,8 +1353,8 @@ export default function SettingsScreen() {
           <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
           <View style={styles.balanceSettingContainer}>
             <View style={styles.balanceSettingHeader}>
-              <View style={[styles.settingsIconContainer, { backgroundColor: "#EDE9FE" }]}>
-                <Feather name="credit-card" size={14} color="#8B5CF6" />
+              <View style={[styles.settingsIconContainer, { backgroundColor: theme.accentLight }]}>
+                <Feather name="credit-card" size={14} color={theme.accent} />
               </View>
               <ThemedText type="body" style={{ fontWeight: "500", fontSize: 14 }}>Баланс</ThemedText>
             </View>
@@ -1411,8 +1402,6 @@ export default function SettingsScreen() {
         <SettingsSection title="Данные">
           <SettingsItem
             icon="eye-off"
-            iconColor="#6366F1"
-            iconBgColor="#E0E7FF"
             title="Скрытые смены"
             value={hiddenShiftsCount > 0 ? `${hiddenShiftsCount}` : "—"}
             onPress={() => setShowHiddenShifts(true)}
@@ -1420,8 +1409,6 @@ export default function SettingsScreen() {
           <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
           <SettingsItem
             icon="eye-off"
-            iconColor="#6366F1"
-            iconBgColor="#E0E7FF"
             title="Скрытые цели"
             value={hiddenGoals.length > 0 ? `${hiddenGoals.length}` : "—"}
             onPress={() => setShowHiddenGoals(true)}
@@ -1429,8 +1416,6 @@ export default function SettingsScreen() {
           <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
           <SettingsItem
             icon="download"
-            iconColor="#0EA5E9"
-            iconBgColor="#E0F2FE"
             title="Экспорт данных"
             onPress={() => {}}
           />
@@ -1439,8 +1424,6 @@ export default function SettingsScreen() {
         <SettingsSection title="Безопасность">
           <SettingsItem
             icon="lock"
-            iconColor="#3B82F6"
-            iconBgColor="#DBEAFE"
             title="PIN-код"
             value={isPinLockEnabled ? "Вкл" : "Выкл"}
             onPress={() => setShowPinSetup(true)}
@@ -1456,8 +1439,8 @@ export default function SettingsScreen() {
               [{ text: "Отлично!", style: "default" }]
             )}
           >
-            <View style={[styles.settingsItemIcon, { backgroundColor: "#F1F5F9" }]}>
-              <Feather name="info" size={14} color="#64748B" />
+            <View style={[styles.settingsItemIcon, { backgroundColor: theme.accentLight }]}>
+              <Feather name="info" size={14} color={theme.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText type="body" style={styles.settingsItemText}>
