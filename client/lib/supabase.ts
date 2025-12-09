@@ -15,15 +15,15 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
   },
 });
 
-export const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000001';
-
-export async function getCurrentUserId(): Promise<string> {
+export async function getCurrentUserId(): Promise<string | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    return user?.id || DEFAULT_USER_ID;
+    return user?.id || null;
   } catch (error) {
-    console.error('[Supabase] Error getting current user:', error);
-    return DEFAULT_USER_ID;
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[Supabase] Error getting current user:', error);
+    }
+    return null;
   }
 }
 
@@ -67,7 +67,6 @@ export type Shift = {
 export type User = {
   id: string;
   username: string;
-  password: string;
   balance: string;
   created_at: string;
 };
@@ -149,14 +148,12 @@ export function toClientShift(shift: Shift): {
 export function toClientUser(user: User): {
   id: string;
   username: string;
-  password: string;
   balance: string;
   createdAt: Date;
 } {
   return {
     id: user.id,
     username: user.username,
-    password: user.password,
     balance: user.balance,
     createdAt: new Date(user.created_at),
   };

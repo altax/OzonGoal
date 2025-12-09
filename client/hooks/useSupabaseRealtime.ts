@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useQueryClient, useIsFetching } from '@tanstack/react-query';
-import { supabase, DEFAULT_USER_ID } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type TableName = 'goals' | 'shifts' | 'goal_allocations' | 'users';
@@ -30,6 +31,9 @@ const TABLE_QUERY_MAP: Record<TableName, string[]> = {
 export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
   const queryClient = useQueryClient();
   const isFetching = useIsFetching();
+  const { user } = useAuth();
+  const userId = user?.id;
+  
   const channelRef = useRef<RealtimeChannel | null>(null);
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -77,6 +81,13 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
   );
 
   const setupChannel = useCallback(() => {
+    if (!userId) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Realtime] No user ID, skipping channel setup');
+      }
+      return;
+    }
+
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
     }
@@ -85,7 +96,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
       .channel('db-changes', {
         config: {
           broadcast: { self: true },
-          presence: { key: DEFAULT_USER_ID },
+          presence: { key: userId },
         },
       })
       .on(
@@ -94,7 +105,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
           event: 'INSERT',
           schema: 'public',
           table: 'goals',
-          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => handleChange('goals', 'INSERT', payload)
       )
@@ -104,7 +115,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
           event: 'UPDATE',
           schema: 'public',
           table: 'goals',
-          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => handleChange('goals', 'UPDATE', payload)
       )
@@ -114,7 +125,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
           event: 'DELETE',
           schema: 'public',
           table: 'goals',
-          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => handleChange('goals', 'DELETE', payload)
       )
@@ -124,7 +135,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
           event: 'INSERT',
           schema: 'public',
           table: 'shifts',
-          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => handleChange('shifts', 'INSERT', payload)
       )
@@ -134,7 +145,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
           event: 'UPDATE',
           schema: 'public',
           table: 'shifts',
-          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => handleChange('shifts', 'UPDATE', payload)
       )
@@ -144,7 +155,7 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
           event: 'DELETE',
           schema: 'public',
           table: 'shifts',
-          filter: `user_id=eq.${DEFAULT_USER_ID}`,
+          filter: `user_id=eq.${userId}`,
         },
         (payload) => handleChange('shifts', 'DELETE', payload)
       )
@@ -181,29 +192,37 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
           event: 'UPDATE',
           schema: 'public',
           table: 'users',
-          filter: `id=eq.${DEFAULT_USER_ID}`,
+          filter: `id=eq.${userId}`,
         },
         (payload) => handleChange('users', 'UPDATE', payload)
       )
-      .subscribe((status, err) => {
+      .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] Connected successfully');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Realtime] Connected successfully');
+          }
           retryCountRef.current = 0;
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.log('[Realtime] Connection issue, will retry:', status);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Realtime] Connection issue, will retry:', status);
+          }
           scheduleReconnect();
         } else if (status === 'CLOSED') {
-          console.log('[Realtime] Channel closed');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Realtime] Channel closed');
+          }
           scheduleReconnect();
         }
       });
 
     channelRef.current = channel;
-  }, [handleChange]);
+  }, [handleChange, userId]);
 
   const scheduleReconnect = useCallback(() => {
     if (retryCountRef.current >= maxRetries) {
-      console.log('[Realtime] Max retries reached, will use regular API calls');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Realtime] Max retries reached, will use regular API calls');
+      }
       return;
     }
 
@@ -212,7 +231,9 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
     }
 
     const delay = calculateBackoff(retryCountRef.current);
-    console.log(`[Realtime] Reconnecting in ${Math.round(delay)}ms (attempt ${retryCountRef.current + 1}/${maxRetries})`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Realtime] Reconnecting in ${Math.round(delay)}ms (attempt ${retryCountRef.current + 1}/${maxRetries})`);
+    }
 
     retryTimeoutRef.current = setTimeout(() => {
       retryCountRef.current++;
@@ -221,12 +242,20 @@ export function useSupabaseRealtime(config: Partial<RealtimeConfig> = {}) {
   }, [calculateBackoff, maxRetries, setupChannel]);
 
   useEffect(() => {
-    if (isFetching === 0 && !isReadyRef.current) {
+    if (isFetching === 0 && !isReadyRef.current && userId) {
       isReadyRef.current = true;
-      console.log('[Realtime] Initial queries loaded, connecting...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Realtime] Initial queries loaded, connecting...');
+      }
       setupChannel();
     }
-  }, [isFetching, setupChannel]);
+  }, [isFetching, setupChannel, userId]);
+
+  useEffect(() => {
+    if (userId && isReadyRef.current) {
+      setupChannel();
+    }
+  }, [userId, setupChannel]);
 
   useEffect(() => {
     return () => {

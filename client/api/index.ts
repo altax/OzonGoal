@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, getCurrentUserId, DEFAULT_USER_ID, toClientGoal, toClientShift, toClientUser, type Goal as SupabaseGoal, type Shift as SupabaseShift, type User as SupabaseUser } from "../lib/supabase";
+import { supabase, getCurrentUserId, toClientGoal, toClientShift, toClientUser, type Goal as SupabaseGoal, type Shift as SupabaseShift, type User as SupabaseUser } from "../lib/supabase";
 import { dataService, DataMode } from "../lib/dataService";
 import { useDataMode } from "../contexts/DataModeContext";
 
@@ -19,7 +19,6 @@ async function ensureUser(userId: string) {
     await supabase.from('users').insert({
       id: userId,
       username: authUser?.email?.split('@')[0] || 'user',
-      password: '',
       balance: 0,
     });
   }
@@ -285,7 +284,9 @@ export function useShifts() {
     queryFn: async () => {
       if (mode === 'cloud') {
         const userId = await getCurrentUserId();
-        await autoUpdateShiftStatuses(userId);
+        if (userId) {
+          await autoUpdateShiftStatuses(userId);
+        }
       }
       
       return await dataService.getShifts(mode);
@@ -311,6 +312,10 @@ export function useShiftsSummary() {
       }
       
       const userId = await getCurrentUserId();
+      if (!userId) {
+        return { past: 0, scheduled: 0, current: null };
+      }
+      
       await autoUpdateShiftStatuses(userId);
       const now = new Date().toISOString();
       
