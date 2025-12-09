@@ -48,7 +48,7 @@ export default function GoalsScreen() {
   const updateGoal = useUpdateGoal();
   
   const [tabWidth, setTabWidth] = useState(0);
-  const indicatorPosition = useSharedValue(0);
+  const indicatorPosition = useSharedValue(filter === "active" ? 0 : 1);
 
   useEffect(() => {
     AsyncStorage.getItem(GOAL_VIEW_MODE_KEY).then((stored) => {
@@ -61,6 +61,10 @@ export default function GoalsScreen() {
   useEffect(() => {
     AsyncStorage.setItem(GOAL_VIEW_MODE_KEY, viewMode).catch(() => {});
   }, [viewMode]);
+  
+  useEffect(() => {
+    indicatorPosition.value = filter === "active" ? 0 : 1;
+  }, []);
   
   const handleFilterChange = (newFilter: GoalFilter) => {
     indicatorPosition.value = withTiming(newFilter === "active" ? 0 : 1, {
