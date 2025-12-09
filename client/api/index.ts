@@ -52,24 +52,12 @@ export function useGoals() {
 }
 
 export function useGoalsSummary() {
+  const { mode } = useDataMode();
+  
   return useQuery<{ count: number; totalTarget: number; totalCurrent: number }>({
-    queryKey: ["goals", "summary"],
+    queryKey: ["goals", "summary", mode],
     queryFn: async () => {
-      const userId = await getCurrentUserId();
-      const { data, error } = await supabase
-        .from('goals')
-        .select('target_amount, current_amount')
-        .eq('user_id', userId)
-        .eq('status', 'active');
-      
-      if (error) throw new Error(error.message);
-      
-      const goals = data || [];
-      return {
-        count: goals.length,
-        totalTarget: goals.reduce((sum, g) => sum + parseFloat(g.target_amount || '0'), 0),
-        totalCurrent: goals.reduce((sum, g) => sum + parseFloat(g.current_amount || '0'), 0),
-      };
+      return await dataService.getGoalsSummary(mode);
     },
   });
 }
@@ -123,15 +111,11 @@ export function useUpdateGoal() {
 
 export function useDeleteGoal() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('goals')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw new Error(error.message);
+      await dataService.deleteGoal(mode, id);
       return { success: true };
     },
     onSuccess: () => {
@@ -142,37 +126,23 @@ export function useDeleteGoal() {
 }
 
 export function useHiddenGoals() {
+  const { mode } = useDataMode();
+  
   return useQuery<Goal[]>({
-    queryKey: ["goals", "hidden"],
+    queryKey: ["goals", "hidden", mode],
     queryFn: async () => {
-      const userId = await getCurrentUserId();
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'hidden')
-        .order('updated_at', { ascending: false });
-      
-      if (error) throw new Error(error.message);
-      return (data as SupabaseGoal[]).map(toClientGoal);
+      return await dataService.getHiddenGoals(mode);
     },
   });
 }
 
 export function useDeleteAllHiddenGoals() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async () => {
-      const userId = await getCurrentUserId();
-      const { error } = await supabase
-        .from('goals')
-        .delete()
-        .eq('user_id', userId)
-        .eq('status', 'hidden');
-      
-      if (error) throw new Error(error.message);
-      return { success: true };
+      return await dataService.deleteAllHiddenGoals(mode);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
@@ -182,18 +152,11 @@ export function useDeleteAllHiddenGoals() {
 
 export function useDeleteAllHiddenShifts() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async () => {
-      const userId = await getCurrentUserId();
-      const { error } = await supabase
-        .from('shifts')
-        .delete()
-        .eq('user_id', userId)
-        .eq('status', 'canceled');
-      
-      if (error) throw new Error(error.message);
-      return { success: true };
+      return await dataService.deleteAllHiddenShifts(mode);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
@@ -203,49 +166,11 @@ export function useDeleteAllHiddenShifts() {
 
 export function useDeleteAllData() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async () => {
-      const userId = await getCurrentUserId();
-      const { data: userShifts, error: shiftsSelectError } = await supabase
-        .from('shifts')
-        .select('id')
-        .eq('user_id', userId);
-      
-      if (shiftsSelectError) throw new Error(shiftsSelectError.message);
-      
-      if (userShifts && userShifts.length > 0) {
-        const shiftIds = userShifts.map(s => s.id);
-        const { error: allocationsError } = await supabase
-          .from('goal_allocations')
-          .delete()
-          .in('shift_id', shiftIds);
-        
-        if (allocationsError) throw new Error(allocationsError.message);
-      }
-
-      const { error: shiftsError } = await supabase
-        .from('shifts')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (shiftsError) throw new Error(shiftsError.message);
-
-      const { error: goalsError } = await supabase
-        .from('goals')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (goalsError) throw new Error(goalsError.message);
-
-      const { error: resetBalanceError } = await supabase
-        .from('users')
-        .update({ balance: 0 })
-        .eq('id', userId);
-      
-      if (resetBalanceError) throw new Error(resetBalanceError.message);
-
-      return { success: true };
+      return await dataService.deleteAllData(mode);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
@@ -259,18 +184,11 @@ export function useDeleteAllData() {
 
 export function useReorderGoals() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async (goalIds: string[]) => {
-      const userId = await getCurrentUserId();
-      for (let i = 0; i < goalIds.length; i++) {
-        await supabase
-          .from('goals')
-          .update({ order_index: i })
-          .eq('id', goalIds[i])
-          .eq('user_id', userId);
-      }
-      return { success: true };
+      return await dataService.reorderGoals(mode, goalIds);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
@@ -280,22 +198,11 @@ export function useReorderGoals() {
 
 export function useSetPrimaryGoal() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async (goalId: string) => {
-      const userId = await getCurrentUserId();
-      await supabase
-        .from('goals')
-        .update({ is_primary: false })
-        .eq('user_id', userId);
-      
-      await supabase
-        .from('goals')
-        .update({ is_primary: true })
-        .eq('id', goalId)
-        .eq('user_id', userId);
-      
-      return { success: true };
+      return await dataService.setPrimaryGoal(mode, goalId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
@@ -358,18 +265,11 @@ async function autoUpdateShiftStatuses(userId: string) {
 
 export function useCompleteShift() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase
-        .from('shifts')
-        .update({ status: 'completed' })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw new Error(error.message);
-      return toClientShift(data as SupabaseShift);
+      return await dataService.updateShift(mode, id, { status: 'completed' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
@@ -394,9 +294,22 @@ export function useShifts() {
 }
 
 export function useShiftsSummary() {
+  const { mode } = useDataMode();
+  
   return useQuery<{ past: number; scheduled: number; current: Shift | null }>({
-    queryKey: ["shifts", "summary"],
+    queryKey: ["shifts", "summary", mode],
     queryFn: async () => {
+      if (mode === 'local') {
+        const shifts = await dataService.getShifts(mode);
+        const now = new Date();
+        
+        return {
+          past: shifts.filter(s => s.status === 'completed').length,
+          scheduled: shifts.filter(s => s.status === 'scheduled' && s.scheduledStart > now).length,
+          current: shifts.find(s => s.status === 'in_progress') || null,
+        };
+      }
+      
       const userId = await getCurrentUserId();
       await autoUpdateShiftStatuses(userId);
       const now = new Date().toISOString();
@@ -452,18 +365,11 @@ export function useCreateShift() {
 
 export function useCancelShift() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase
-        .from('shifts')
-        .update({ status: 'canceled' })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw new Error(error.message);
-      return toClientShift(data as SupabaseShift);
+      return await dataService.cancelShift(mode, id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
@@ -473,30 +379,31 @@ export function useCancelShift() {
 
 export function useUpdateShift() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async ({ id, scheduledDate, status }: { id: string; scheduledDate?: string; status?: string }) => {
-      const updateData: Record<string, unknown> = {};
+      const updates: {
+        status?: string;
+        scheduledDate?: string;
+        scheduledStart?: string;
+        scheduledEnd?: string;
+      } = {};
       
       if (status !== undefined) {
-        updateData.status = status;
+        updates.status = status;
       }
       
       if (scheduledDate !== undefined) {
         const date = new Date(scheduledDate);
         
-        const { data: shift } = await supabase
-          .from('shifts')
-          .select('shift_type')
-          .eq('id', id)
-          .single();
-        
+        const shift = await dataService.getShiftById(mode, id);
         if (!shift) throw new Error('Shift not found');
         
         let scheduledStart: Date;
         let scheduledEnd: Date;
         
-        if (shift.shift_type === "day") {
+        if (shift.shiftType === "day") {
           scheduledStart = new Date(date);
           scheduledStart.setHours(8, 0, 0, 0);
           scheduledEnd = new Date(date);
@@ -509,20 +416,12 @@ export function useUpdateShift() {
           scheduledEnd.setHours(8, 0, 0, 0);
         }
         
-        updateData.scheduled_date = date.toISOString();
-        updateData.scheduled_start = scheduledStart.toISOString();
-        updateData.scheduled_end = scheduledEnd.toISOString();
+        updates.scheduledDate = date.toISOString();
+        updates.scheduledStart = scheduledStart.toISOString();
+        updates.scheduledEnd = scheduledEnd.toISOString();
       }
       
-      const { data, error } = await supabase
-        .from('shifts')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw new Error(error.message);
-      return toClientShift(data as SupabaseShift);
+      return await dataService.updateShift(mode, id, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
@@ -532,18 +431,11 @@ export function useUpdateShift() {
 
 export function useMarkNoShow() {
   const queryClient = useQueryClient();
+  const { mode } = useDataMode();
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase
-        .from('shifts')
-        .update({ status: 'no_show' })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw new Error(error.message);
-      return toClientShift(data as SupabaseShift);
+      return await dataService.updateShift(mode, id, { status: 'no_show' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shifts"] });
@@ -552,6 +444,8 @@ export function useMarkNoShow() {
 }
 
 export function useBalanceHistory() {
+  const { mode } = useDataMode();
+  
   return useQuery<{ 
     id: string;
     type: 'earning' | 'allocation';
@@ -560,8 +454,11 @@ export function useBalanceHistory() {
     description: string;
     goalName?: string;
   }[]>({
-    queryKey: ["balance", "history"],
+    queryKey: ["balance", "history", mode],
     queryFn: async () => {
+      if (mode === 'local') {
+        return [];
+      }
       const userId = await getCurrentUserId();
       const { data: shifts, error: shiftsError } = await supabase
         .from('shifts')
@@ -808,9 +705,49 @@ export type EarningsStats = {
 };
 
 export function useEarningsStats(period: StatsPeriod = 'month') {
+  const { mode } = useDataMode();
+  
   return useQuery<EarningsStats>({
-    queryKey: ["earnings", "stats", period],
+    queryKey: ["earnings", "stats", period, mode],
     queryFn: async () => {
+      if (mode === 'local') {
+        const emptyStats: ShiftTypeStats = { count: 0, totalEarnings: 0, averageEarnings: 0 };
+        const emptyCombinedStats: CombinedShiftStats = { count: 0, totalEarnings: 0, averageEarnings: 0 };
+        return {
+          totalEarnings: 0,
+          averagePerShift: 0,
+          completedShiftsCount: 0,
+          goalsProgressPercent: 0,
+          freeBalance: 0,
+          dailyEarningsHistory: [],
+          goalDistribution: [],
+          monthlyTrend: [],
+          shiftsByType: { future: 0, current: 0, past: 0 },
+          topShifts: [],
+          overdueGoals: [],
+          streak: 0,
+          previousPeriodAverage: 0,
+          daysToGoalForecast: null,
+          dayShiftStats: emptyStats,
+          nightShiftStats: emptyStats,
+          returnsShiftStats: emptyStats,
+          receivingShiftStats: emptyStats,
+          dayReturnsStats: emptyCombinedStats,
+          nightReturnsStats: emptyCombinedStats,
+          dayReceivingStats: emptyCombinedStats,
+          nightReceivingStats: emptyCombinedStats,
+          recordShiftEarnings: 0,
+          recordShiftDate: null,
+          recordShiftType: null,
+          bestWeekEarnings: 0,
+          bestWeekDate: null,
+          bestMonthEarnings: 0,
+          bestMonthDate: null,
+          goalForecasts: [],
+          dailyAverageEarnings: 0,
+        };
+      }
+      
       const userId = await getCurrentUserId();
       const { start, end } = getDateRange(period);
       

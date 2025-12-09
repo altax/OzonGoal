@@ -309,6 +309,8 @@ export const dataService = {
   async updateShift(mode: DataMode, id: string, updates: Partial<{
     status: string;
     scheduledDate: string;
+    scheduledStart: string;
+    scheduledEnd: string;
     earnings: number;
     earningsRecordedAt: string;
   }>) {
@@ -317,6 +319,9 @@ export const dataService = {
       if (updates.status !== undefined) localUpdates.status = updates.status as LocalShift['status'];
       if (updates.earnings !== undefined) localUpdates.earnings = updates.earnings;
       if (updates.earningsRecordedAt !== undefined) localUpdates.earningsRecordedAt = updates.earningsRecordedAt;
+      if (updates.scheduledDate !== undefined) localUpdates.scheduledDate = updates.scheduledDate;
+      if (updates.scheduledStart !== undefined) localUpdates.scheduledStart = updates.scheduledStart;
+      if (updates.scheduledEnd !== undefined) localUpdates.scheduledEnd = updates.scheduledEnd;
       
       const updated = await localStorageService.updateShift(id, localUpdates);
       return updated ? localShiftToClient(updated) : null;
@@ -325,6 +330,9 @@ export const dataService = {
       if (updates.status !== undefined) updateData.status = updates.status;
       if (updates.earnings !== undefined) updateData.earnings = updates.earnings;
       if (updates.earningsRecordedAt !== undefined) updateData.earnings_recorded_at = updates.earningsRecordedAt;
+      if (updates.scheduledDate !== undefined) updateData.scheduled_date = updates.scheduledDate;
+      if (updates.scheduledStart !== undefined) updateData.scheduled_start = updates.scheduledStart;
+      if (updates.scheduledEnd !== undefined) updateData.scheduled_end = updates.scheduledEnd;
       
       const { data, error } = await supabase
         .from('shifts')
@@ -338,7 +346,209 @@ export const dataService = {
     }
   },
 
+  async getShiftById(mode: DataMode, id: string) {
+    if (mode === 'local') {
+      const shifts = await localStorageService.getShifts();
+      const shift = shifts.find(s => s.id === id);
+      return shift ? localShiftToClient(shift) : null;
+    } else {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) return null;
+      return toClientShift(data as SupabaseShift);
+    }
+  },
+
   async cancelShift(mode: DataMode, id: string) {
     return this.updateShift(mode, id, { status: 'canceled' });
+  },
+
+  async getGoalsSummary(mode: DataMode) {
+    if (mode === 'local') {
+      const goals = await localStorageService.getGoals();
+      const activeGoals = goals.filter(g => g.status === 'active');
+      return {
+        count: activeGoals.length,
+        totalTarget: activeGoals.reduce((sum, g) => sum + g.targetAmount, 0),
+        totalCurrent: activeGoals.reduce((sum, g) => sum + g.currentAmount, 0),
+      };
+    } else {
+      const userId = await getCurrentUserId();
+      const { data, error } = await supabase
+        .from('goals')
+        .select('target_amount, current_amount')
+        .eq('user_id', userId)
+        .eq('status', 'active');
+      
+      if (error) throw new Error(error.message);
+      
+      const goals = data || [];
+      return {
+        count: goals.length,
+        totalTarget: goals.reduce((sum, g) => sum + parseFloat(g.target_amount || '0'), 0),
+        totalCurrent: goals.reduce((sum, g) => sum + parseFloat(g.current_amount || '0'), 0),
+      };
+    }
+  },
+
+  async getHiddenGoals(mode: DataMode) {
+    if (mode === 'local') {
+      const goals = await localStorageService.getGoals();
+      return goals
+        .filter(g => g.status === 'hidden')
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .map(localGoalToClient);
+    } else {
+      const userId = await getCurrentUserId();
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'hidden')
+        .order('updated_at', { ascending: false });
+      
+      if (error) throw new Error(error.message);
+      return (data as SupabaseGoal[]).map(toClientGoal);
+    }
+  },
+
+  async deleteAllHiddenGoals(mode: DataMode) {
+    if (mode === 'local') {
+      const goals = await localStorageService.getGoals();
+      const hiddenGoalIds = goals.filter(g => g.status === 'hidden').map(g => g.id);
+      for (const id of hiddenGoalIds) {
+        await localStorageService.deleteGoal(id);
+      }
+      return { success: true };
+    } else {
+      const userId = await getCurrentUserId();
+      const { error } = await supabase
+        .from('goals')
+        .delete()
+        .eq('user_id', userId)
+        .eq('status', 'hidden');
+      
+      if (error) throw new Error(error.message);
+      return { success: true };
+    }
+  },
+
+  async deleteAllHiddenShifts(mode: DataMode) {
+    if (mode === 'local') {
+      const shifts = await localStorageService.getShifts();
+      const canceledShiftIds = shifts.filter(s => s.status === 'canceled').map(s => s.id);
+      for (const id of canceledShiftIds) {
+        await localStorageService.deleteShift(id);
+      }
+      return { success: true };
+    } else {
+      const userId = await getCurrentUserId();
+      const { error } = await supabase
+        .from('shifts')
+        .delete()
+        .eq('user_id', userId)
+        .eq('status', 'canceled');
+      
+      if (error) throw new Error(error.message);
+      return { success: true };
+    }
+  },
+
+  async deleteAllData(mode: DataMode) {
+    if (mode === 'local') {
+      await localStorageService.clearAllLocalData();
+      return { success: true };
+    } else {
+      const userId = await getCurrentUserId();
+      const { data: userShifts, error: shiftsSelectError } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('user_id', userId);
+      
+      if (shiftsSelectError) throw new Error(shiftsSelectError.message);
+      
+      if (userShifts && userShifts.length > 0) {
+        const shiftIds = userShifts.map(s => s.id);
+        const { error: allocationsError } = await supabase
+          .from('goal_allocations')
+          .delete()
+          .in('shift_id', shiftIds);
+        
+        if (allocationsError) throw new Error(allocationsError.message);
+      }
+
+      const { error: shiftsError } = await supabase
+        .from('shifts')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (shiftsError) throw new Error(shiftsError.message);
+
+      const { error: goalsError } = await supabase
+        .from('goals')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (goalsError) throw new Error(goalsError.message);
+
+      const { error: resetBalanceError } = await supabase
+        .from('users')
+        .update({ balance: 0 })
+        .eq('id', userId);
+      
+      if (resetBalanceError) throw new Error(resetBalanceError.message);
+
+      return { success: true };
+    }
+  },
+
+  async reorderGoals(mode: DataMode, goalIds: string[]) {
+    if (mode === 'local') {
+      for (let i = 0; i < goalIds.length; i++) {
+        await localStorageService.updateGoal(goalIds[i], { orderIndex: i });
+      }
+      return { success: true };
+    } else {
+      const userId = await getCurrentUserId();
+      for (let i = 0; i < goalIds.length; i++) {
+        await supabase
+          .from('goals')
+          .update({ order_index: i })
+          .eq('id', goalIds[i])
+          .eq('user_id', userId);
+      }
+      return { success: true };
+    }
+  },
+
+  async setPrimaryGoal(mode: DataMode, goalId: string) {
+    if (mode === 'local') {
+      const goals = await localStorageService.getGoals();
+      for (const goal of goals) {
+        if (goal.isPrimary) {
+          await localStorageService.updateGoal(goal.id, { isPrimary: false });
+        }
+      }
+      await localStorageService.updateGoal(goalId, { isPrimary: true });
+      return { success: true };
+    } else {
+      const userId = await getCurrentUserId();
+      await supabase
+        .from('goals')
+        .update({ is_primary: false })
+        .eq('user_id', userId);
+      
+      await supabase
+        .from('goals')
+        .update({ is_primary: true })
+        .eq('id', goalId)
+        .eq('user_id', userId);
+      
+      return { success: true };
+    }
   },
 };
