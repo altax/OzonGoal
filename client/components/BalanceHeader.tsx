@@ -1,4 +1,5 @@
 import { View, StyleSheet, Pressable } from "react-native";
+import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -209,9 +210,18 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
             />
           </Pressable>
         </View>
-        <ThemedText type="h1" style={[styles.balanceAmount, { color: theme.text }]}>
-          {isBalanceHidden ? "••••••" : `${formatBalance(balance)} ₽`}
-        </ThemedText>
+        <View style={styles.balanceAmountContainer}>
+          <ThemedText type="h1" style={[styles.balanceAmount, { color: theme.text }]}>
+            {`${formatBalance(balance)} ₽`}
+          </ThemedText>
+          {isBalanceHidden && (
+            <BlurView
+              intensity={20}
+              tint={isDark ? "dark" : "light"}
+              style={styles.balanceBlurOverlay}
+            />
+          )}
+        </View>
         {renderTabInfo()}
       </Pressable>
     </View>
@@ -255,11 +265,23 @@ const styles = StyleSheet.create({
   hideToggle: {
     padding: Spacing.xs,
   },
+  balanceAmountContainer: {
+    position: "relative",
+    marginBottom: Spacing.md,
+  },
   balanceAmount: {
     fontSize: 44,
     fontWeight: "700",
-    marginBottom: Spacing.md,
     letterSpacing: -1,
+  },
+  balanceBlurOverlay: {
+    position: "absolute",
+    top: -4,
+    left: -8,
+    right: -8,
+    bottom: -4,
+    borderRadius: BorderRadius.sm,
+    overflow: "hidden",
   },
   infoTagContainer: {
     alignItems: "center",

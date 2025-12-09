@@ -12,14 +12,27 @@ import { queryClient } from "@/lib/query-client";
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useThemeContext } from "@/contexts/ThemeContext";
-import { SettingsProvider } from "@/contexts/SettingsContext";
+import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
+import { PinLockScreen } from "@/components/PinLockScreen";
 
 function AppContent() {
   const { isDark } = useThemeContext();
+  const { isAppLocked } = useSettings();
   
   useSupabaseRealtime();
+  
+  if (isAppLocked) {
+    return (
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={styles.root}>
+          <PinLockScreen />
+          <StatusBar style={isDark ? "light" : "dark"} />
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
+    );
+  }
   
   return (
     <SafeAreaProvider>

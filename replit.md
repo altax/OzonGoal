@@ -75,6 +75,13 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Security & UI Improvements (Dec 9, 2025):**
+  - Added PIN lock protection feature (4-digit PIN with animated keypad)
+  - Balance now uses blur effect instead of dots when hidden (BlurView)
+  - "Clear data" button only shows when user has actual data
+  - Logout now automatically enters guest mode instead of showing login form
+  - Standardized rounded corners using BorderRadius constants across all screens
+  - PIN lock components: PinLockScreen, PinSetupModal in SettingsContext
 - **Bug Fixes (Dec 9, 2025):**
   - Fixed Delete All buttons in Settings to use Alert.alert instead of window.confirm for cross-platform compatibility
   - Fixed Logout confirmation to use Alert.alert instead of window.confirm

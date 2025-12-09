@@ -375,11 +375,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       switch (event) {
         case 'SIGNED_OUT':
-          secureLog(`${LOG_PREFIX} User signed out`);
+          secureLog(`${LOG_PREFIX} User signed out, returning to guest mode`);
           queryClient.clear();
           setSession(null);
           setUser(null);
-          setGuestMode(false);
+          setGuestMode(true);
           break;
           
         case 'SIGNED_IN':

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type BalancePosition = "left" | "center" | "right";
 
@@ -9,12 +10,20 @@ interface SettingsContextType {
   isBalanceHidden: boolean;
   setIsBalanceHidden: (hidden: boolean) => void;
   toggleBalanceVisibility: () => void;
+  isPinLockEnabled: boolean;
+  pinCode: string | null;
+  isAppLocked: boolean;
+  setPinLock: (pin: string | null) => Promise<void>;
+  unlockApp: (pin: string) => boolean;
+  lockApp: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 const BALANCE_POSITION_KEY = "balance_position";
 const BALANCE_HIDDEN_KEY = "balance_hidden";
+const PIN_CODE_KEY = "@app_pin_code";
+const PIN_ENABLED_KEY = "@app_pin_enabled";
 
 function getStoredBalancePosition(): BalancePosition {
   if (Platform.OS === "web") {
@@ -57,6 +66,33 @@ function storeBalanceHidden(hidden: boolean) {
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [balancePosition, setBalancePositionState] = useState<BalancePosition>(getStoredBalancePosition);
   const [isBalanceHidden, setIsBalanceHiddenState] = useState<boolean>(getStoredBalanceHidden);
+  const [pinCode, setPinCodeState] = useState<string | null>(null);
+  const [isPinLockEnabled, setIsPinLockEnabled] = useState(false);
+  const [isAppLocked, setIsAppLocked] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    const loadPinSettings = async () => {
+      try {
+        const [storedPin, storedEnabled] = await Promise.all([
+          AsyncStorage.getItem(PIN_CODE_KEY),
+          AsyncStorage.getItem(PIN_ENABLED_KEY),
+        ]);
+        
+        if (storedPin && storedEnabled === "true") {
+          setPinCodeState(storedPin);
+          setIsPinLockEnabled(true);
+          setIsAppLocked(true);
+        }
+      } catch (error) {
+        console.log("[Settings] Error loading PIN settings:", error);
+      } finally {
+        setInitialized(true);
+      }
+    };
+    
+    loadPinSettings();
+  }, []);
 
   useEffect(() => {
     storeBalancePosition(balancePosition);
@@ -78,6 +114,43 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setIsBalanceHiddenState(prev => !prev);
   };
 
+  const setPinLock = async (pin: string | null) => {
+    try {
+      if (pin) {
+        await Promise.all([
+          AsyncStorage.setItem(PIN_CODE_KEY, pin),
+          AsyncStorage.setItem(PIN_ENABLED_KEY, "true"),
+        ]);
+        setPinCodeState(pin);
+        setIsPinLockEnabled(true);
+      } else {
+        await Promise.all([
+          AsyncStorage.removeItem(PIN_CODE_KEY),
+          AsyncStorage.removeItem(PIN_ENABLED_KEY),
+        ]);
+        setPinCodeState(null);
+        setIsPinLockEnabled(false);
+        setIsAppLocked(false);
+      }
+    } catch (error) {
+      console.log("[Settings] Error saving PIN settings:", error);
+    }
+  };
+
+  const unlockApp = (enteredPin: string): boolean => {
+    if (enteredPin === pinCode) {
+      setIsAppLocked(false);
+      return true;
+    }
+    return false;
+  };
+
+  const lockApp = () => {
+    if (isPinLockEnabled && pinCode) {
+      setIsAppLocked(true);
+    }
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -86,6 +159,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         isBalanceHidden,
         setIsBalanceHidden,
         toggleBalanceVisibility,
+        isPinLockEnabled,
+        pinCode,
+        isAppLocked,
+        setPinLock,
+        unlockApp,
+        lockApp,
       }}
     >
       {children}

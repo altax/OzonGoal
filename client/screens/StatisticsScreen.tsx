@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
   },
   periodTabs: {
     flexDirection: "row",
-    borderRadius: 10,
+    borderRadius: BorderRadius.xs,
     padding: 4,
     marginBottom: Spacing.md,
     position: "relative",
@@ -940,7 +940,7 @@ const styles = StyleSheet.create({
     top: 4,
     bottom: 4,
     width: "48%",
-    borderRadius: 7,
+    borderRadius: BorderRadius.xs - 2,
   },
   periodTab: {
     flex: 1,
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: Spacing.md,
-    borderRadius: 12,
+    borderRadius: BorderRadius.sm,
     marginBottom: Spacing.sm,
   },
   chartCard: {
@@ -1219,7 +1219,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: Spacing.sm,
-    borderRadius: 10,
+    borderRadius: BorderRadius.xs,
     marginBottom: Spacing.sm,
   },
   shiftIconCompact: {

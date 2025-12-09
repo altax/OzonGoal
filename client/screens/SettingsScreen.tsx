@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import { useShifts, useUpdateShift, useGoals, useHiddenGoals, useUpdateGoal, useDeleteAllHiddenShifts, useDeleteAllHiddenGoals, useDeleteAllData } from "@/api";
+import { PinSetupModal } from "@/components/PinSetupModal";
 
 interface SettingsItemProps {
   icon: keyof typeof Feather.glyphMap;
@@ -1190,7 +1191,8 @@ function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden } = useSettings();
+  const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden, isPinLockEnabled } = useSettings();
+  const [showPinSetup, setShowPinSetup] = useState(false);
   const { user, signOut, signIn, signUp, isAnonymous, isGuestMode, upgradeGuestToUser } = useAuth();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
   const [showHiddenGoals, setShowHiddenGoals] = useState(false);
@@ -1366,6 +1368,17 @@ export default function SettingsScreen() {
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
         <SettingsItem
+          icon="lock"
+          iconColor="#3B82F6"
+          iconBgColor="#DBEAFE"
+          title="PIN-код"
+          value={isPinLockEnabled ? "Вкл" : "Выкл"}
+          onPress={() => setShowPinSetup(true)}
+        />
+
+        <View style={[styles.separator, { backgroundColor: theme.border }]} />
+
+        <SettingsItem
           icon="moon"
           title="Тема"
           value="Авто"
@@ -1399,12 +1412,14 @@ export default function SettingsScreen() {
 
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
-        <SettingsItem
-          icon="trash-2"
-          title="Очистить данные"
-          danger
-          onPress={() => setShowDeleteConfirmation(true)}
-        />
+        {(goals.length > 0 || shifts.length > 0) && (
+          <SettingsItem
+            icon="trash-2"
+            title="Очистить данные"
+            danger
+            onPress={() => setShowDeleteConfirmation(true)}
+          />
+        )}
 
         <View style={[styles.separator, { backgroundColor: theme.border }]} />
 
@@ -1449,6 +1464,11 @@ export default function SettingsScreen() {
         onClose={() => setShowGuestAuth(false)}
         signIn={signIn}
         signUp={signUp}
+      />
+
+      <PinSetupModal
+        visible={showPinSetup}
+        onClose={() => setShowPinSetup(false)}
       />
 
     </View>
