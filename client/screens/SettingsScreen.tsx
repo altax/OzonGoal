@@ -1226,7 +1226,7 @@ const sectionStyles = StyleSheet.create({
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden, isPinLockEnabled } = useSettings();
+  const { balancePosition, setBalancePosition, isBalanceHidden, setIsBalanceHidden, isPinLockEnabled, userName, setUserName } = useSettings();
   const [showPinSetup, setShowPinSetup] = useState(false);
   const { user, signOut, signIn, signUp, isAnonymous, isGuestMode, upgradeGuestToUser } = useAuth();
   const [showHiddenShifts, setShowHiddenShifts] = useState(false);
@@ -1238,6 +1238,27 @@ export default function SettingsScreen() {
   const { data: shifts = [] } = useShifts();
   const { data: goals = [] } = useGoals();
   const { data: hiddenGoals = [] } = useHiddenGoals();
+
+  const [showNameEdit, setShowNameEdit] = useState(false);
+  const [editingName, setEditingName] = useState("");
+
+  const handleEditName = () => {
+    setEditingName(userName || "");
+    setShowNameEdit(true);
+  };
+
+  const handleSaveName = () => {
+    if (editingName.trim()) {
+      setUserName(editingName.trim());
+    }
+    setShowNameEdit(false);
+  };
+
+  const getDisplayName = () => {
+    if (userName) return userName;
+    if (isAnonymous || isGuestMode) return "Гостевой режим";
+    return user?.email?.split("@")[0] || "Пользователь";
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -1279,17 +1300,23 @@ export default function SettingsScreen() {
       >
         <SettingsSection>
           <View style={styles.profileSection}>
-            <View style={[styles.avatarContainer, { backgroundColor: (isAnonymous || isGuestMode) ? '#FEF3C7' : theme.accentLight }]}>
+            <Pressable 
+              style={[styles.avatarContainer, { backgroundColor: (isAnonymous || isGuestMode) ? '#FEF3C7' : theme.accentLight }]}
+              onPress={handleEditName}
+            >
               <Feather name={(isAnonymous || isGuestMode) ? "user-x" : "user"} size={18} color={(isAnonymous || isGuestMode) ? '#F59E0B' : theme.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText type="body" style={{ fontWeight: '600', fontSize: 14 }}>
-                {(isAnonymous || isGuestMode) ? 'Гостевой режим' : (user?.email?.split('@')[0] || 'Пользователь')}
-              </ThemedText>
+            </Pressable>
+            <Pressable style={{ flex: 1 }} onPress={handleEditName}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <ThemedText type="body" style={{ fontWeight: '600', fontSize: 14 }}>
+                  {getDisplayName()}
+                </ThemedText>
+                <Feather name="edit-2" size={12} color={theme.textSecondary} />
+              </View>
               <ThemedText type="caption" style={{ color: theme.textSecondary, fontSize: 12 }}>
-                {(isAnonymous || isGuestMode) ? 'Данные хранятся локально' : (user?.email || '')}
+                {(isAnonymous || isGuestMode) ? 'Данные хранятся локально' : (user?.email || 'Нажмите, чтобы изменить имя')}
               </ThemedText>
-            </View>
+            </Pressable>
             {isGuestMode && (
               <Pressable
                 style={({ pressed }) => [
@@ -1421,22 +1448,27 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="Приложение">
-          <SettingsItem
-            icon="help-circle"
-            iconColor="#8B5CF6"
-            iconBgColor="#EDE9FE"
-            title="Помощь"
-            onPress={() => {}}
-          />
-          <View style={[styles.itemDivider, { backgroundColor: theme.border }]} />
-          <SettingsItem
-            icon="info"
-            iconColor="#64748B"
-            iconBgColor="#F1F5F9"
-            title="О приложении"
-            value="1.0.0"
-            showChevron={false}
-          />
+          <Pressable
+            style={styles.aboutSection}
+            onPress={() => Alert.alert(
+              "О приложении",
+              "ЦельЗаработок v1.0.0\n\nПриложение создано работником склада, который хотел систематизировать свои финансы и распределять заработок по целям.\n\nНадеюсь, оно поможет и вам достичь своих финансовых целей!",
+              [{ text: "Отлично!", style: "default" }]
+            )}
+          >
+            <View style={[styles.settingsItemIcon, { backgroundColor: "#F1F5F9" }]}>
+              <Feather name="info" size={14} color="#64748B" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ThemedText type="body" style={styles.settingsItemText}>
+                О приложении
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                v1.0.0 • От автора с любовью
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={16} color={theme.textSecondary} />
+          </Pressable>
         </SettingsSection>
 
         {((goals.length > 0 || shifts.length > 0) || (!isAnonymous && !isGuestMode)) && (
@@ -1503,6 +1535,25 @@ export default function SettingsScreen() {
         visible={showPinSetup}
         onClose={() => setShowPinSetup(false)}
       />
+
+      <Modal visible={showNameEdit} animationType="fade" transparent onRequestClose={() => setShowNameEdit(false)}>
+        <Pressable style={modalStyles.overlay} onPress={() => setShowNameEdit(false)}>
+          <View style={[modalStyles.nameEditContent, { backgroundColor: theme.backgroundContent }]}>
+            <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Ваше имя</ThemedText>
+            <TextInput
+              style={[styles.nameInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              value={editingName}
+              onChangeText={setEditingName}
+              placeholder="Введите имя"
+              placeholderTextColor={theme.textSecondary}
+              autoFocus
+            />
+            <Pressable style={[styles.saveNameButton, { backgroundColor: theme.accent }]} onPress={handleSaveName}>
+              <ThemedText style={{ color: '#FFFFFF', fontWeight: '600' }}>Сохранить</ThemedText>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
     </View>
   );
@@ -1604,6 +1655,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  aboutSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+  },
+  nameInput: {
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  saveNameButton: {
+    height: 44,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
 
 const modalStyles = StyleSheet.create({
@@ -1693,6 +1763,14 @@ const modalStyles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: BorderRadius.sm,
     marginTop: Spacing.md,
+  },
+  nameEditContent: {
+    position: "absolute",
+    top: "30%",
+    left: 20,
+    right: 20,
+    borderRadius: 16,
+    padding: 20,
   },
 });
 

@@ -931,14 +931,15 @@ const styles = StyleSheet.create({
   periodTabs: {
     flexDirection: "row",
     borderRadius: BorderRadius.xs,
-    padding: 4,
+    padding: 3,
     marginBottom: Spacing.md,
     position: "relative",
   },
   periodIndicator: {
     position: "absolute",
-    top: 4,
-    bottom: 4,
+    top: 3,
+    bottom: 3,
+    left: 3,
     width: "48%",
     borderRadius: BorderRadius.xs - 2,
   },
@@ -982,7 +983,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
   },
   chartCard: {

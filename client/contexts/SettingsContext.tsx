@@ -16,6 +16,8 @@ interface SettingsContextType {
   setPinLock: (pin: string | null) => Promise<void>;
   unlockApp: (pin: string) => boolean;
   lockApp: () => void;
+  userName: string;
+  setUserName: (name: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -24,6 +26,7 @@ const BALANCE_POSITION_KEY = "balance_position";
 const BALANCE_HIDDEN_KEY = "balance_hidden";
 const PIN_CODE_KEY = "@app_pin_code";
 const PIN_ENABLED_KEY = "@app_pin_enabled";
+const USER_NAME_KEY = "user_name";
 
 function getStoredBalancePosition(): BalancePosition {
   if (Platform.OS === "web") {
@@ -63,6 +66,23 @@ function storeBalanceHidden(hidden: boolean) {
   }
 }
 
+function getStoredUserName(): string {
+  if (Platform.OS === "web") {
+    try {
+      return localStorage.getItem(USER_NAME_KEY) || "";
+    } catch {}
+  }
+  return "";
+}
+
+function storeUserName(name: string) {
+  if (Platform.OS === "web") {
+    try {
+      localStorage.setItem(USER_NAME_KEY, name);
+    } catch {}
+  }
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [balancePosition, setBalancePositionState] = useState<BalancePosition>(getStoredBalancePosition);
   const [isBalanceHidden, setIsBalanceHiddenState] = useState<boolean>(getStoredBalanceHidden);
@@ -70,6 +90,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [isPinLockEnabled, setIsPinLockEnabled] = useState(false);
   const [isAppLocked, setIsAppLocked] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [userName, setUserNameState] = useState<string>(getStoredUserName);
 
   useEffect(() => {
     const loadPinSettings = async () => {
@@ -101,6 +122,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     storeBalanceHidden(isBalanceHidden);
   }, [isBalanceHidden]);
+
+  useEffect(() => {
+    storeUserName(userName);
+  }, [userName]);
 
   const setBalancePosition = (position: BalancePosition) => {
     setBalancePositionState(position);
@@ -151,6 +176,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setUserName = (name: string) => {
+    setUserNameState(name);
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -165,6 +194,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setPinLock,
         unlockApp,
         lockApp,
+        userName,
+        setUserName,
       }}
     >
       {children}
