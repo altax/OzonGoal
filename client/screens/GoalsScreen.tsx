@@ -8,7 +8,6 @@ import Animated, {
   useSharedValue,
   withTiming,
   Easing,
-  useDerivedValue,
 } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -49,14 +48,7 @@ export default function GoalsScreen() {
   const updateGoal = useUpdateGoal();
   
   const [tabWidth, setTabWidth] = useState(0);
-  const [isFirstRender, setIsFirstRender] = useState(true);
-  const indicatorPosition = useSharedValue(0);
-  
-  useDerivedValue(() => {
-    if (isFirstRender) {
-      indicatorPosition.value = filter === "active" ? 0 : 1;
-    }
-  });
+  const indicatorPosition = useSharedValue(filter === "active" ? 0 : 1);
 
   useEffect(() => {
     AsyncStorage.getItem(GOAL_VIEW_MODE_KEY).then((stored) => {
@@ -71,9 +63,6 @@ export default function GoalsScreen() {
   }, [viewMode]);
   
   const handleFilterChange = (newFilter: GoalFilter) => {
-    if (isFirstRender) {
-      setIsFirstRender(false);
-    }
     indicatorPosition.value = withTiming(newFilter === "active" ? 0 : 1, {
       duration: 200,
       easing: Easing.bezier(0.4, 0, 0.2, 1),
