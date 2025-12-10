@@ -527,9 +527,18 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
                 >
                   <Feather
                     name={option.icon}
-                    size={18}
+                    size={24}
                     color={isSelected ? "#FFFFFF" : theme.accent}
                   />
+                  <ThemedText
+                    type="caption"
+                    style={[
+                      styles.iconLabel,
+                      { color: isSelected ? "#FFFFFF" : theme.textSecondary },
+                    ]}
+                  >
+                    {option.label}
+                  </ThemedText>
                 </Pressable>
               );
             })}
@@ -701,20 +710,19 @@ const styles = StyleSheet.create({
   iconGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: Spacing.sm,
-    justifyContent: "center",
+    gap: Spacing.md,
   },
   iconOption: {
-    width: "18%",
+    width: "30%",
     aspectRatio: 1,
-    borderRadius: BorderRadius.xs,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    gap: Spacing.sm,
   },
   iconLabel: {
-    fontSize: 8,
-    marginTop: 2,
+    fontSize: 11,
   },
   actionButtonsRow: {
     flexDirection: "row",

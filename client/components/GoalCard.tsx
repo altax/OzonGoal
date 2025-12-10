@@ -6,10 +6,13 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  withRepeat,
+  withSequence,
   runOnJS,
   interpolate,
   Extrapolation,
 } from "react-native-reanimated";
+import { useEffect } from "react";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -148,8 +151,40 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   })();
   const hasDeadline = goal.deadline !== null && goal.deadline !== undefined;
   const isDeadlineNear = daysUntilDeadline !== null && daysUntilDeadline > 0 && daysUntilDeadline <= 7;
+  const isDeadlineCritical = daysUntilDeadline !== null && daysUntilDeadline >= 0 && daysUntilDeadline <= 3;
   const isDeadlineExpired = daysUntilDeadline !== null && daysUntilDeadline < 0;
   const isDeadlineToday = daysUntilDeadline !== null && daysUntilDeadline === 0;
+  
+  const pulseOpacity = useSharedValue(1);
+  
+  useEffect(() => {
+    if (isDeadlineCritical && !isCompleted && !isDeadlineExpired) {
+      pulseOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.5, { duration: 800 }),
+          withTiming(1, { duration: 800 })
+        ),
+        -1,
+        false
+      );
+    } else {
+      pulseOpacity.value = 1;
+    }
+  }, [isDeadlineCritical, isCompleted, isDeadlineExpired]);
+  
+  const pulseAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: pulseOpacity.value,
+  }));
+  
+  const getDeadlineColor = () => {
+    if (isDeadlineExpired) return { bg: theme.errorLight, text: theme.error, icon: theme.error };
+    if (isDeadlineToday) return { bg: '#FEE2E2', text: '#DC2626', icon: '#DC2626' };
+    if (daysUntilDeadline !== null && daysUntilDeadline <= 3) return { bg: '#FEF3C7', text: '#D97706', icon: '#D97706' };
+    if (isDeadlineNear) return { bg: '#FFF7ED', text: '#EA580C', icon: '#EA580C' };
+    return { bg: '#FFF3E0', text: '#FB923C', icon: '#FB923C' };
+  };
+  
+  const deadlineColors = getDeadlineColor();
 
   const handleHide = () => {
     if (onHide) {
@@ -279,28 +314,23 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                     {goal.name}
                   </ThemedText>
                   {!isCompleted && hasDeadline && daysUntilDeadline !== null && (
-                    <View style={[
+                    <Animated.View style={[
                       styles.deadlineBadgeCompact,
-                      { 
-                        backgroundColor: isDeadlineExpired 
-                          ? theme.errorLight 
-                          : (isDeadlineNear || isDeadlineToday)
-                            ? (theme.warningLight || '#FEF3C7')
-                            : '#FFF3E0'
-                      }
+                      { backgroundColor: deadlineColors.bg },
+                      isDeadlineCritical && !isDeadlineExpired && pulseAnimatedStyle,
                     ]}>
                       <Feather 
-                        name={isDeadlineExpired ? "alert-circle" : "zap"} 
+                        name={isDeadlineExpired ? "alert-circle" : "clock"} 
                         size={10} 
-                        color={isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? '#F97316' : '#FB923C'} 
+                        color={deadlineColors.icon} 
                       />
                       <ThemedText style={[
                         styles.deadlineBadgeTextCompact,
-                        { color: isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? '#F97316' : '#FB923C' }
+                        { color: deadlineColors.text }
                       ]}>
                         {isDeadlineExpired ? 'просрочено' : isDeadlineToday ? 'сегодня' : `${daysUntilDeadline} дн`}
                       </ThemedText>
-                    </View>
+                    </Animated.View>
                   )}
                   {!isCompleted && remaining > 0 && !hasDeadline && hasEarningsData && (
                     <ThemedText style={[styles.shiftsTextCompact, { color: theme.textSecondary }]}>
@@ -391,28 +421,23 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                     {goal.name}
                   </ThemedText>
                   {!isCompleted && hasDeadline && daysUntilDeadline !== null && (
-                    <View style={[
+                    <Animated.View style={[
                       styles.deadlineBadge,
-                      { 
-                        backgroundColor: isDeadlineExpired 
-                          ? theme.errorLight 
-                          : (isDeadlineNear || isDeadlineToday)
-                            ? (theme.warningLight || '#FEF3C7')
-                            : '#FFF3E0'
-                      }
+                      { backgroundColor: deadlineColors.bg },
+                      isDeadlineCritical && !isDeadlineExpired && pulseAnimatedStyle,
                     ]}>
                       <Feather 
-                        name={isDeadlineExpired ? "alert-circle" : "zap"} 
+                        name={isDeadlineExpired ? "alert-circle" : "clock"} 
                         size={12} 
-                        color={isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? '#F97316' : '#FB923C'} 
+                        color={deadlineColors.icon} 
                       />
                       <ThemedText style={[
                         styles.deadlineBadgeText,
-                        { color: isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? '#F97316' : '#FB923C' }
+                        { color: deadlineColors.text }
                       ]}>
                         {isDeadlineExpired ? 'просрочено' : isDeadlineToday ? 'сегодня' : `${daysUntilDeadline} дн`}
                       </ThemedText>
-                    </View>
+                    </Animated.View>
                   )}
                   {!isCompleted && remaining > 0 && !hasDeadline && hasEarningsData && (
                     <ThemedText style={[styles.shiftsText, { color: theme.textSecondary }]}>

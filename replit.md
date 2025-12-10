@@ -75,8 +75,25 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Advanced Deadline Management System (Dec 10, 2025):**
+  - **Unified Icon System**: Standardized icon sizes (24px) in AddGoalModal and EditGoalModal with labels
+  - **Deadline Icon Animation**: Pulse animation for goals with deadlines within 3 days
+  - **Color Gradient by Urgency**: Deadline badges change color from neutral to warning to red as deadline approaches
+  - **DeadlineWarningModal**: New comprehensive modal for managing critical deadlines with:
+    - Daily earnings calculation showing required amount per day
+    - Risk level indicator (low/medium/high) based on average earnings
+    - Extend deadline options (7 or 14 days)
+    - Transfer balance from other goals (min 500₽ preserved per goal)
+    - Remove deadline option
+    - Close goal as incomplete with fund redistribution
+  - **Auto-popup**: Warning modal automatically appears for goals with deadlines within 3 days
+  - **Smart Risk Analysis**: Compares required daily earnings vs user's average earnings history
+  - **Key Files**:
+    - `client/components/DeadlineWarningModal.tsx` - New deadline management modal
+    - `client/components/GoalCard.tsx` - Enhanced with pulse animation and color gradients
+    - `client/screens/GoalsScreen.tsx` - Integration with auto-warning detection
 - **Deadline Icons & Export Fix (Dec 10, 2025):**
-  - Added "zap" icon for goals with deadlines (orange lightning bolt style)
+  - Added clock icon for goals with deadlines (replaced zap icon)
   - Goals with near/today deadlines show orange warning icon
   - Overdue goals show red alert-circle icon
   - Fixed export function for Expo Go - now uses new expo-file-system API (File/Paths classes)

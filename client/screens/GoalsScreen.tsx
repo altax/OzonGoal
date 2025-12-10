@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -15,6 +15,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { GoalCard } from "@/components/GoalCard";
 import { AddGoalModal } from "@/components/AddGoalModal";
 import { EditGoalModal } from "@/components/EditGoalModal";
+import { DeadlineWarningModal } from "@/components/DeadlineWarningModal";
 import { useGoals, useDeleteGoal, useUpdateGoal, useEarningsStats } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
@@ -34,6 +35,7 @@ type GoalType = {
   iconBgColor: string;
   status: string;
   isPrimary?: boolean;
+  deadline?: Date | null;
 };
 
 export default function GoalsScreen() {
@@ -41,9 +43,11 @@ export default function GoalsScreen() {
   const { theme } = useTheme();
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<GoalType | null>(null);
+  const [warningGoal, setWarningGoal] = useState<GoalType | null>(null);
+  const dismissedWarningsRef = useRef<Map<string, string>>(new Map());
   const [filter, setFilter] = useState<GoalFilter>("active");
   const [viewMode, setViewMode] = useState<ViewMode>("full");
-  const { data: goals, isLoading } = useGoals();
+  const { data: goals, isLoading, refetch } = useGoals();
   const { data: earningsStats } = useEarningsStats('month');
   const deleteGoal = useDeleteGoal();
   const updateGoal = useUpdateGoal();
@@ -86,18 +90,54 @@ export default function GoalsScreen() {
     setTabWidth(width);
   };
 
-  const { activeGoals, completedGoals } = useMemo(() => {
-    if (!goals) return { activeGoals: [], completedGoals: [] };
-    return {
-      activeGoals: goals.filter(g => g.status === "active"),
-      completedGoals: goals.filter(g => {
-        if (g.status !== "completed") return false;
-        const current = parseFloat(String(g.currentAmount)) || 0;
-        const target = parseFloat(String(g.targetAmount)) || 0;
-        return target > 0 && current >= target;
-      }),
-    };
+  const { activeGoals, completedGoals, criticalDeadlineGoals } = useMemo(() => {
+    if (!goals) return { activeGoals: [], completedGoals: [], criticalDeadlineGoals: [] };
+    
+    const active = goals.filter(g => g.status === "active");
+    const completed = goals.filter(g => {
+      if (g.status !== "completed") return false;
+      const current = parseFloat(String(g.currentAmount)) || 0;
+      const target = parseFloat(String(g.targetAmount)) || 0;
+      return target > 0 && current >= target;
+    });
+    
+    const criticalDeadline = active.filter(g => {
+      if (!g.deadline) return false;
+      const deadlineDate = new Date(g.deadline);
+      const today = new Date();
+      deadlineDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      const daysLeft = Math.round((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return daysLeft >= 0 && daysLeft <= 3;
+    });
+    
+    return { activeGoals: active, completedGoals: completed, criticalDeadlineGoals: criticalDeadline };
   }, [goals]);
+  
+  useEffect(() => {
+    if (criticalDeadlineGoals.length > 0 && !warningGoal) {
+      const goalToWarn = criticalDeadlineGoals.find(g => {
+        if (!g.deadline) return false;
+        const deadlineKey = `${g.id}-${new Date(g.deadline).toISOString().split('T')[0]}`;
+        return dismissedWarningsRef.current.get(g.id) !== deadlineKey;
+      });
+      if (goalToWarn) {
+        setWarningGoal(goalToWarn as GoalType);
+      }
+    }
+  }, [criticalDeadlineGoals, warningGoal]);
+  
+  const handleCloseWarning = () => {
+    if (warningGoal && warningGoal.deadline) {
+      const deadlineKey = `${warningGoal.id}-${new Date(warningGoal.deadline).toISOString().split('T')[0]}`;
+      dismissedWarningsRef.current.set(warningGoal.id, deadlineKey);
+    }
+    setWarningGoal(null);
+  };
+  
+  const handleGoalUpdated = () => {
+    refetch();
+  };
 
   const displayGoals = filter === "active" ? activeGoals : completedGoals;
   const hasGoals = displayGoals.length > 0;
@@ -255,6 +295,14 @@ export default function GoalsScreen() {
         visible={!!selectedGoal}
         goal={selectedGoal}
         onClose={() => setSelectedGoal(null)}
+      />
+      
+      <DeadlineWarningModal
+        visible={!!warningGoal}
+        goal={warningGoal}
+        averageEarnings={averageEarningsPerShift || 0}
+        onClose={handleCloseWarning}
+        onGoalUpdated={handleGoalUpdated}
       />
     </View>
   );
