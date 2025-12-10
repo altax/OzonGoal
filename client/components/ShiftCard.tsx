@@ -83,6 +83,28 @@ function getStatusColor(status: string, theme: any): string {
   return colors[status] || theme.textSecondary;
 }
 
+function isShiftStartingSoon(scheduledStart: Date, hoursThreshold: number = 2): boolean {
+  const now = new Date();
+  const startTime = new Date(scheduledStart);
+  const diffMs = startTime.getTime() - now.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  return diffHours > 0 && diffHours <= hoursThreshold;
+}
+
+function getTimeUntilStart(scheduledStart: Date): string {
+  const now = new Date();
+  const startTime = new Date(scheduledStart);
+  const diffMs = startTime.getTime() - now.getTime();
+  const diffMinutes = Math.round(diffMs / (1000 * 60));
+  
+  if (diffMinutes <= 0) return '';
+  if (diffMinutes < 60) return `через ${diffMinutes} мин`;
+  const hours = Math.floor(diffMinutes / 60);
+  const mins = diffMinutes % 60;
+  if (mins === 0) return `через ${hours} ч`;
+  return `через ${hours} ч ${mins} мин`;
+}
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const SWIPE_THRESHOLD = 60;
@@ -104,6 +126,8 @@ export function ShiftCard({
   const isScheduled = shift.status === "scheduled";
   const canRecordEarnings = isCompleted && !shift.earnings;
   const canSwipe = isScheduled && !isCurrentShift;
+  const startingSoon = isScheduled && !isCurrentShift && isShiftStartingSoon(shift.scheduledStart);
+  const timeUntilStart = startingSoon ? getTimeUntilStart(shift.scheduledStart) : '';
 
   const handleCancel = () => {
     if (onCancel) {
@@ -227,6 +251,11 @@ export function ShiftCard({
                     <View style={[styles.currentBadgeCompact, { backgroundColor: theme.success }]}>
                       <ThemedText style={styles.currentBadgeText}>Сейчас</ThemedText>
                     </View>
+                  ) : startingSoon ? (
+                    <View style={[styles.reminderBadgeCompact, { backgroundColor: theme.warning }]}>
+                      <Feather name="bell" size={10} color="#FFFFFF" style={{ marginRight: 3 }} />
+                      <ThemedText style={styles.currentBadgeText}>{timeUntilStart}</ThemedText>
+                    </View>
                   ) : (
                     <View style={[styles.statusBadgeCompact, { backgroundColor: getStatusColor(shift.status, theme) + "20" }]}>
                       <ThemedText style={[styles.statusTextCompact, { color: getStatusColor(shift.status, theme) }]}>
@@ -283,6 +312,14 @@ export function ShiftCard({
             <View style={[styles.currentBadge, { backgroundColor: theme.success }]}>
               <ThemedText type="caption" style={{ color: "#FFFFFF", fontWeight: "600" }}>
                 Текущая смена
+              </ThemedText>
+            </View>
+          )}
+          {startingSoon && !isCurrentShift && (
+            <View style={[styles.reminderBadge, { backgroundColor: theme.warning }]}>
+              <Feather name="bell" size={12} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <ThemedText type="caption" style={{ color: "#FFFFFF", fontWeight: "600" }}>
+                Начало {timeUntilStart}
               </ThemedText>
             </View>
           )}
@@ -411,6 +448,22 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   currentBadgeCompact: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+  },
+  reminderBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.xs,
+    marginBottom: Spacing.md,
+  },
+  reminderBadgeCompact: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: BorderRadius.xs,
