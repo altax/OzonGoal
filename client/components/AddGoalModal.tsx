@@ -105,18 +105,22 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
     const remaining = Math.max(0, target);
     const deadlineDate = parseDeadlineInput(deadlineInput);
     
-    const avgPerShift = earningsStats?.averagePerShift || 0;
-    if (avgPerShift <= 0 || remaining <= 0 || !deadlineDate) {
+    if (remaining <= 0 || !deadlineDate) {
       return { shiftsNeeded: 0, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate, dailyEarningsNeeded: 0, daysUntilDeadline: 0 };
     }
     
-    const shiftsNeeded = Math.ceil(remaining / avgPerShift);
-    
     const now = new Date();
     const daysUntilDeadline = Math.max(1, Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const dailyEarningsNeeded = Math.ceil(remaining / daysUntilDeadline);
+    
+    const avgPerShift = earningsStats?.averagePerShift || 0;
+    if (avgPerShift <= 0) {
+      return { shiftsNeeded: 0, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate, dailyEarningsNeeded, daysUntilDeadline };
+    }
+    
+    const shiftsNeeded = Math.ceil(remaining / avgPerShift);
     const weeksToGoal = Math.max(1, daysUntilDeadline / 7);
     const shiftsPerWeek = Math.ceil(shiftsNeeded / weeksToGoal);
-    const dailyEarningsNeeded = Math.ceil(remaining / daysUntilDeadline);
     
     return { shiftsNeeded, shiftsPerWeek, weeksToGoal: Math.ceil(weeksToGoal), deadlineDate, dailyEarningsNeeded, daysUntilDeadline };
   }, [targetAmount, deadlineInput, earningsStats?.averagePerShift]);
@@ -315,11 +319,11 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
                   </View>
                 </View>
               )}
-              {!earningsStats?.averagePerShift && targetAmount && (
-                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.warningLight || '#FEF3C7' }]}>
-                  <Feather name="info" size={16} color={theme.warning || '#F59E0B'} />
+              {!earningsStats?.averagePerShift && targetAmount && smartDeadlineInfo.deadlineDate && (
+                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.backgroundSecondary }]}>
+                  <Feather name="info" size={16} color={theme.textSecondary} />
                   <ThemedText style={[styles.smartDeadlineText, { color: theme.textSecondary }]}>
-                    Нет данных о заработке. Завершите смены для расчёта.
+                    Завершите смены для расчёта количества смен в неделю
                   </ThemedText>
                 </View>
               )}
