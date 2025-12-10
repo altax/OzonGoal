@@ -345,9 +345,15 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
                 </View>
               )}
               {!hasStatsData && targetAmount && smartDeadlineInfo.deadlineDate && (
-                <>
-                  <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary, marginTop: Spacing.lg }]}>
-                    СРЕДНИЙ ЗАРАБОТОК ЗА СМЕНУ (₽)
+                <View style={[styles.manualInputSection, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+                  <View style={styles.manualInputHeader}>
+                    <Feather name="edit-3" size={14} color={theme.textSecondary} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
+                      РУЧНОЙ РАСЧЁТ
+                    </ThemedText>
+                  </View>
+                  <ThemedText type="small" style={[styles.manualInputHint, { color: theme.textSecondary }]}>
+                    Пока нет данных о заработках, укажите примерный заработок за смену для расчёта
                   </ThemedText>
                   <TextInput
                     style={[
@@ -356,9 +362,10 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
                         backgroundColor: theme.backgroundDefault,
                         color: theme.text,
                         borderColor: theme.border,
+                        marginTop: Spacing.sm,
                       },
                     ]}
-                    placeholder="Например: 5 000"
+                    placeholder="Например: 5 000 ₽"
                     placeholderTextColor={theme.textSecondary}
                     value={manualAvgPerShift}
                     onChangeText={(text) => {
@@ -367,10 +374,13 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
                     }}
                     keyboardType="numeric"
                   />
-                  <ThemedText type="small" style={[styles.deadlineHint, { color: theme.textSecondary }]}>
-                    Укажите примерный заработок за смену для расчёта количества смен
-                  </ThemedText>
-                </>
+                  <View style={[styles.manualInputNote, { backgroundColor: theme.warningLight || '#FEF3C7' }]}>
+                    <Feather name="info" size={12} color={theme.warning || '#F59E0B'} />
+                    <ThemedText type="small" style={{ color: theme.warning || '#F59E0B', marginLeft: Spacing.xs, flex: 1 }}>
+                      После завершения первых смен расчёт будет автоматическим
+                    </ThemedText>
+                  </View>
+                </View>
               )}
               {deadlineInput.length === 10 && !smartDeadlineInfo.deadlineDate && (
                 <ThemedText type="small" style={[styles.deadlineHint, { color: theme.warning || '#F59E0B' }]}>
@@ -600,5 +610,26 @@ const styles = StyleSheet.create({
   deadlineHint: {
     marginTop: Spacing.xs,
     marginLeft: Spacing.xs,
+  },
+  manualInputSection: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  manualInputHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
+  },
+  manualInputHint: {
+    marginBottom: Spacing.xs,
+  },
+  manualInputNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.sm,
+    marginTop: Spacing.sm,
+    borderRadius: BorderRadius.xs,
   },
 });

@@ -144,6 +144,8 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
   const setPrimaryGoal = useSetPrimaryGoal();
   const { data: earningsStats } = useEarningsStats('month');
 
+  const isCompleted = goal.status === "completed";
+
   const [name, setName] = useState(goal.name);
   const [targetAmount, setTargetAmount] = useState(formatAmountStatic(goal.targetAmount));
   const [currentAmount, setCurrentAmount] = useState(formatAmountStatic(goal.currentAmount));
@@ -302,7 +304,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
           <Feather name="x" size={20} color={theme.text} />
         </Pressable>
         <ThemedText type="h4" style={styles.headerTitle}>
-          Редактировать
+          {isCompleted ? "Просмотр цели" : "Редактировать"}
         </ThemedText>
         <Pressable
           style={({ pressed }) => [
@@ -315,6 +317,15 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
           <Feather name="trash-2" size={18} color={theme.error} />
         </Pressable>
       </View>
+
+      {isCompleted && (
+        <View style={[styles.completedBanner, { backgroundColor: theme.successLight || '#D1FAE5' }]}>
+          <Feather name="check-circle" size={18} color={theme.success || '#10B981'} />
+          <ThemedText style={{ color: theme.success || '#10B981', marginLeft: Spacing.sm, fontWeight: '500' }}>
+            Цель достигнута! Редактирование недоступно.
+          </ThemedText>
+        </View>
+      )}
 
       <ScrollView
         style={styles.content}
@@ -342,6 +353,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
               setName(text);
               setError("");
             }}
+            editable={!isCompleted}
           />
         </View>
 
@@ -363,6 +375,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             value={targetAmount}
             onChangeText={handleAmountChange(setTargetAmount)}
             keyboardType="numeric"
+            editable={!isCompleted}
           />
         </View>
 
@@ -384,9 +397,11 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             value={currentAmount}
             onChangeText={handleAmountChange(setCurrentAmount)}
             keyboardType="numeric"
+            editable={!isCompleted}
           />
         </View>
 
+        {!isCompleted && (
         <View style={styles.inputGroup}>
           <View style={styles.deadlineToggleRow}>
             <View style={styles.deadlineToggleLeft}>
@@ -485,7 +500,9 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             </>
           )}
         </View>
+        )}
 
+        {!isCompleted && (
         <View style={styles.inputGroup}>
           <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
             ИКОНКА
@@ -518,7 +535,9 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             })}
           </View>
         </View>
+        )}
 
+        {!isCompleted && (
         <View style={styles.actionButtonsRow}>
           <Pressable
             style={({ pressed }) => [
@@ -546,6 +565,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             </ThemedText>
           </Pressable>
         </View>
+        )}
 
         {error ? (
           <View style={[styles.errorContainer, { backgroundColor: theme.errorLight }]}>
@@ -557,6 +577,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
         ) : null}
       </ScrollView>
 
+      {!isCompleted && (
       <View
         style={[
           styles.footer,
@@ -596,6 +617,33 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
           )}
         </Pressable>
       </View>
+      )}
+
+      {isCompleted && (
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: theme.backgroundRoot,
+              paddingBottom: insets.bottom + Spacing.lg,
+            },
+          ]}
+        >
+          <Pressable
+            style={({ pressed }) => [
+              styles.submitButton,
+              { backgroundColor: theme.backgroundSecondary },
+              pressed && { opacity: 0.9 },
+            ]}
+            onPress={handleClose}
+          >
+            <Feather name="x" size={18} color={theme.text} style={styles.submitButtonIcon} />
+            <ThemedText style={[styles.submitButtonText, { color: theme.text }]}>
+              Закрыть
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -749,5 +797,14 @@ const styles = StyleSheet.create({
   deadlineToggleLabel: {
     fontSize: 15,
     fontWeight: "500",
+  },
+  completedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing["2xl"],
+    paddingVertical: Spacing.md,
+    marginHorizontal: Spacing["2xl"],
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.sm,
   },
 });
