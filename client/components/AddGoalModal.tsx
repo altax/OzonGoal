@@ -59,10 +59,24 @@ function parseDeadlineInput(input: string): Date | null {
   const day = parseInt(cleaned.substring(0, 2), 10);
   const month = parseInt(cleaned.substring(2, 4), 10) - 1;
   const year = parseInt(cleaned.substring(4, 8), 10);
+  
+  if (day < 1 || day > 31 || month < 0 || month > 11 || year < 2024) {
+    return null;
+  }
+  
   const date = new Date(year, month, day, 23, 59, 59);
+  
+  if (isNaN(date.getTime())) return null;
+  
+  if (date.getDate() !== day || date.getMonth() !== month || date.getFullYear() !== year) {
+    return null;
+  }
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (isNaN(date.getTime()) || date < today) return null;
+  
+  if (date.getTime() < today.getTime()) return null;
+  
   return date;
 }
 
