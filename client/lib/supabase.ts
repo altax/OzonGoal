@@ -44,6 +44,7 @@ export type Goal = {
   is_primary: boolean;
   order_index: number;
   allocation_percentage: number;
+  deadline: string | null;
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -92,6 +93,7 @@ export function toClientGoal(goal: Goal): {
   isPrimary: boolean;
   orderIndex: number;
   allocationPercentage: number;
+  deadline: Date | null;
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -109,6 +111,7 @@ export function toClientGoal(goal: Goal): {
     isPrimary: goal.is_primary,
     orderIndex: goal.order_index,
     allocationPercentage: goal.allocation_percentage || 0,
+    deadline: goal.deadline ? new Date(goal.deadline) : null,
     completedAt: goal.completed_at ? new Date(goal.completed_at) : null,
     createdAt: new Date(goal.created_at),
     updatedAt: new Date(goal.updated_at),

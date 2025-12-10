@@ -36,6 +36,7 @@ export interface LocalGoal {
   isPrimary: boolean;
   orderIndex: number;
   allocationPercentage: number;
+  deadline: string | null;
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;

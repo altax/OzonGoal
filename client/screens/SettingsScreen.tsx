@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, Keybo
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 import { useTheme } from "@/hooks/useTheme";
@@ -1362,13 +1362,14 @@ export default function SettingsScreen() {
     const lines: string[] = [];
     
     lines.push('=== СМЕНЫ ===');
-    lines.push('Дата;Заработок;Чаевые;Статус');
+    lines.push('Дата;Тип операции;Тип смены;Заработок;Статус');
     shifts.forEach(s => {
-      const date = formatDate(s.date);
-      const earnings = s.totalEarnings || 0;
-      const tips = s.tips || 0;
-      const status = s.status === 'canceled' ? 'Скрыта' : 'Активна';
-      lines.push(`${date};${earnings};${tips};${status}`);
+      const date = formatDate(s.scheduledDate);
+      const operationType = s.operationType === 'returns' ? 'Возвраты' : 'Приёмка';
+      const shiftType = s.shiftType === 'day' ? 'Дневная' : 'Ночная';
+      const earnings = s.earnings || 0;
+      const status = s.status === 'canceled' ? 'Скрыта' : s.status === 'completed' ? 'Завершена' : 'Запланирована';
+      lines.push(`${date};${operationType};${shiftType};${earnings};${status}`);
     });
     
     lines.push('');
@@ -1389,9 +1390,10 @@ export default function SettingsScreen() {
     const exportData = {
       exportDate: new Date().toISOString(),
       shifts: shifts.map(s => ({
-        date: s.date,
-        totalEarnings: s.totalEarnings,
-        tips: s.tips,
+        scheduledDate: s.scheduledDate,
+        operationType: s.operationType,
+        shiftType: s.shiftType,
+        earnings: s.earnings,
         status: s.status,
       })),
       goals: goals.map(g => ({

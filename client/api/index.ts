@@ -98,6 +98,7 @@ export function useUpdateGoal() {
       isPrimary: boolean;
       orderIndex: number;
       allocationPercentage: number;
+      deadline: string | null;
     }>) => {
       return await dataService.updateGoal(mode, id, data);
     },

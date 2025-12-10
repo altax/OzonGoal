@@ -170,6 +170,21 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
   - `client/contexts/DataModeContext.tsx` - Provides mode context (local vs cloud) to all components
   - `client/lib/dataService.ts` - Unified data service that routes to local or cloud storage based on mode
 
+## Smart Deadlines Feature (Dec 10, 2025)
+- **Goal Deadline Support**: Goals now have optional deadline dates stored as ISO strings
+- **EditGoalModal Integration**: Added date input (DD.MM.YYYY format) for setting target completion dates
+- **Recommended Shifts Calculation**: Shows recommended shifts per week based on:
+  - Remaining amount to goal target
+  - Average earnings per shift from user's history
+  - Days until deadline
+- **Smart UI**: Shows "~X смен до цели" when no deadline set, or "X смен/нед for Y weeks" when deadline is set
+- **Key Files**:
+  - `client/lib/localStorage.ts` - Added `deadline` field to LocalGoal interface
+  - `client/lib/supabase.ts` - Added `deadline` to Goal type and toClientGoal function
+  - `client/lib/dataService.ts` - Added deadline support in updateGoal function
+  - `client/api/index.ts` - Updated useUpdateGoal to accept deadline parameter
+  - `client/components/EditGoalModal.tsx` - Full Smart Deadlines UI with calculations
+
 ## Next Steps (Future Development)
 1. Add notifications for goal milestones
 2. Add export functionality for reports

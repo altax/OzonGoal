@@ -18,6 +18,7 @@ function localGoalToClient(goal: LocalGoal) {
     isPrimary: goal.isPrimary,
     orderIndex: goal.orderIndex,
     allocationPercentage: goal.allocationPercentage,
+    deadline: goal.deadline ? new Date(goal.deadline) : null,
     completedAt: goal.completedAt ? new Date(goal.completedAt) : null,
     createdAt: new Date(goal.createdAt),
     updatedAt: new Date(goal.updatedAt),
@@ -115,6 +116,7 @@ export const dataService = {
         isPrimary: false,
         orderIndex: maxOrder + 1,
         allocationPercentage: 0,
+        deadline: null,
         completedAt: null,
       });
       
@@ -160,6 +162,7 @@ export const dataService = {
     isPrimary: boolean;
     orderIndex: number;
     allocationPercentage: number;
+    deadline: string | null;
   }>) {
     if (mode === 'local') {
       const localUpdates: Partial<LocalGoal> = {};
@@ -178,6 +181,7 @@ export const dataService = {
       if (updates.isPrimary !== undefined) localUpdates.isPrimary = updates.isPrimary;
       if (updates.orderIndex !== undefined) localUpdates.orderIndex = updates.orderIndex;
       if (updates.allocationPercentage !== undefined) localUpdates.allocationPercentage = updates.allocationPercentage;
+      if (updates.deadline !== undefined) localUpdates.deadline = updates.deadline;
       
       const updated = await localStorageService.updateGoal(id, localUpdates);
       return updated ? localGoalToClient(updated) : null;
@@ -198,6 +202,7 @@ export const dataService = {
       if (updates.isPrimary !== undefined) updateData.is_primary = updates.isPrimary;
       if (updates.orderIndex !== undefined) updateData.order_index = updates.orderIndex;
       if (updates.allocationPercentage !== undefined) updateData.allocation_percentage = updates.allocationPercentage;
+      if (updates.deadline !== undefined) updateData.deadline = updates.deadline;
       
       const { data, error } = await supabase
         .from('goals')

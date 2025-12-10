@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
-import { useUpdateGoal, useDeleteGoal, useSetPrimaryGoal } from "@/api";
+import { useUpdateGoal, useDeleteGoal, useSetPrimaryGoal, useEarningsStats } from "@/api";
 
 interface Goal {
   id: string;
@@ -28,6 +28,7 @@ interface Goal {
   iconBgColor: string;
   status: string;
   isPrimary?: boolean;
+  deadline?: Date | null;
 }
 
 interface EditGoalModalProps {
@@ -91,18 +92,72 @@ export function EditGoalModal({ visible, goal, onClose }: EditGoalModalProps) {
   );
 }
 
+function formatDeadlineForDisplay(date: Date | null | undefined): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}.${month}.${year}`;
+}
+
+function parseDeadlineInput(input: string): Date | null {
+  const cleaned = input.replace(/[^\d]/g, '');
+  if (cleaned.length < 8) return null;
+  const day = parseInt(cleaned.substring(0, 2), 10);
+  const month = parseInt(cleaned.substring(2, 4), 10) - 1;
+  const year = parseInt(cleaned.substring(4, 8), 10);
+  const date = new Date(year, month, day);
+  if (isNaN(date.getTime()) || date <= new Date()) return null;
+  return date;
+}
+
+function formatDeadlineInput(text: string): string {
+  const cleaned = text.replace(/[^\d]/g, '');
+  if (cleaned.length <= 2) return cleaned;
+  if (cleaned.length <= 4) return `${cleaned.substring(0, 2)}.${cleaned.substring(2)}`;
+  return `${cleaned.substring(0, 2)}.${cleaned.substring(2, 4)}.${cleaned.substring(4, 8)}`;
+}
+
 function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => void }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const updateGoal = useUpdateGoal();
   const deleteGoal = useDeleteGoal();
   const setPrimaryGoal = useSetPrimaryGoal();
+  const { data: earningsStats } = useEarningsStats('month');
 
   const [name, setName] = useState(goal.name);
   const [targetAmount, setTargetAmount] = useState(formatAmountStatic(goal.targetAmount));
   const [currentAmount, setCurrentAmount] = useState(formatAmountStatic(goal.currentAmount));
   const [selectedIcon, setSelectedIcon] = useState(goal.iconKey || "target");
+  const [deadlineInput, setDeadlineInput] = useState(formatDeadlineForDisplay(goal.deadline));
   const [error, setError] = useState("");
+
+  const smartDeadlineInfo = useMemo(() => {
+    const target = parseFloat(targetAmount.replace(/\s/g, "").replace(",", ".")) || 0;
+    const current = parseFloat(currentAmount.replace(/\s/g, "").replace(",", ".")) || 0;
+    const remaining = Math.max(0, target - current);
+    
+    const avgPerShift = earningsStats?.averagePerShift || 0;
+    if (avgPerShift <= 0 || remaining <= 0) {
+      return { shiftsNeeded: 0, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate: null };
+    }
+    
+    const shiftsNeeded = Math.ceil(remaining / avgPerShift);
+    const deadlineDate = parseDeadlineInput(deadlineInput);
+    
+    if (!deadlineDate) {
+      return { shiftsNeeded, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate: null };
+    }
+    
+    const now = new Date();
+    const daysUntilDeadline = Math.max(1, Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const weeksToGoal = Math.max(1, daysUntilDeadline / 7);
+    const shiftsPerWeek = Math.ceil(shiftsNeeded / weeksToGoal);
+    
+    return { shiftsNeeded, shiftsPerWeek, weeksToGoal: Math.ceil(weeksToGoal), deadlineDate };
+  }, [targetAmount, currentAmount, deadlineInput, earningsStats?.averagePerShift]);
 
   const handleClose = () => {
     setError("");
@@ -132,6 +187,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
     const newStatus = shouldBeCompleted ? "completed" : "active";
 
     try {
+      const deadlineDate = parseDeadlineInput(deadlineInput);
       await updateGoal.mutateAsync({
         id: goal.id,
         name: name.trim(),
@@ -139,6 +195,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
         currentAmount: current.toString(),
         iconKey: selectedIcon,
         status: newStatus,
+        deadline: deadlineDate ? deadlineDate.toISOString() : null,
       });
       handleClose();
     } catch (e) {
@@ -296,6 +353,65 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             onChangeText={handleAmountChange(setCurrentAmount)}
             keyboardType="numeric"
           />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
+            ЦЕЛЕВАЯ ДАТА (ДД.ММ.ГГГГ)
+          </ThemedText>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.backgroundDefault,
+                color: theme.text,
+                borderColor: theme.border,
+              },
+            ]}
+            placeholder="31.12.2025"
+            placeholderTextColor={theme.textSecondary}
+            value={deadlineInput}
+            onChangeText={(text) => {
+              setDeadlineInput(formatDeadlineInput(text));
+              setError("");
+            }}
+            keyboardType="numeric"
+            maxLength={10}
+          />
+          {smartDeadlineInfo.shiftsNeeded > 0 && (
+            <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.accentLight }]}>
+              <Feather name="calendar" size={16} color={theme.accent} />
+              <View style={styles.smartDeadlineTextContainer}>
+                <ThemedText style={[styles.smartDeadlineText, { color: theme.text }]}>
+                  {smartDeadlineInfo.deadlineDate ? (
+                    <>
+                      <ThemedText style={{ fontWeight: '600', color: theme.accent }}>
+                        {smartDeadlineInfo.shiftsPerWeek}
+                      </ThemedText>
+                      {' смен/нед для достижения цели за '}
+                      <ThemedText style={{ fontWeight: '600' }}>
+                        {smartDeadlineInfo.weeksToGoal}
+                      </ThemedText>
+                      {' нед'}
+                    </>
+                  ) : (
+                    <>
+                      {'Осталось '}
+                      <ThemedText style={{ fontWeight: '600', color: theme.accent }}>
+                        ~{smartDeadlineInfo.shiftsNeeded}
+                      </ThemedText>
+                      {' смен до цели'}
+                    </>
+                  )}
+                </ThemedText>
+              </View>
+            </View>
+          )}
+          {deadlineInput.length === 10 && !smartDeadlineInfo.deadlineDate && (
+            <ThemedText type="small" style={[styles.deadlineHint, { color: theme.warning }]}>
+              Укажите дату в будущем
+            </ThemedText>
+          )}
         </View>
 
         <View style={styles.inputGroup}>
@@ -527,5 +643,24 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontWeight: "600",
     fontSize: 15,
+  },
+  smartDeadlineInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.sm,
+  },
+  smartDeadlineTextContainer: {
+    flex: 1,
+  },
+  smartDeadlineText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  deadlineHint: {
+    marginTop: Spacing.xs,
+    marginLeft: Spacing.xs,
   },
 });
