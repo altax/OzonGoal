@@ -100,6 +100,7 @@ export const dataService = {
     iconKey?: string;
     iconColor?: string;
     iconBgColor?: string;
+    deadline?: string | null;
   }) {
     if (mode === 'local') {
       const goals = await localStorageService.getGoals();
@@ -116,7 +117,7 @@ export const dataService = {
         isPrimary: false,
         orderIndex: maxOrder + 1,
         allocationPercentage: 0,
-        deadline: null,
+        deadline: goalData.deadline || null,
         completedAt: null,
       });
       
@@ -132,17 +133,23 @@ export const dataService = {
       
       const maxOrder = maxOrderData?.[0]?.order_index || 0;
       
+      const insertData: Record<string, unknown> = {
+        user_id: userId,
+        name: goalData.name,
+        target_amount: parseFloat(goalData.targetAmount),
+        icon_key: goalData.iconKey || 'target',
+        icon_color: goalData.iconColor || '#3B82F6',
+        icon_bg_color: goalData.iconBgColor || '#E0E7FF',
+        order_index: maxOrder + 1,
+      };
+      
+      if (goalData.deadline) {
+        insertData.deadline = goalData.deadline;
+      }
+      
       const { data: newGoal, error } = await supabase
         .from('goals')
-        .insert({
-          user_id: userId,
-          name: goalData.name,
-          target_amount: parseFloat(goalData.targetAmount),
-          icon_key: goalData.iconKey || 'target',
-          icon_color: goalData.iconColor || '#3B82F6',
-          icon_bg_color: goalData.iconBgColor || '#E0E7FF',
-          order_index: maxOrder + 1,
-        })
+        .insert(insertData)
         .select()
         .single();
       

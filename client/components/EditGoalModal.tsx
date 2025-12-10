@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Switch,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -131,6 +132,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
   const [targetAmount, setTargetAmount] = useState(formatAmountStatic(goal.targetAmount));
   const [currentAmount, setCurrentAmount] = useState(formatAmountStatic(goal.currentAmount));
   const [selectedIcon, setSelectedIcon] = useState(goal.iconKey || "target");
+  const [useDeadline, setUseDeadline] = useState(!!goal.deadline);
   const [deadlineInput, setDeadlineInput] = useState(formatDeadlineForDisplay(goal.deadline));
   const [error, setError] = useState("");
 
@@ -140,23 +142,26 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
     const remaining = Math.max(0, target - current);
     
     const avgPerShift = earningsStats?.averagePerShift || 0;
-    if (avgPerShift <= 0 || remaining <= 0) {
-      return { shiftsNeeded: 0, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate: null };
+    const hasEarningsData = avgPerShift > 0;
+    
+    if (remaining <= 0) {
+      return { shiftsNeeded: 0, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate: null, dailyEarningsNeeded: 0, daysUntilDeadline: 0, hasEarningsData };
     }
     
-    const shiftsNeeded = Math.ceil(remaining / avgPerShift);
+    const shiftsNeeded = hasEarningsData ? Math.ceil(remaining / avgPerShift) : 0;
     const deadlineDate = parseDeadlineInput(deadlineInput);
     
     if (!deadlineDate) {
-      return { shiftsNeeded, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate: null };
+      return { shiftsNeeded, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate: null, dailyEarningsNeeded: 0, daysUntilDeadline: 0, hasEarningsData };
     }
     
     const now = new Date();
     const daysUntilDeadline = Math.max(1, Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     const weeksToGoal = Math.max(1, daysUntilDeadline / 7);
-    const shiftsPerWeek = Math.ceil(shiftsNeeded / weeksToGoal);
+    const shiftsPerWeek = hasEarningsData ? Math.ceil(shiftsNeeded / weeksToGoal) : 0;
+    const dailyEarningsNeeded = Math.ceil(remaining / daysUntilDeadline);
     
-    return { shiftsNeeded, shiftsPerWeek, weeksToGoal: Math.ceil(weeksToGoal), deadlineDate };
+    return { shiftsNeeded, shiftsPerWeek, weeksToGoal: Math.ceil(weeksToGoal), deadlineDate, dailyEarningsNeeded, daysUntilDeadline, hasEarningsData };
   }, [targetAmount, currentAmount, deadlineInput, earningsStats?.averagePerShift]);
 
   const handleClose = () => {
@@ -186,8 +191,19 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
     const shouldBeCompleted = current >= target;
     const newStatus = shouldBeCompleted ? "completed" : "active";
 
+    if (useDeadline) {
+      if (deadlineInput.length < 10) {
+        setError("Введите полную дату дедлайна (ДД.ММ.ГГГГ)");
+        return;
+      }
+      if (!smartDeadlineInfo.deadlineDate) {
+        setError("Укажите корректную дату в будущем");
+        return;
+      }
+    }
+
     try {
-      const deadlineDate = parseDeadlineInput(deadlineInput);
+      const deadlineDate = useDeadline ? parseDeadlineInput(deadlineInput) : null;
       await updateGoal.mutateAsync({
         id: goal.id,
         name: name.trim(),
@@ -356,61 +372,101 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
         </View>
 
         <View style={styles.inputGroup}>
-          <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary }]}>
-            ЦЕЛЕВАЯ ДАТА (ДД.ММ.ГГГГ)
-          </ThemedText>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.backgroundDefault,
-                color: theme.text,
-                borderColor: theme.border,
-              },
-            ]}
-            placeholder="31.12.2025"
-            placeholderTextColor={theme.textSecondary}
-            value={deadlineInput}
-            onChangeText={(text) => {
-              setDeadlineInput(formatDeadlineInput(text));
-              setError("");
-            }}
-            keyboardType="numeric"
-            maxLength={10}
-          />
-          {smartDeadlineInfo.shiftsNeeded > 0 && (
-            <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.accentLight }]}>
-              <Feather name="calendar" size={16} color={theme.accent} />
-              <View style={styles.smartDeadlineTextContainer}>
-                <ThemedText style={[styles.smartDeadlineText, { color: theme.text }]}>
-                  {smartDeadlineInfo.deadlineDate ? (
-                    <>
+          <View style={styles.deadlineToggleRow}>
+            <View style={styles.deadlineToggleLeft}>
+              <Feather name="calendar" size={18} color={theme.accent} />
+              <ThemedText style={[styles.deadlineToggleLabel, { color: theme.text }]}>
+                Дедлайн
+              </ThemedText>
+            </View>
+            <Switch
+              value={useDeadline}
+              onValueChange={(value) => {
+                setUseDeadline(value);
+                if (!value) {
+                  setDeadlineInput("");
+                }
+              }}
+              trackColor={{ false: theme.border, true: theme.accent }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          
+          {useDeadline && (
+            <>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundDefault,
+                    color: theme.text,
+                    borderColor: theme.border,
+                    marginTop: Spacing.md,
+                  },
+                ]}
+                placeholder="31.12.2025"
+                placeholderTextColor={theme.textSecondary}
+                value={deadlineInput}
+                onChangeText={(text) => {
+                  setDeadlineInput(formatDeadlineInput(text));
+                  setError("");
+                }}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+              
+              {smartDeadlineInfo.deadlineDate && smartDeadlineInfo.dailyEarningsNeeded > 0 && (
+                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.accentLight }]}>
+                  <Feather name="trending-up" size={16} color={theme.accent} />
+                  <View style={styles.smartDeadlineTextContainer}>
+                    <ThemedText style={[styles.smartDeadlineText, { color: theme.text }]}>
+                      {'Нужно '}
+                      <ThemedText style={{ fontWeight: '600', color: theme.accent }}>
+                        {new Intl.NumberFormat("ru-RU").format(smartDeadlineInfo.dailyEarningsNeeded)} ₽/день
+                      </ThemedText>
+                      {' за '}
+                      <ThemedText style={{ fontWeight: '600' }}>
+                        {smartDeadlineInfo.daysUntilDeadline}
+                      </ThemedText>
+                      {' дн'}
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
+              
+              {smartDeadlineInfo.deadlineDate && smartDeadlineInfo.hasEarningsData && smartDeadlineInfo.shiftsNeeded > 0 && (
+                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.xs }]}>
+                  <Feather name="calendar" size={16} color={theme.textSecondary} />
+                  <View style={styles.smartDeadlineTextContainer}>
+                    <ThemedText style={[styles.smartDeadlineText, { color: theme.text }]}>
                       <ThemedText style={{ fontWeight: '600', color: theme.accent }}>
                         {smartDeadlineInfo.shiftsPerWeek}
                       </ThemedText>
-                      {' смен/нед для достижения цели за '}
+                      {' смен/нед за '}
                       <ThemedText style={{ fontWeight: '600' }}>
                         {smartDeadlineInfo.weeksToGoal}
                       </ThemedText>
                       {' нед'}
-                    </>
-                  ) : (
-                    <>
-                      {'Осталось '}
-                      <ThemedText style={{ fontWeight: '600', color: theme.accent }}>
-                        ~{smartDeadlineInfo.shiftsNeeded}
-                      </ThemedText>
-                      {' смен до цели'}
-                    </>
-                  )}
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
+              
+              {!smartDeadlineInfo.hasEarningsData && (
+                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.warningLight || '#FEF3C7', marginTop: Spacing.xs }]}>
+                  <Feather name="info" size={16} color={theme.warning || '#F59E0B'} />
+                  <ThemedText style={[styles.smartDeadlineText, { color: theme.textSecondary }]}>
+                    Нет данных о заработке. Завершите смены для расчёта.
+                  </ThemedText>
+                </View>
+              )}
+              
+              {deadlineInput.length === 10 && !smartDeadlineInfo.deadlineDate && (
+                <ThemedText type="small" style={[styles.deadlineHint, { color: theme.warning || '#F59E0B' }]}>
+                  Укажите дату в будущем
                 </ThemedText>
-              </View>
-            </View>
-          )}
-          {deadlineInput.length === 10 && !smartDeadlineInfo.deadlineDate && (
-            <ThemedText type="small" style={[styles.deadlineHint, { color: theme.warning }]}>
-              Укажите дату в будущем
-            </ThemedText>
+              )}
+            </>
           )}
         </View>
 
@@ -662,5 +718,20 @@ const styles = StyleSheet.create({
   deadlineHint: {
     marginTop: Spacing.xs,
     marginLeft: Spacing.xs,
+  },
+  deadlineToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.sm,
+  },
+  deadlineToggleLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  deadlineToggleLabel: {
+    fontSize: 15,
+    fontWeight: "500",
   },
 });

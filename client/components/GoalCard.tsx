@@ -31,6 +31,7 @@ type Goal = {
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  deadline?: Date | null;
 };
 
 interface GoalCardProps {
@@ -136,6 +137,11 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   const remaining = targetAmount - currentAmount;
   const hasEarningsData = averageEarningsPerShift !== undefined && averageEarningsPerShift > 0;
   const shiftsNeeded = hasEarningsData && remaining > 0 ? Math.ceil(remaining / averageEarningsPerShift) : 0;
+  
+  const daysUntilDeadline = goal.deadline ? Math.max(0, Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : null;
+  const hasDeadline = goal.deadline !== null && goal.deadline !== undefined;
+  const isDeadlineNear = daysUntilDeadline !== null && daysUntilDeadline <= 7;
+  const isDeadlineExpired = daysUntilDeadline !== null && daysUntilDeadline <= 0;
 
   const handleHide = () => {
     if (onHide) {
@@ -264,7 +270,31 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                   <ThemedText style={[styles.titleCompact, { color: theme.text }]} numberOfLines={1}>
                     {goal.name}
                   </ThemedText>
-                  {!isCompleted && remaining > 0 && (
+                  {!isCompleted && hasDeadline && daysUntilDeadline !== null && (
+                    <View style={[
+                      styles.deadlineBadgeCompact,
+                      { 
+                        backgroundColor: isDeadlineExpired 
+                          ? theme.errorLight 
+                          : isDeadlineNear 
+                            ? (theme.warningLight || '#FEF3C7')
+                            : theme.accentLight 
+                      }
+                    ]}>
+                      <Feather 
+                        name="clock" 
+                        size={10} 
+                        color={isDeadlineExpired ? theme.error : isDeadlineNear ? (theme.warning || '#F59E0B') : theme.accent} 
+                      />
+                      <ThemedText style={[
+                        styles.deadlineBadgeTextCompact,
+                        { color: isDeadlineExpired ? theme.error : isDeadlineNear ? (theme.warning || '#F59E0B') : theme.accent }
+                      ]}>
+                        {isDeadlineExpired ? 'просрочено' : `${daysUntilDeadline} дн`}
+                      </ThemedText>
+                    </View>
+                  )}
+                  {!isCompleted && remaining > 0 && !hasDeadline && (
                     <ThemedText style={[styles.shiftsTextCompact, { color: theme.textSecondary }]}>
                       {hasEarningsData ? `~${shiftsNeeded} смен` : '—'}
                     </ThemedText>
@@ -352,7 +382,31 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                   <ThemedText style={[styles.title, { color: theme.text }]}>
                     {goal.name}
                   </ThemedText>
-                  {!isCompleted && remaining > 0 && (
+                  {!isCompleted && hasDeadline && daysUntilDeadline !== null && (
+                    <View style={[
+                      styles.deadlineBadge,
+                      { 
+                        backgroundColor: isDeadlineExpired 
+                          ? theme.errorLight 
+                          : isDeadlineNear 
+                            ? (theme.warningLight || '#FEF3C7')
+                            : theme.accentLight 
+                      }
+                    ]}>
+                      <Feather 
+                        name="clock" 
+                        size={12} 
+                        color={isDeadlineExpired ? theme.error : isDeadlineNear ? (theme.warning || '#F59E0B') : theme.accent} 
+                      />
+                      <ThemedText style={[
+                        styles.deadlineBadgeText,
+                        { color: isDeadlineExpired ? theme.error : isDeadlineNear ? (theme.warning || '#F59E0B') : theme.accent }
+                      ]}>
+                        {isDeadlineExpired ? 'просрочено' : `${daysUntilDeadline} дн`}
+                      </ThemedText>
+                    </View>
+                  )}
+                  {!isCompleted && remaining > 0 && !hasDeadline && (
                     <ThemedText style={[styles.shiftsText, { color: theme.textSecondary }]}>
                       {hasEarningsData ? `~${shiftsNeeded} смен` : '—'}
                     </ThemedText>
@@ -761,5 +815,30 @@ const styles = StyleSheet.create({
   },
   compactFooter: {
     marginTop: Spacing.xs,
+  },
+  deadlineBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    gap: 4,
+  },
+  deadlineBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  deadlineBadgeCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 1,
+    borderRadius: BorderRadius.full,
+    gap: 2,
+    marginLeft: Spacing.xs,
+  },
+  deadlineBadgeTextCompact: {
+    fontSize: 9,
+    fontWeight: "600",
   },
 });

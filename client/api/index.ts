@@ -72,6 +72,7 @@ export function useCreateGoal() {
       iconKey?: string;
       iconColor?: string;
       iconBgColor?: string;
+      deadline?: string | null;
     }) => {
       return await dataService.createGoal(mode, data);
     },
