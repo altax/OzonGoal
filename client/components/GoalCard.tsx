@@ -302,9 +302,9 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                       </ThemedText>
                     </View>
                   )}
-                  {!isCompleted && remaining > 0 && !hasDeadline && (
+                  {!isCompleted && remaining > 0 && !hasDeadline && hasEarningsData && (
                     <ThemedText style={[styles.shiftsTextCompact, { color: theme.textSecondary }]}>
-                      {hasEarningsData ? `~${shiftsNeeded} смен` : '—'}
+                      ~{shiftsNeeded} смен
                     </ThemedText>
                   )}
                   <ThemedText style={[
@@ -414,9 +414,9 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                       </ThemedText>
                     </View>
                   )}
-                  {!isCompleted && remaining > 0 && !hasDeadline && (
+                  {!isCompleted && remaining > 0 && !hasDeadline && hasEarningsData && (
                     <ThemedText style={[styles.shiftsText, { color: theme.textSecondary }]}>
-                      {hasEarningsData ? `~${shiftsNeeded} смен` : '—'}
+                      ~{shiftsNeeded} смен
                     </ThemedText>
                   )}
                 </View>
