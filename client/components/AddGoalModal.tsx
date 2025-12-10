@@ -103,18 +103,14 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
   const smartDeadlineInfo = useMemo(() => {
     const target = parseFloat(targetAmount.replace(/\s/g, "").replace(",", ".")) || 0;
     const remaining = Math.max(0, target);
+    const deadlineDate = parseDeadlineInput(deadlineInput);
     
     const avgPerShift = earningsStats?.averagePerShift || 0;
-    if (avgPerShift <= 0 || remaining <= 0) {
-      return { shiftsNeeded: 0, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate: null, dailyEarningsNeeded: 0, daysUntilDeadline: 0 };
+    if (avgPerShift <= 0 || remaining <= 0 || !deadlineDate) {
+      return { shiftsNeeded: 0, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate, dailyEarningsNeeded: 0, daysUntilDeadline: 0 };
     }
     
     const shiftsNeeded = Math.ceil(remaining / avgPerShift);
-    const deadlineDate = parseDeadlineInput(deadlineInput);
-    
-    if (!deadlineDate) {
-      return { shiftsNeeded, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate: null, dailyEarningsNeeded: 0, daysUntilDeadline: 0 };
-    }
     
     const now = new Date();
     const daysUntilDeadline = Math.max(1, Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
