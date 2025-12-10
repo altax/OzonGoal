@@ -772,6 +772,9 @@ function GuestAuthModalContent({
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
                 />
+                <Pressable onPress={() => setShowPassword(!showPassword)} style={{ padding: Spacing.xs }}>
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={theme.textSecondary} />
+                </Pressable>
               </View>
             </View>
           )}
