@@ -308,24 +308,6 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
                 keyboardType="numeric"
                 maxLength={10}
               />
-              {smartDeadlineInfo.deadlineDate && smartDeadlineInfo.dailyEarningsNeeded > 0 && (
-                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.accentLight }]}>
-                  <Feather name="trending-up" size={16} color={theme.accent} />
-                  <View style={styles.smartDeadlineTextContainer}>
-                    <ThemedText style={[styles.smartDeadlineText, { color: theme.text }]}>
-                      {'Нужно '}
-                      <ThemedText style={{ fontWeight: '600', color: theme.accent }}>
-                        {new Intl.NumberFormat("ru-RU").format(smartDeadlineInfo.dailyEarningsNeeded)} ₽/день
-                      </ThemedText>
-                      {' за '}
-                      <ThemedText style={{ fontWeight: '600' }}>
-                        {smartDeadlineInfo.daysUntilDeadline}
-                      </ThemedText>
-                      {' дн'}
-                    </ThemedText>
-                  </View>
-                </View>
-              )}
               {smartDeadlineInfo.deadlineDate && smartDeadlineInfo.shiftsPerWeek > 0 && (
                 <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.successLight || '#D1FAE5' }]}>
                   <Feather name="calendar" size={16} color={theme.success || '#10B981'} />

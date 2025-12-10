@@ -1410,11 +1410,13 @@ export default function SettingsScreen() {
   const handleExport = async (format: 'csv' | 'json') => {
     setIsExporting(true);
     try {
-      const content = format === 'csv' ? generateCSV() : generateJSON();
+      const rawContent = format === 'csv' ? generateCSV() : generateJSON();
       const filename = `ozon-goal-export-${new Date().toISOString().split('T')[0]}.${format}`;
 
       if (Platform.OS === 'web') {
-        const blob = new Blob([content], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json' });
+        const bom = format === 'csv' ? '\uFEFF' : '';
+        const content = bom + rawContent;
+        const blob = new Blob([content], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1425,19 +1427,36 @@ export default function SettingsScreen() {
         URL.revokeObjectURL(url);
         Alert.alert('Успешно', 'Файл скачан');
       } else {
-        const fileUri = FileSystem.documentDirectory + filename;
-        await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 });
+        const bom = format === 'csv' ? '\uFEFF' : '';
+        const content = bom + rawContent;
         
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri);
+        const cacheDir = FileSystem.cacheDirectory;
+        if (!cacheDir) {
+          throw new Error('Кэш-директория недоступна');
+        }
+        
+        const fileUri = cacheDir + filename;
+        
+        await FileSystem.writeAsStringAsync(fileUri, content, { 
+          encoding: FileSystem.EncodingType.UTF8 
+        });
+        
+        const sharingAvailable = await Sharing.isAvailableAsync();
+        if (sharingAvailable) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: format === 'csv' ? 'text/csv' : 'application/json',
+            dialogTitle: 'Экспорт данных',
+            UTI: format === 'csv' ? 'public.comma-separated-values-text' : 'public.json',
+          });
         } else {
-          Alert.alert('Ошибка', 'Функция экспорта недоступна на этом устройстве');
+          Alert.alert('Ошибка', 'Функция шаринга недоступна на этом устройстве');
         }
       }
       setShowExportModal(false);
     } catch (error) {
       console.error('Export error:', error);
-      Alert.alert('Ошибка', 'Не удалось экспортировать данные');
+      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      Alert.alert('Ошибка экспорта', `Не удалось экспортировать данные: ${errorMessage}`);
     } finally {
       setIsExporting(false);
     }

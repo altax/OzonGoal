@@ -286,17 +286,17 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                           ? theme.errorLight 
                           : (isDeadlineNear || isDeadlineToday)
                             ? (theme.warningLight || '#FEF3C7')
-                            : theme.accentLight 
+                            : '#FFF3E0'
                       }
                     ]}>
                       <Feather 
-                        name="clock" 
+                        name={isDeadlineExpired ? "alert-circle" : "zap"} 
                         size={10} 
-                        color={isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? (theme.warning || '#F59E0B') : theme.accent} 
+                        color={isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? '#F97316' : '#FB923C'} 
                       />
                       <ThemedText style={[
                         styles.deadlineBadgeTextCompact,
-                        { color: isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? (theme.warning || '#F59E0B') : theme.accent }
+                        { color: isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? '#F97316' : '#FB923C' }
                       ]}>
                         {isDeadlineExpired ? 'просрочено' : isDeadlineToday ? 'сегодня' : `${daysUntilDeadline} дн`}
                       </ThemedText>
@@ -398,17 +398,17 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                           ? theme.errorLight 
                           : (isDeadlineNear || isDeadlineToday)
                             ? (theme.warningLight || '#FEF3C7')
-                            : theme.accentLight 
+                            : '#FFF3E0'
                       }
                     ]}>
                       <Feather 
-                        name="clock" 
+                        name={isDeadlineExpired ? "alert-circle" : "zap"} 
                         size={12} 
-                        color={isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? (theme.warning || '#F59E0B') : theme.accent} 
+                        color={isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? '#F97316' : '#FB923C'} 
                       />
                       <ThemedText style={[
                         styles.deadlineBadgeText,
-                        { color: isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? (theme.warning || '#F59E0B') : theme.accent }
+                        { color: isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? '#F97316' : '#FB923C' }
                       ]}>
                         {isDeadlineExpired ? 'просрочено' : isDeadlineToday ? 'сегодня' : `${daysUntilDeadline} дн`}
                       </ThemedText>
