@@ -747,14 +747,17 @@ function GuestAuthModalContent({
             <View style={[authModalStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
               <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
               <TextInput
-                style={[authModalStyles.input, { color: theme.text }]}
+                style={[authModalStyles.input, { color: theme.text, paddingRight: 40 }]}
                 placeholder="Пароль"
                 placeholderTextColor={theme.textSecondary}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
               />
-              <Pressable onPress={() => setShowPassword(!showPassword)} style={{ padding: Spacing.xs }}>
+              <Pressable 
+                onPress={() => setShowPassword(!showPassword)} 
+                style={{ position: 'absolute', right: Spacing.md, top: 0, bottom: 0, justifyContent: 'center' }}
+              >
                 <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={theme.textSecondary} />
               </Pressable>
             </View>
@@ -765,14 +768,17 @@ function GuestAuthModalContent({
               <View style={[authModalStyles.inputWrapper, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
                 <Feather name="lock" size={18} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
                 <TextInput
-                  style={[authModalStyles.input, { color: theme.text }]}
+                  style={[authModalStyles.input, { color: theme.text, paddingRight: 40 }]}
                   placeholder="Подтвердите пароль"
                   placeholderTextColor={theme.textSecondary}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
                 />
-                <Pressable onPress={() => setShowPassword(!showPassword)} style={{ padding: Spacing.xs }}>
+                <Pressable 
+                  onPress={() => setShowPassword(!showPassword)} 
+                  style={{ position: 'absolute', right: Spacing.md, top: 0, bottom: 0, justifyContent: 'center' }}
+                >
                   <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={theme.textSecondary} />
                 </Pressable>
               </View>
