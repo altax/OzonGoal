@@ -138,10 +138,11 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   const hasEarningsData = averageEarningsPerShift !== undefined && averageEarningsPerShift > 0;
   const shiftsNeeded = hasEarningsData && remaining > 0 ? Math.ceil(remaining / averageEarningsPerShift) : 0;
   
-  const daysUntilDeadline = goal.deadline ? Math.max(0, Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : null;
+  const daysUntilDeadline = goal.deadline ? Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
   const hasDeadline = goal.deadline !== null && goal.deadline !== undefined;
-  const isDeadlineNear = daysUntilDeadline !== null && daysUntilDeadline <= 7;
-  const isDeadlineExpired = daysUntilDeadline !== null && daysUntilDeadline <= 0;
+  const isDeadlineNear = daysUntilDeadline !== null && daysUntilDeadline > 0 && daysUntilDeadline <= 7;
+  const isDeadlineExpired = daysUntilDeadline !== null && daysUntilDeadline < 0;
+  const isDeadlineToday = daysUntilDeadline !== null && daysUntilDeadline === 0;
 
   const handleHide = () => {
     if (onHide) {
@@ -276,7 +277,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                       { 
                         backgroundColor: isDeadlineExpired 
                           ? theme.errorLight 
-                          : isDeadlineNear 
+                          : (isDeadlineNear || isDeadlineToday)
                             ? (theme.warningLight || '#FEF3C7')
                             : theme.accentLight 
                       }
@@ -284,13 +285,13 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                       <Feather 
                         name="clock" 
                         size={10} 
-                        color={isDeadlineExpired ? theme.error : isDeadlineNear ? (theme.warning || '#F59E0B') : theme.accent} 
+                        color={isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? (theme.warning || '#F59E0B') : theme.accent} 
                       />
                       <ThemedText style={[
                         styles.deadlineBadgeTextCompact,
-                        { color: isDeadlineExpired ? theme.error : isDeadlineNear ? (theme.warning || '#F59E0B') : theme.accent }
+                        { color: isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? (theme.warning || '#F59E0B') : theme.accent }
                       ]}>
-                        {isDeadlineExpired ? 'просрочено' : `${daysUntilDeadline} дн`}
+                        {isDeadlineExpired ? 'просрочено' : isDeadlineToday ? 'сегодня' : `${daysUntilDeadline} дн`}
                       </ThemedText>
                     </View>
                   )}
@@ -388,7 +389,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                       { 
                         backgroundColor: isDeadlineExpired 
                           ? theme.errorLight 
-                          : isDeadlineNear 
+                          : (isDeadlineNear || isDeadlineToday)
                             ? (theme.warningLight || '#FEF3C7')
                             : theme.accentLight 
                       }
@@ -396,13 +397,13 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                       <Feather 
                         name="clock" 
                         size={12} 
-                        color={isDeadlineExpired ? theme.error : isDeadlineNear ? (theme.warning || '#F59E0B') : theme.accent} 
+                        color={isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? (theme.warning || '#F59E0B') : theme.accent} 
                       />
                       <ThemedText style={[
                         styles.deadlineBadgeText,
-                        { color: isDeadlineExpired ? theme.error : isDeadlineNear ? (theme.warning || '#F59E0B') : theme.accent }
+                        { color: isDeadlineExpired ? theme.error : (isDeadlineNear || isDeadlineToday) ? (theme.warning || '#F59E0B') : theme.accent }
                       ]}>
-                        {isDeadlineExpired ? 'просрочено' : `${daysUntilDeadline} дн`}
+                        {isDeadlineExpired ? 'просрочено' : isDeadlineToday ? 'сегодня' : `${daysUntilDeadline} дн`}
                       </ThemedText>
                     </View>
                   )}

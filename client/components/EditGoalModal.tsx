@@ -108,8 +108,10 @@ function parseDeadlineInput(input: string): Date | null {
   const day = parseInt(cleaned.substring(0, 2), 10);
   const month = parseInt(cleaned.substring(2, 4), 10) - 1;
   const year = parseInt(cleaned.substring(4, 8), 10);
-  const date = new Date(year, month, day);
-  if (isNaN(date.getTime()) || date <= new Date()) return null;
+  const date = new Date(year, month, day, 23, 59, 59);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (isNaN(date.getTime()) || date < today) return null;
   return date;
 }
 
