@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, Keybo
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 import { useTheme } from "@/hooks/useTheme";
