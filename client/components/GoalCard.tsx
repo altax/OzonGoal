@@ -293,8 +293,8 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
             onPressOut={handlePressOut}
           >
             {showPrimaryBadge && goal.isPrimary && (
-              <View style={styles.primaryBadgeCompact}>
-                <Feather name="bookmark" size={8} color="#F59E0B" />
+              <View style={[styles.primaryBadgeCompact, { backgroundColor: '#DBEAFE' }]}>
+                <Feather name="star" size={8} color="#3B82F6" />
               </View>
             )}
 
@@ -320,8 +320,8 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                       isDeadlineCritical && !isDeadlineExpired && pulseAnimatedStyle,
                     ]}>
                       <Feather 
-                        name={isDeadlineExpired ? "alert-circle" : "flag"} 
-                        size={10} 
+                        name={isDeadlineExpired ? "alert-circle" : "clock"} 
+                        size={9} 
                         color={deadlineColors.icon} 
                       />
                       <ThemedText style={[
@@ -397,10 +397,10 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
           {showPrimaryBadge && goal.isPrimary && (
             <View style={styles.primaryBadge}>
               <LinearGradient
-                colors={['#F59E0B', '#FBBF24']}
+                colors={['#3B82F6', '#60A5FA']}
                 style={styles.primaryBadgeGradient}
               >
-                <Feather name="bookmark" size={10} color="#FFFFFF" />
+                <Feather name="star" size={10} color="#FFFFFF" />
               </LinearGradient>
             </View>
           )}
@@ -433,8 +433,8 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                     isDeadlineCritical && !isDeadlineExpired && pulseAnimatedStyle,
                   ]}>
                     <Feather 
-                      name={isDeadlineExpired ? "alert-circle" : "flag"} 
-                      size={12} 
+                      name={isDeadlineExpired ? "alert-circle" : "clock"} 
+                      size={11} 
                       color={deadlineColors.icon} 
                     />
                     <ThemedText style={[
@@ -667,6 +667,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    marginRight: Spacing.md,
   },
   iconContainer: {
     width: 44,
@@ -686,6 +687,7 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
+    overflow: "hidden",
   },
   titleRow: {
     flexDirection: "row",

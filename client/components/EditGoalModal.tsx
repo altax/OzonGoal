@@ -541,7 +541,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             onPress={handleTogglePrimary}
           >
             <Feather
-              name="bookmark"
+              name="star"
               size={18}
               color={goal.isPrimary ? theme.accent : theme.textSecondary}
             />
