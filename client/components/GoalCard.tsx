@@ -138,7 +138,14 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   const hasEarningsData = averageEarningsPerShift !== undefined && averageEarningsPerShift > 0;
   const shiftsNeeded = hasEarningsData && remaining > 0 ? Math.ceil(remaining / averageEarningsPerShift) : 0;
   
-  const daysUntilDeadline = goal.deadline ? Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
+  const daysUntilDeadline = (() => {
+    if (!goal.deadline) return null;
+    const deadlineDate = new Date(goal.deadline);
+    const today = new Date();
+    deadlineDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return Math.round((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  })();
   const hasDeadline = goal.deadline !== null && goal.deadline !== undefined;
   const isDeadlineNear = daysUntilDeadline !== null && daysUntilDeadline > 0 && daysUntilDeadline <= 7;
   const isDeadlineExpired = daysUntilDeadline !== null && daysUntilDeadline < 0;
