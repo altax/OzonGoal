@@ -431,8 +431,8 @@ export const dataService = {
       const goals = data || [];
       return {
         count: goals.length,
-        totalTarget: goals.reduce((sum, g) => sum + parseFloat(g.target_amount || '0'), 0),
-        totalCurrent: goals.reduce((sum, g) => sum + parseFloat(g.current_amount || '0'), 0),
+        totalTarget: goals.reduce((sum: number, g: { target_amount: string; current_amount: string }) => sum + parseFloat(g.target_amount || '0'), 0),
+        totalCurrent: goals.reduce((sum: number, g: { target_amount: string; current_amount: string }) => sum + parseFloat(g.current_amount || '0'), 0),
       };
     }
   },
@@ -514,7 +514,7 @@ export const dataService = {
       if (shiftsSelectError) throw new Error(shiftsSelectError.message);
       
       if (userShifts && userShifts.length > 0) {
-        const shiftIds = userShifts.map(s => s.id);
+        const shiftIds = userShifts.map((s: { id: string }) => s.id);
         const { error: allocationsError } = await supabase
           .from('goal_allocations')
           .delete()
