@@ -75,6 +75,13 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Smart Deadlines UX Improvements (Dec 10, 2025):**
+  - Added manual average earnings input in AddGoalModal for users without shift history
+  - Manual input shows info note explaining it's temporary until real data exists
+  - Completed goals now show in read-only mode in EditGoalModal
+  - Read-only mode shows "Просмотр цели" title and green banner
+  - All fields disabled for completed goals; delete still available
+  - Footer shows "Закрыть" instead of "Сохранить изменения" for completed goals
 - **Deadline Bug Fixes (Dec 10, 2025):**
   - Fixed deadline date calculation to use normalized midnight dates
   - Goals with today's deadline now correctly show "сегодня" (today) badge
