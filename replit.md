@@ -75,6 +75,13 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Deadline Bug Fixes (Dec 10, 2025):**
+  - Fixed deadline date calculation to use normalized midnight dates
+  - Goals with today's deadline now correctly show "сегодня" (today) badge
+  - Overdue deadlines now correctly show "просрочено" (overdue) badge
+  - Fixed date parser to accept today's date as valid deadline input
+  - Added SQL migration for deadline column (TIMESTAMPTZ) and 'hidden' goal status
+  - Migration file: `supabase/migrations/004_add_deadline_and_hidden_status.sql`
 - **Security & UI Improvements (Dec 9, 2025):**
   - Added PIN lock protection feature (4-digit PIN with animated keypad)
   - Balance now uses blur effect instead of dots when hidden (BlurView)
