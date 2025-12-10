@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider, useThemeContext } from "@/contexts/ThemeContext";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { MilestoneProvider } from "@/contexts/MilestoneContext";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { PinLockScreen } from "@/components/PinLockScreen";
 
@@ -55,7 +56,9 @@ export default function App() {
         <ThemeProvider>
           <AuthProvider>
             <SettingsProvider>
-              <AppContent />
+              <MilestoneProvider>
+                <AppContent />
+              </MilestoneProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>

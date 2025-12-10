@@ -15,7 +15,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { GoalCard } from "@/components/GoalCard";
 import { AddGoalModal } from "@/components/AddGoalModal";
 import { EditGoalModal } from "@/components/EditGoalModal";
-import { useGoals, useDeleteGoal, useUpdateGoal } from "@/api";
+import { useGoals, useDeleteGoal, useUpdateGoal, useEarningsStats } from "@/api";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 const BUTTON_AREA_HEIGHT = 72;
@@ -44,8 +44,13 @@ export default function GoalsScreen() {
   const [filter, setFilter] = useState<GoalFilter>("active");
   const [viewMode, setViewMode] = useState<ViewMode>("full");
   const { data: goals, isLoading } = useGoals();
+  const { data: earningsStats } = useEarningsStats('month');
   const deleteGoal = useDeleteGoal();
   const updateGoal = useUpdateGoal();
+  
+  const averageEarningsPerShift = earningsStats?.completedShiftsCount && earningsStats.completedShiftsCount > 0 
+    ? earningsStats.averagePerShift 
+    : undefined;
   
   const [tabWidth, setTabWidth] = useState(0);
   const indicatorPosition = useSharedValue(filter === "active" ? 0 : 1);
@@ -186,6 +191,7 @@ export default function GoalsScreen() {
               onHide={handleHideGoal}
               onDelete={handleDeleteGoal}
               compact={viewMode === "compact"}
+              averageEarningsPerShift={averageEarningsPerShift}
             />
           ))
         ) : (

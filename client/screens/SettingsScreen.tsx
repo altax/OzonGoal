@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Share, Clipboard } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 import { useTheme } from "@/hooks/useTheme";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -1305,6 +1307,8 @@ export default function SettingsScreen() {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showLinkEmail, setShowLinkEmail] = useState(false);
   const [showGuestAuth, setShowGuestAuth] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { data: shifts = [] } = useShifts();
   const { data: goals = [] } = useGoals();
   const { data: hiddenGoals = [] } = useHiddenGoals();
@@ -1348,6 +1352,94 @@ export default function SettingsScreen() {
   const hiddenShiftsCount = useMemo(() => {
     return shifts.filter(s => s.status === "canceled").length;
   }, [shifts]);
+
+  const formatDate = (date: Date | string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const generateCSV = () => {
+    const lines: string[] = [];
+    
+    lines.push('=== СМЕНЫ ===');
+    lines.push('Дата;Заработок;Чаевые;Статус');
+    shifts.forEach(s => {
+      const date = formatDate(s.date);
+      const earnings = s.totalEarnings || 0;
+      const tips = s.tips || 0;
+      const status = s.status === 'canceled' ? 'Скрыта' : 'Активна';
+      lines.push(`${date};${earnings};${tips};${status}`);
+    });
+    
+    lines.push('');
+    lines.push('=== ЦЕЛИ ===');
+    lines.push('Название;Текущая сумма;Целевая сумма;Прогресс;Статус');
+    goals.forEach(g => {
+      const current = parseFloat(String(g.currentAmount)) || 0;
+      const target = parseFloat(String(g.targetAmount)) || 1;
+      const progress = Math.round((current / target) * 100);
+      const status = g.status === 'completed' ? 'Завершена' : g.status === 'hidden' ? 'Скрыта' : 'Активна';
+      lines.push(`${g.name};${current};${target};${progress}%;${status}`);
+    });
+    
+    return lines.join('\n');
+  };
+
+  const generateJSON = () => {
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      shifts: shifts.map(s => ({
+        date: s.date,
+        totalEarnings: s.totalEarnings,
+        tips: s.tips,
+        status: s.status,
+      })),
+      goals: goals.map(g => ({
+        name: g.name,
+        currentAmount: g.currentAmount,
+        targetAmount: g.targetAmount,
+        status: g.status,
+        allocationPercentage: g.allocationPercentage,
+      })),
+    };
+    return JSON.stringify(exportData, null, 2);
+  };
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    setIsExporting(true);
+    try {
+      const content = format === 'csv' ? generateCSV() : generateJSON();
+      const filename = `ozon-goal-export-${new Date().toISOString().split('T')[0]}.${format}`;
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([content], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        Alert.alert('Успешно', 'Файл скачан');
+      } else {
+        const fileUri = FileSystem.documentDirectory + filename;
+        await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 });
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri);
+        } else {
+          Alert.alert('Ошибка', 'Функция экспорта недоступна на этом устройстве');
+        }
+      }
+      setShowExportModal(false);
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert('Ошибка', 'Не удалось экспортировать данные');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const activeGoals = useMemo(() => {
     return goals.filter(g => g.status === "active");
@@ -1494,7 +1586,7 @@ export default function SettingsScreen() {
           <SettingsItem
             icon="download"
             title="Экспорт данных"
-            onPress={() => {}}
+            onPress={() => setShowExportModal(true)}
           />
         </SettingsSection>
 
@@ -1505,30 +1597,6 @@ export default function SettingsScreen() {
             value={isPinLockEnabled ? "Вкл" : "Выкл"}
             onPress={() => setShowPinSetup(true)}
           />
-        </SettingsSection>
-
-        <SettingsSection title="Приложение">
-          <Pressable
-            style={styles.aboutSection}
-            onPress={() => Alert.alert(
-              "О приложении",
-              "ЦельЗаработок v1.0.0\n\nПриложение создано работником склада, который хотел систематизировать свои финансы и распределять заработок по целям.\n\nНадеюсь, оно поможет и вам достичь своих финансовых целей!",
-              [{ text: "Отлично!", style: "default" }]
-            )}
-          >
-            <View style={[styles.settingsItemIcon, { backgroundColor: theme.accentLight }]}>
-              <Feather name="info" size={14} color={theme.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ThemedText type="body" style={styles.settingsItemText}>
-                О приложении
-              </ThemedText>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-                v1.0.0 • От автора с любовью
-              </ThemedText>
-            </View>
-            <Feather name="chevron-right" size={16} color={theme.textSecondary} />
-          </Pressable>
         </SettingsSection>
 
         {((goals.length > 0 || shifts.length > 0) || (!isAnonymous && !isGuestMode)) && (
@@ -1612,6 +1680,72 @@ export default function SettingsScreen() {
               <ThemedText style={{ color: '#FFFFFF', fontWeight: '600' }}>Сохранить</ThemedText>
             </Pressable>
           </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showExportModal} animationType="fade" transparent onRequestClose={() => setShowExportModal(false)}>
+        <Pressable style={modalStyles.overlay} onPress={() => !isExporting && setShowExportModal(false)}>
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <View style={[modalStyles.exportContent, { backgroundColor: theme.backgroundContent }]}>
+              <ThemedText type="h4" style={{ marginBottom: Spacing.sm }}>Экспорт данных</ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
+                Выберите формат для экспорта ваших смен и целей
+              </ThemedText>
+              
+              {isExporting ? (
+                <View style={{ padding: Spacing.xl, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={theme.accent} />
+                  <ThemedText style={{ marginTop: Spacing.md, color: theme.textSecondary }}>Подготовка файла...</ThemedText>
+                </View>
+              ) : (
+                <View style={{ gap: Spacing.sm }}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.exportButton,
+                      { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                      pressed && { opacity: 0.8 },
+                    ]}
+                    onPress={() => handleExport('csv')}
+                  >
+                    <View style={[styles.exportIconContainer, { backgroundColor: theme.accentLight }]}>
+                      <Feather name="file-text" size={20} color={theme.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={{ fontWeight: '600' }}>CSV файл</ThemedText>
+                      <ThemedText type="caption" style={{ color: theme.textSecondary }}>Для Excel и Google Sheets</ThemedText>
+                    </View>
+                    <Feather name="download" size={18} color={theme.textSecondary} />
+                  </Pressable>
+                  
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.exportButton,
+                      { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+                      pressed && { opacity: 0.8 },
+                    ]}
+                    onPress={() => handleExport('json')}
+                  >
+                    <View style={[styles.exportIconContainer, { backgroundColor: theme.accentLight }]}>
+                      <Feather name="code" size={20} color={theme.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={{ fontWeight: '600' }}>JSON файл</ThemedText>
+                      <ThemedText type="caption" style={{ color: theme.textSecondary }}>Для разработчиков и резервного копирования</ThemedText>
+                    </View>
+                    <Feather name="download" size={18} color={theme.textSecondary} />
+                  </Pressable>
+                </View>
+              )}
+              
+              <Pressable
+                style={[styles.exportCancelButton, { backgroundColor: theme.backgroundSecondary }]}
+                onPress={() => setShowExportModal(false)}
+                disabled={isExporting}
+              >
+                <ThemedText style={{ color: theme.textSecondary }}>Отмена</ThemedText>
+              </Pressable>
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -1734,6 +1868,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.md,
+  },
+  exportIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportCancelButton: {
+    marginTop: Spacing.lg,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+  },
 });
 
 const modalStyles = StyleSheet.create({
@@ -1831,6 +1986,12 @@ const modalStyles = StyleSheet.create({
     right: 20,
     borderRadius: 16,
     padding: 20,
+  },
+  exportContent: {
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: "30%",
   },
 });
 

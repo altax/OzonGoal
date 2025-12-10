@@ -16,6 +16,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { useRecordEarnings, useGoals } from "@/api";
+import { useMilestone } from "@/contexts/MilestoneContext";
 
 interface Shift {
   id: string;
@@ -55,6 +56,7 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
   const insets = useSafeAreaInsets();
   const recordEarnings = useRecordEarnings();
   const { data: goals } = useGoals();
+  const { checkAndCelebrateMilestones } = useMilestone();
 
   const [amount, setAmount] = useState("");
   const [allocations, setAllocations] = useState<Record<string, string>>({});
@@ -169,11 +171,36 @@ function RecordEarningsModalContent({ shift, onClose, visible }: { shift: Shift;
           amount: parseAmount(value).toString(),
         }));
 
+      const goalsBeforeUpdate = activeGoals.map(g => ({
+        id: g.id,
+        name: g.name,
+        currentAmount: parseFloat(g.currentAmount) || 0,
+        targetAmount: parseFloat(g.targetAmount) || 1,
+      }));
+
       await recordEarnings.mutateAsync({
         shiftId: shift.id,
         totalEarnings: earnedAmount.toString(),
         allocations: goalAllocations,
       });
+      
+      for (const allocation of goalAllocations) {
+        const goalBefore = goalsBeforeUpdate.find(g => g.id === allocation.goalId);
+        if (goalBefore) {
+          const previousProgress = (goalBefore.currentAmount / goalBefore.targetAmount) * 100;
+          const allocationAmount = parseFloat(allocation.amount) || 0;
+          const newAmount = Math.min(goalBefore.currentAmount + allocationAmount, goalBefore.targetAmount);
+          const newProgress = (newAmount / goalBefore.targetAmount) * 100;
+          
+          checkAndCelebrateMilestones(
+            goalBefore.id,
+            goalBefore.name,
+            previousProgress,
+            newProgress
+          );
+        }
+      }
+      
       onClose();
     } catch (e) {
       setError("Не удалось записать заработок. Попробуйте ещё раз.");

@@ -41,7 +41,7 @@ interface GoalCardProps {
   onHide?: (goalId: string) => void;
   onDelete?: (goalId: string) => void;
   compact?: boolean;
-  averageEarningsPerShift?: number;
+  averageEarningsPerShift?: number | undefined;
 }
 
 function formatAmount(amount: number): string {
@@ -118,7 +118,7 @@ const iconMap: Record<string, keyof typeof Feather.glyphMap> = {
 const MILESTONES = [0, 25, 50, 75, 100];
 const SWIPE_THRESHOLD = 60;
 
-export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, compact = false, averageEarningsPerShift = 3200 }: GoalCardProps) {
+export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide, onDelete, compact = false, averageEarningsPerShift }: GoalCardProps) {
   const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -134,7 +134,8 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
   const iconName = iconMap[goal.iconKey] || "target";
   
   const remaining = targetAmount - currentAmount;
-  const shiftsNeeded = remaining > 0 ? Math.ceil(remaining / averageEarningsPerShift) : 0;
+  const hasEarningsData = averageEarningsPerShift !== undefined && averageEarningsPerShift > 0;
+  const shiftsNeeded = hasEarningsData && remaining > 0 ? Math.ceil(remaining / averageEarningsPerShift) : 0;
 
   const handleHide = () => {
     if (onHide) {
@@ -263,9 +264,9 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                   <ThemedText style={[styles.titleCompact, { color: theme.text }]} numberOfLines={1}>
                     {goal.name}
                   </ThemedText>
-                  {!isCompleted && shiftsNeeded > 0 && (
+                  {!isCompleted && remaining > 0 && (
                     <ThemedText style={[styles.shiftsTextCompact, { color: theme.textSecondary }]}>
-                      ~{shiftsNeeded} смен
+                      {hasEarningsData ? `~${shiftsNeeded} смен` : '—'}
                     </ThemedText>
                   )}
                   <ThemedText style={[
@@ -351,9 +352,9 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                   <ThemedText style={[styles.title, { color: theme.text }]}>
                     {goal.name}
                   </ThemedText>
-                  {!isCompleted && shiftsNeeded > 0 && (
+                  {!isCompleted && remaining > 0 && (
                     <ThemedText style={[styles.shiftsText, { color: theme.textSecondary }]}>
-                      ~{shiftsNeeded} смен
+                      {hasEarningsData ? `~${shiftsNeeded} смен` : '—'}
                     </ThemedText>
                   )}
                 </View>
