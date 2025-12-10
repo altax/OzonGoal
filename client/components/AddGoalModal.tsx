@@ -25,15 +25,29 @@ interface AddGoalModalProps {
 
 const iconOptions: { key: string; icon: keyof typeof Feather.glyphMap; label: string }[] = [
   { key: "target", icon: "target", label: "Цель" },
-  { key: "send", icon: "send", label: "Путешествие" },
+  { key: "send", icon: "send", label: "Поездка" },
   { key: "monitor", icon: "monitor", label: "Техника" },
   { key: "home", icon: "home", label: "Дом" },
   { key: "truck", icon: "truck", label: "Авто" },
   { key: "heart", icon: "heart", label: "Здоровье" },
   { key: "gift", icon: "gift", label: "Подарок" },
-  { key: "book", icon: "book-open", label: "Обучение" },
+  { key: "book", icon: "book-open", label: "Учёба" },
   { key: "briefcase", icon: "briefcase", label: "Работа" },
   { key: "star", icon: "star", label: "Мечта" },
+  { key: "dollar", icon: "dollar-sign", label: "Деньги" },
+  { key: "credit", icon: "credit-card", label: "Карта" },
+  { key: "shopping", icon: "shopping-cart", label: "Покупки" },
+  { key: "camera", icon: "camera", label: "Фото" },
+  { key: "music", icon: "music", label: "Музыка" },
+  { key: "smartphone", icon: "smartphone", label: "Телефон" },
+  { key: "watch", icon: "watch", label: "Часы" },
+  { key: "coffee", icon: "coffee", label: "Кофе" },
+  { key: "globe", icon: "globe", label: "Мир" },
+  { key: "umbrella", icon: "umbrella", label: "Зонт" },
+  { key: "map", icon: "map-pin", label: "Место" },
+  { key: "award", icon: "award", label: "Награда" },
+  { key: "zap", icon: "zap", label: "Энергия" },
+  { key: "sun", icon: "sun", label: "Солнце" },
 ];
 
 export function AddGoalModal({ visible, onClose }: AddGoalModalProps) {
@@ -100,8 +114,11 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
   const [useDeadline, setUseDeadline] = useState(false);
   const [deadlineInput, setDeadlineInput] = useState("");
   const [manualAvgPerShift, setManualAvgPerShift] = useState("");
+  const [showHighEarningsWarning, setShowHighEarningsWarning] = useState(false);
+  const [warningConfirmed, setWarningConfirmed] = useState(false);
 
   const hasStatsData = (earningsStats?.averagePerShift || 0) > 0;
+  const HIGH_EARNINGS_THRESHOLD = 8000;
 
   const smartDeadlineInfo = useMemo(() => {
     const target = parseFloat(targetAmount.replace(/\s/g, "").replace(",", ".")) || 0;
@@ -167,8 +184,19 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
         setError("Укажите корректную дату в будущем");
         return;
       }
+      
+      if (smartDeadlineInfo.dailyEarningsNeeded > HIGH_EARNINGS_THRESHOLD && !warningConfirmed) {
+        setShowHighEarningsWarning(true);
+        return;
+      }
     }
 
+    await createGoalFinal();
+  };
+
+  const createGoalFinal = async () => {
+    const amount = parseFloat(targetAmount.replace(/\s/g, "").replace(",", "."));
+    
     try {
       const deadlineDate = useDeadline ? parseDeadlineInput(deadlineInput) : null;
       await createGoal.mutateAsync({
@@ -183,6 +211,22 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
     } catch (e) {
       setError("Не удалось создать цель. Попробуйте ещё раз.");
     }
+  };
+
+  const handleConfirmHighEarnings = () => {
+    setWarningConfirmed(true);
+    setShowHighEarningsWarning(false);
+    createGoalFinal();
+  };
+
+  const handleExtendDeadlineFromWarning = (days: number) => {
+    if (!smartDeadlineInfo.deadlineDate) return;
+    const newDeadline = new Date(smartDeadlineInfo.deadlineDate);
+    newDeadline.setDate(newDeadline.getDate() + days);
+    setDeadlineInput(formatDeadlineInput(
+      `${String(newDeadline.getDate()).padStart(2, '0')}${String(newDeadline.getMonth() + 1).padStart(2, '0')}${newDeadline.getFullYear()}`
+    ));
+    setShowHighEarningsWarning(false);
   };
 
   const formatAmount = (text: string) => {
@@ -464,6 +508,79 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
           )}
         </Pressable>
       </View>
+
+      <Modal
+        visible={showHighEarningsWarning}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowHighEarningsWarning(false)}
+      >
+        <View style={styles.warningOverlay}>
+          <View style={[styles.warningModal, { backgroundColor: theme.backgroundDefault }]}>
+            <View style={[styles.warningIconContainer, { backgroundColor: '#FEE2E2' }]}>
+              <Feather name="alert-triangle" size={28} color="#DC2626" />
+            </View>
+            
+            <ThemedText type="h4" style={[styles.warningTitle, { color: theme.text }]}>
+              Высокая нагрузка
+            </ThemedText>
+            
+            <ThemedText style={[styles.warningText, { color: theme.textSecondary }]}>
+              Для достижения цели потребуется зарабатывать{' '}
+              <ThemedText style={{ color: '#DC2626', fontWeight: '600' }}>
+                {new Intl.NumberFormat("ru-RU").format(smartDeadlineInfo.dailyEarningsNeeded)} ₽/день
+              </ThemedText>
+              {'. Это больше 8 000 ₽ в день.'}
+            </ThemedText>
+
+            <ThemedText style={[styles.warningSubtext, { color: theme.textSecondary }]}>
+              Возможно, стоит увеличить срок?
+            </ThemedText>
+
+            <View style={styles.warningActions}>
+              <Pressable
+                style={[styles.warningButton, { backgroundColor: theme.accentLight }]}
+                onPress={() => handleExtendDeadlineFromWarning(7)}
+              >
+                <Feather name="calendar" size={16} color={theme.accent} />
+                <ThemedText style={[styles.warningButtonText, { color: theme.accent }]}>
+                  +7 дней
+                </ThemedText>
+              </Pressable>
+              
+              <Pressable
+                style={[styles.warningButton, { backgroundColor: theme.accentLight }]}
+                onPress={() => handleExtendDeadlineFromWarning(14)}
+              >
+                <Feather name="calendar" size={16} color={theme.accent} />
+                <ThemedText style={[styles.warningButtonText, { color: theme.accent }]}>
+                  +14 дней
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            <View style={styles.warningFooter}>
+              <Pressable
+                style={[styles.warningSecondaryButton, { borderColor: theme.border }]}
+                onPress={() => setShowHighEarningsWarning(false)}
+              >
+                <ThemedText style={{ color: theme.textSecondary }}>
+                  Изменить
+                </ThemedText>
+              </Pressable>
+              
+              <Pressable
+                style={[styles.warningPrimaryButton, { backgroundColor: '#DC2626' }]}
+                onPress={handleConfirmHighEarnings}
+              >
+                <ThemedText style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                  Создать так
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -613,5 +730,78 @@ const styles = StyleSheet.create({
     padding: Spacing.sm,
     marginTop: Spacing.sm,
     borderRadius: BorderRadius.xs,
+  },
+  warningOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing["2xl"],
+  },
+  warningModal: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing["2xl"],
+    alignItems: 'center',
+  },
+  warningIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  warningTitle: {
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  warningText: {
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.sm,
+  },
+  warningSubtext: {
+    textAlign: 'center',
+    fontSize: 13,
+    marginBottom: Spacing.xl,
+  },
+  warningActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.xl,
+  },
+  warningButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.xs,
+  },
+  warningButtonText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  warningFooter: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    width: '100%',
+  },
+  warningSecondaryButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  warningPrimaryButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
   },
 });

@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemedText } from "@/components/ThemedText";
 import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
-import { useCreateShift } from "@/api";
+import { useCreateShift, useShifts } from "@/api";
 
 interface AddShiftModalProps {
   visible: boolean;
@@ -91,13 +91,64 @@ function AddShiftModalContent({ onClose }: { onClose: () => void }) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const createShift = useCreateShift();
+  const { data: existingShifts } = useShifts();
 
   const [operationType, setOperationType] = useState<OperationType>("returns");
   const [shiftType, setShiftType] = useState<ShiftType>("day");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [error, setError] = useState("");
 
-  const nextDays = getNextDays(14);
+  const getAvailableDays = () => {
+    const days = getNextDays(14);
+    return days.filter(date => {
+      if (!existingShifts) return true;
+      const dateStr = date.toDateString();
+      const hasDay = existingShifts.some(s => 
+        s.status !== 'canceled' && 
+        s.shiftType === 'day' && 
+        new Date(s.scheduledDate).toDateString() === dateStr
+      );
+      const hasNight = existingShifts.some(s => 
+        s.status !== 'canceled' && 
+        s.shiftType === 'night' && 
+        new Date(s.scheduledDate).toDateString() === dateStr
+      );
+      return !(hasDay && hasNight);
+    });
+  };
+
+  const getDisabledShiftTypes = (date: Date): ShiftType[] => {
+    if (!existingShifts) return [];
+    const dateStr = date.toDateString();
+    const disabled: ShiftType[] = [];
+    const hasDay = existingShifts.some(s => 
+      s.status !== 'canceled' && 
+      s.shiftType === 'day' && 
+      new Date(s.scheduledDate).toDateString() === dateStr
+    );
+    const hasNight = existingShifts.some(s => 
+      s.status !== 'canceled' && 
+      s.shiftType === 'night' && 
+      new Date(s.scheduledDate).toDateString() === dateStr
+    );
+    if (hasDay) disabled.push('day');
+    if (hasNight) disabled.push('night');
+    return disabled;
+  };
+
+  const availableDays = getAvailableDays();
+  const disabledShiftTypes = getDisabledShiftTypes(selectedDate);
+
+  React.useEffect(() => {
+    if (disabledShiftTypes.includes(shiftType)) {
+      const available = shiftType === 'day' ? 'night' : 'day';
+      if (!disabledShiftTypes.includes(available)) {
+        setShiftType(available);
+      }
+    }
+  }, [selectedDate, disabledShiftTypes]);
+
+  const nextDays = availableDays;
 
   const resetForm = () => {
     setOperationType("returns");
@@ -204,35 +255,44 @@ function AddShiftModalContent({ onClose }: { onClose: () => void }) {
           <View style={styles.optionsRow}>
             {shiftTypes.map((option) => {
               const isSelected = shiftType === option.value;
+              const isDisabled = disabledShiftTypes.includes(option.value);
               return (
                 <Pressable
                   key={option.value}
                   style={({ pressed }) => [
                     styles.optionButton,
                     {
-                      backgroundColor: isSelected
-                        ? theme.accent
-                        : theme.backgroundDefault,
-                      borderColor: isSelected ? theme.accent : theme.border,
+                      backgroundColor: isDisabled
+                        ? theme.backgroundSecondary
+                        : isSelected
+                          ? theme.accent
+                          : theme.backgroundDefault,
+                      borderColor: isDisabled 
+                        ? theme.border 
+                        : isSelected ? theme.accent : theme.border,
+                      opacity: isDisabled ? 0.5 : 1,
                     },
-                    pressed && { opacity: 0.8 },
+                    pressed && !isDisabled && { opacity: 0.8 },
                   ]}
                   onPress={() => {
-                    setShiftType(option.value);
-                    setError("");
+                    if (!isDisabled) {
+                      setShiftType(option.value);
+                      setError("");
+                    }
                   }}
+                  disabled={isDisabled}
                 >
                   <Feather
                     name={option.icon}
                     size={20}
-                    color={isSelected ? "#FFFFFF" : theme.accent}
+                    color={isDisabled ? theme.textSecondary : isSelected ? "#FFFFFF" : theme.accent}
                   />
                   <View style={styles.optionTextContainer}>
                     <ThemedText
                       type="body"
                       style={[
                         styles.optionLabel,
-                        { color: isSelected ? "#FFFFFF" : theme.text },
+                        { color: isDisabled ? theme.textSecondary : isSelected ? "#FFFFFF" : theme.text },
                       ]}
                     >
                       {option.label}
@@ -241,10 +301,10 @@ function AddShiftModalContent({ onClose }: { onClose: () => void }) {
                       type="caption"
                       style={[
                         styles.optionTime,
-                        { color: isSelected ? "rgba(255,255,255,0.8)" : theme.textSecondary },
+                        { color: isDisabled ? theme.textSecondary : isSelected ? "rgba(255,255,255,0.8)" : theme.textSecondary },
                       ]}
                     >
-                      {option.time}
+                      {isDisabled ? "Занято" : option.time}
                     </ThemedText>
                   </View>
                 </Pressable>

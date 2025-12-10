@@ -294,7 +294,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
           >
             {showPrimaryBadge && goal.isPrimary && (
               <View style={styles.primaryBadgeCompact}>
-                <Feather name="star" size={8} color="#F59E0B" />
+                <Feather name="bookmark" size={8} color="#F59E0B" />
               </View>
             )}
 
@@ -320,7 +320,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                       isDeadlineCritical && !isDeadlineExpired && pulseAnimatedStyle,
                     ]}>
                       <Feather 
-                        name={isDeadlineExpired ? "alert-circle" : "clock"} 
+                        name={isDeadlineExpired ? "alert-circle" : "flag"} 
                         size={10} 
                         color={deadlineColors.icon} 
                       />
@@ -400,7 +400,7 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
                 colors={['#F59E0B', '#FBBF24']}
                 style={styles.primaryBadgeGradient}
               >
-                <Feather name="star" size={10} color="#FFFFFF" />
+                <Feather name="bookmark" size={10} color="#FFFFFF" />
               </LinearGradient>
             </View>
           )}
@@ -417,34 +417,34 @@ export function GoalCard({ goal, onPress, onLongPress, showPrimaryBadge, onHide,
               </View>
               <View style={styles.titleContainer}>
                 <View style={styles.titleRow}>
-                  <ThemedText style={[styles.title, { color: theme.text }]}>
+                  <ThemedText style={[styles.title, { color: theme.text }]} numberOfLines={1}>
                     {goal.name}
                   </ThemedText>
-                  {!isCompleted && hasDeadline && daysUntilDeadline !== null && (
-                    <Animated.View style={[
-                      styles.deadlineBadge,
-                      { backgroundColor: deadlineColors.bg },
-                      isDeadlineCritical && !isDeadlineExpired && pulseAnimatedStyle,
-                    ]}>
-                      <Feather 
-                        name={isDeadlineExpired ? "alert-circle" : "clock"} 
-                        size={12} 
-                        color={deadlineColors.icon} 
-                      />
-                      <ThemedText style={[
-                        styles.deadlineBadgeText,
-                        { color: deadlineColors.text }
-                      ]}>
-                        {isDeadlineExpired ? 'просрочено' : isDeadlineToday ? 'сегодня' : `${daysUntilDeadline} дн`}
-                      </ThemedText>
-                    </Animated.View>
-                  )}
                   {!isCompleted && remaining > 0 && !hasDeadline && hasEarningsData && (
                     <ThemedText style={[styles.shiftsText, { color: theme.textSecondary }]}>
                       ~{shiftsNeeded} смен
                     </ThemedText>
                   )}
                 </View>
+                {!isCompleted && hasDeadline && daysUntilDeadline !== null && (
+                  <Animated.View style={[
+                    styles.deadlineBadgeRow,
+                    { backgroundColor: deadlineColors.bg },
+                    isDeadlineCritical && !isDeadlineExpired && pulseAnimatedStyle,
+                  ]}>
+                    <Feather 
+                      name={isDeadlineExpired ? "alert-circle" : "flag"} 
+                      size={12} 
+                      color={deadlineColors.icon} 
+                    />
+                    <ThemedText style={[
+                      styles.deadlineBadgeText,
+                      { color: deadlineColors.text }
+                    ]}>
+                      {isDeadlineExpired ? 'просрочено' : isDeadlineToday ? 'сегодня' : `${daysUntilDeadline} дн`}
+                    </ThemedText>
+                  </Animated.View>
+                )}
                 <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
                   {getMotivationalPhrase(progressPercent, isCompleted)}
                 </ThemedText>
@@ -856,6 +856,17 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: BorderRadius.full,
     gap: 4,
+  },
+  deadlineBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    gap: 4,
+    marginTop: 2,
+    marginBottom: 2,
   },
   deadlineBadgeText: {
     fontSize: 11,

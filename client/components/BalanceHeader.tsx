@@ -47,10 +47,15 @@ type CurrentShift = {
   shiftType: string;
 };
 
+type NextShift = {
+  scheduledStart: Date;
+  shiftType: string;
+};
+
 export type TabInfo = 
   | { type: "goals"; count: number; totalTarget: number; totalCurrent: number; averageEarningsPerShift?: number }
-  | { type: "shifts"; past: number; scheduled: number; hasCurrent: boolean; currentShift?: CurrentShift | null }
-  | { type: "default"; lastShiftIncome?: number };
+  | { type: "shifts"; past: number; scheduled: number; hasCurrent: boolean; currentShift?: CurrentShift | null; nextShift?: NextShift | null }
+  | { type: "default"; lastShiftIncome?: number; nextShift?: NextShift | null };
 
 interface BalanceHeaderProps {
   balance?: number;
@@ -72,6 +77,26 @@ function getTimeRemaining(endDate: Date): string {
     return `До конца смены: ${hours} ч ${minutes} мин`;
   }
   return `До конца смены: ${minutes} мин`;
+}
+
+function getTimeUntilShift(startDate: Date): string {
+  const now = new Date();
+  const start = new Date(startDate);
+  const diff = start.getTime() - now.getTime();
+  
+  if (diff <= 0) return "Смена начинается";
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (days > 0) {
+    return `До смены: ${days} дн ${hours} ч`;
+  }
+  if (hours > 0) {
+    return `До смены: ${hours} ч ${minutes} мин`;
+  }
+  return `До смены: ${minutes} мин`;
 }
 
 function pluralizeDays(count: number): string {
@@ -145,9 +170,27 @@ export function BalanceHeader({ balance = 0, tabInfo, onBalancePress }: BalanceH
             </View>
           );
         }
+        if (tabInfo.nextShift) {
+          return (
+            <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+              <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+                {getTimeUntilShift(tabInfo.nextShift.scheduledStart)}
+              </ThemedText>
+            </View>
+          );
+        }
         return null;
       }
       case "default": {
+        if (tabInfo.nextShift) {
+          return (
+            <View style={[styles.infoTag, { backgroundColor: theme.accentLight }]}>
+              <ThemedText style={[styles.infoText, { color: theme.accent }]}>
+                {getTimeUntilShift(tabInfo.nextShift.scheduledStart)}
+              </ThemedText>
+            </View>
+          );
+        }
         if (!tabInfo.lastShiftIncome || tabInfo.lastShiftIncome <= 0) return null;
         return (
           <View style={[styles.infoTag, { backgroundColor: theme.successLight }]}>

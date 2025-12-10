@@ -446,28 +446,9 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
                 maxLength={10}
               />
               
-              {smartDeadlineInfo.deadlineDate && smartDeadlineInfo.dailyEarningsNeeded > 0 && (
-                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.accentLight }]}>
-                  <Feather name="trending-up" size={16} color={theme.accent} />
-                  <View style={styles.smartDeadlineTextContainer}>
-                    <ThemedText style={[styles.smartDeadlineText, { color: theme.text }]}>
-                      {'Нужно '}
-                      <ThemedText style={{ fontWeight: '600', color: theme.accent }}>
-                        {new Intl.NumberFormat("ru-RU").format(smartDeadlineInfo.dailyEarningsNeeded)} ₽/день
-                      </ThemedText>
-                      {' за '}
-                      <ThemedText style={{ fontWeight: '600' }}>
-                        {smartDeadlineInfo.daysUntilDeadline}
-                      </ThemedText>
-                      {' дн'}
-                    </ThemedText>
-                  </View>
-                </View>
-              )}
-              
               {smartDeadlineInfo.deadlineDate && smartDeadlineInfo.hasEarningsData && smartDeadlineInfo.shiftsNeeded > 0 && (
-                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.xs }]}>
-                  <Feather name="calendar" size={16} color={theme.textSecondary} />
+                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.sm }]}>
+                  <Feather name="briefcase" size={16} color={theme.textSecondary} />
                   <View style={styles.smartDeadlineTextContainer}>
                     <ThemedText style={[styles.smartDeadlineText, { color: theme.text }]}>
                       <ThemedText style={{ fontWeight: '600', color: theme.accent }}>
@@ -560,7 +541,7 @@ function EditGoalModalContent({ goal, onClose }: { goal: Goal; onClose: () => vo
             onPress={handleTogglePrimary}
           >
             <Feather
-              name="star"
+              name="bookmark"
               size={18}
               color={goal.isPrimary ? theme.accent : theme.textSecondary}
             />

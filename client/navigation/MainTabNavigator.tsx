@@ -61,10 +61,23 @@ export default function MainTabNavigator() {
               scheduledEnd: shiftsSummary.current.scheduledEnd,
               shiftType: shiftsSummary.current.shiftType,
             } : null,
+            nextShift: shiftsSummary.next ? {
+              scheduledStart: shiftsSummary.next.scheduledStart,
+              shiftType: shiftsSummary.next.shiftType,
+            } : null,
           };
         }
         return undefined;
       default:
+        if (shiftsSummary?.next) {
+          return {
+            type: "default",
+            nextShift: {
+              scheduledStart: shiftsSummary.next.scheduledStart,
+              shiftType: shiftsSummary.next.shiftType,
+            },
+          };
+        }
         return undefined;
     }
   }, [activeTab, goalsSummary, shiftsSummary]);

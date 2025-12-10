@@ -299,23 +299,28 @@ export function useShifts() {
 export function useShiftsSummary() {
   const { mode } = useDataMode();
   
-  return useQuery<{ past: number; scheduled: number; current: Shift | null }>({
+  return useQuery<{ past: number; scheduled: number; current: Shift | null; next: Shift | null }>({
     queryKey: ["shifts", "summary", mode],
     queryFn: async () => {
       if (mode === 'local') {
         const shifts = await dataService.getShifts(mode);
         const now = new Date();
         
+        const scheduledShifts = shifts
+          .filter(s => s.status === 'scheduled' && s.scheduledStart > now)
+          .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime());
+        
         return {
           past: shifts.filter(s => s.status === 'completed').length,
-          scheduled: shifts.filter(s => s.status === 'scheduled' && s.scheduledStart > now).length,
+          scheduled: scheduledShifts.length,
           current: shifts.find(s => s.status === 'in_progress') || null,
+          next: scheduledShifts[0] || null,
         };
       }
       
       const userId = await getCurrentUserId();
       if (!userId) {
-        return { past: 0, scheduled: 0, current: null };
+        return { past: 0, scheduled: 0, current: null, next: null };
       }
       
       await autoUpdateShiftStatuses(userId);
@@ -341,10 +346,20 @@ export function useShiftsSummary() {
         .eq('status', 'in_progress')
         .limit(1);
       
+      const { data: nextData } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'scheduled')
+        .gte('scheduled_start', now)
+        .order('scheduled_start', { ascending: true })
+        .limit(1);
+      
       return {
         past: pastData?.length || 0,
         scheduled: scheduledData?.length || 0,
         current: currentData?.[0] ? toClientShift(currentData[0] as SupabaseShift) : null,
+        next: nextData?.[0] ? toClientShift(nextData[0] as SupabaseShift) : null,
       };
     },
   });
