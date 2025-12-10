@@ -99,6 +99,9 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState("");
   const [useDeadline, setUseDeadline] = useState(false);
   const [deadlineInput, setDeadlineInput] = useState("");
+  const [manualAvgPerShift, setManualAvgPerShift] = useState("");
+
+  const hasStatsData = (earningsStats?.averagePerShift || 0) > 0;
 
   const smartDeadlineInfo = useMemo(() => {
     const target = parseFloat(targetAmount.replace(/\s/g, "").replace(",", ".")) || 0;
@@ -113,7 +116,10 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
     const daysUntilDeadline = Math.max(1, Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     const dailyEarningsNeeded = Math.ceil(remaining / daysUntilDeadline);
     
-    const avgPerShift = earningsStats?.averagePerShift || 0;
+    const statsAvg = earningsStats?.averagePerShift || 0;
+    const manualAvg = parseFloat(manualAvgPerShift.replace(/\s/g, "").replace(",", ".")) || 0;
+    const avgPerShift = statsAvg > 0 ? statsAvg : manualAvg;
+    
     if (avgPerShift <= 0) {
       return { shiftsNeeded: 0, shiftsPerWeek: 0, weeksToGoal: 0, deadlineDate, dailyEarningsNeeded, daysUntilDeadline };
     }
@@ -123,7 +129,7 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
     const shiftsPerWeek = Math.ceil(shiftsNeeded / weeksToGoal);
     
     return { shiftsNeeded, shiftsPerWeek, weeksToGoal: Math.ceil(weeksToGoal), deadlineDate, dailyEarningsNeeded, daysUntilDeadline };
-  }, [targetAmount, deadlineInput, earningsStats?.averagePerShift]);
+  }, [targetAmount, deadlineInput, earningsStats?.averagePerShift, manualAvgPerShift]);
 
   const resetForm = () => {
     setName("");
@@ -132,6 +138,7 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
     setError("");
     setUseDeadline(false);
     setDeadlineInput("");
+    setManualAvgPerShift("");
   };
 
   const handleClose = () => {
@@ -319,13 +326,51 @@ function AddGoalModalContent({ onClose }: { onClose: () => void }) {
                   </View>
                 </View>
               )}
-              {!earningsStats?.averagePerShift && targetAmount && smartDeadlineInfo.deadlineDate && (
-                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.backgroundSecondary }]}>
-                  <Feather name="info" size={16} color={theme.textSecondary} />
-                  <ThemedText style={[styles.smartDeadlineText, { color: theme.textSecondary }]}>
-                    Завершите смены для расчёта количества смен в неделю
-                  </ThemedText>
+              {smartDeadlineInfo.deadlineDate && smartDeadlineInfo.shiftsPerWeek > 0 && (
+                <View style={[styles.smartDeadlineInfo, { backgroundColor: theme.successLight || '#D1FAE5' }]}>
+                  <Feather name="calendar" size={16} color={theme.success || '#10B981'} />
+                  <View style={styles.smartDeadlineTextContainer}>
+                    <ThemedText style={[styles.smartDeadlineText, { color: theme.text }]}>
+                      {'Примерно '}
+                      <ThemedText style={{ fontWeight: '600', color: theme.success || '#10B981' }}>
+                        {smartDeadlineInfo.shiftsPerWeek} {smartDeadlineInfo.shiftsPerWeek === 1 ? 'смена' : smartDeadlineInfo.shiftsPerWeek < 5 ? 'смены' : 'смен'}/нед
+                      </ThemedText>
+                      {' (всего '}
+                      <ThemedText style={{ fontWeight: '600' }}>
+                        {smartDeadlineInfo.shiftsNeeded}
+                      </ThemedText>
+                      {' смен)'}
+                    </ThemedText>
+                  </View>
                 </View>
+              )}
+              {!hasStatsData && targetAmount && smartDeadlineInfo.deadlineDate && (
+                <>
+                  <ThemedText type="caption" style={[styles.label, { color: theme.textSecondary, marginTop: Spacing.lg }]}>
+                    СРЕДНИЙ ЗАРАБОТОК ЗА СМЕНУ (₽)
+                  </ThemedText>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.backgroundDefault,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                    placeholder="Например: 5 000"
+                    placeholderTextColor={theme.textSecondary}
+                    value={manualAvgPerShift}
+                    onChangeText={(text) => {
+                      setManualAvgPerShift(formatAmount(text));
+                      setError("");
+                    }}
+                    keyboardType="numeric"
+                  />
+                  <ThemedText type="small" style={[styles.deadlineHint, { color: theme.textSecondary }]}>
+                    Укажите примерный заработок за смену для расчёта количества смен
+                  </ThemedText>
+                </>
               )}
               {deadlineInput.length === 10 && !smartDeadlineInfo.deadlineDate && (
                 <ThemedText type="small" style={[styles.deadlineHint, { color: theme.warning || '#F59E0B' }]}>
