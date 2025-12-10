@@ -38,7 +38,7 @@ function SettingsItem({
   const { theme } = useTheme();
   const finalIconColor = danger ? theme.error : (iconColor || theme.accent);
   const finalIconBgColor = danger ? theme.errorLight : (iconBgColor || theme.accentLight);
-  
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -137,7 +137,7 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
       style={modalStyles.blurContainer}
     >
       <Pressable style={modalStyles.overlay} onPress={onClose} />
-      
+
       <View
         style={[
           modalStyles.modalContent,
@@ -148,7 +148,7 @@ function HiddenShiftsModalContent({ onClose }: { onClose: () => void }) {
         ]}
       >
         <View style={[modalStyles.handle, { backgroundColor: theme.border }]} />
-        
+
         <View style={modalStyles.header}>
           <ThemedText type="h4" style={modalStyles.title}>
             Скрытые смены
@@ -295,7 +295,7 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
       style={modalStyles.blurContainer}
     >
       <Pressable style={modalStyles.overlay} onPress={onClose} />
-      
+
       <View
         style={[
           modalStyles.modalContent,
@@ -306,7 +306,7 @@ function HiddenGoalsModalContent({ onClose }: { onClose: () => void }) {
         ]}
       >
         <View style={[modalStyles.handle, { backgroundColor: theme.border }]} />
-        
+
         <View style={modalStyles.header}>
           <ThemedText type="h4" style={modalStyles.title}>
             Скрытые цели
@@ -421,7 +421,7 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     if (initialized || activeGoals.length === 0) return;
-    
+
     const initial: Record<string, string> = {};
     activeGoals.forEach(g => {
       initial[g.id] = String(g.allocationPercentage || 0);
@@ -445,7 +445,7 @@ function AutoAllocationModalContent({ onClose }: { onClose: () => void }) {
       Alert.alert("Ошибка", "Сумма процентов не может превышать 100%");
       return;
     }
-    
+
     setSaving(true);
     try {
       for (const goal of activeGoals) {
@@ -668,7 +668,7 @@ function GuestAuthModalContent({
       const { error } = isSignUp 
         ? await signUp(email, password)
         : await signIn(email, password);
-      
+
       if (error) {
         let message = error.message;
         if (message.includes('Invalid login credentials')) {
@@ -694,7 +694,7 @@ function GuestAuthModalContent({
       style={authModalStyles.blurContainer}
     >
       <Pressable style={authModalStyles.overlay} onPress={onClose} />
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={authModalStyles.keyboardView}
@@ -711,7 +711,7 @@ function GuestAuthModalContent({
           <Pressable onPress={onClose} style={authModalStyles.closeButton}>
             <Feather name="x" size={24} color={theme.text} />
           </Pressable>
-          
+
           <View style={authModalStyles.iconContainer}>
             <Feather name={isSignUp ? 'user-plus' : 'log-in'} size={32} color={theme.accent} />
           </View>
@@ -754,10 +754,7 @@ function GuestAuthModalContent({
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
               />
-              <Pressable 
-                onPress={() => setShowPassword(!showPassword)}
-                style={{ padding: Spacing.xs, marginLeft: Spacing.xs }}
-              >
+              <Pressable onPress={() => setShowPassword(!showPassword)} style={{ padding: Spacing.xs }}>
                 <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={theme.textSecondary} />
               </Pressable>
             </View>
@@ -891,7 +888,7 @@ function LinkEmailModalContent({
       style={modalStyles.blurContainer}
     >
       <Pressable style={modalStyles.overlay} onPress={onClose} />
-      
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ width: '100%' }}
@@ -906,7 +903,7 @@ function LinkEmailModalContent({
           ]}
         >
           <View style={[modalStyles.handle, { backgroundColor: theme.border }]} />
-          
+
           <View style={modalStyles.header}>
             <ThemedText type="h4" style={modalStyles.title}>
               Привязать email
@@ -1124,7 +1121,7 @@ function DeleteConfirmationModalContent({ onClose }: { onClose: () => void }) {
 
   const handleDelete = async () => {
     if (!isConfirmed) return;
-    
+
     setDeleting(true);
     try {
       await deleteAllData.mutateAsync();
@@ -2022,4 +2019,3 @@ const deleteStyles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
   },
 });
-
