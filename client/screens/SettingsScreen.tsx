@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, Keybo
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 import { useTheme } from "@/hooks/useTheme";
@@ -1430,20 +1430,13 @@ export default function SettingsScreen() {
         const bom = format === 'csv' ? '\uFEFF' : '';
         const content = bom + rawContent;
         
-        const cacheDir = FileSystem.cacheDirectory;
-        if (!cacheDir) {
-          throw new Error('Кэш-директория недоступна');
-        }
-        
-        const fileUri = cacheDir + filename;
-        
-        await FileSystem.writeAsStringAsync(fileUri, content, { 
-          encoding: FileSystem.EncodingType.UTF8 
-        });
+        const exportFile = new File(Paths.cache, filename);
+        exportFile.create({ overwrite: true });
+        exportFile.write(content);
         
         const sharingAvailable = await Sharing.isAvailableAsync();
         if (sharingAvailable) {
-          await Sharing.shareAsync(fileUri, {
+          await Sharing.shareAsync(exportFile.uri, {
             mimeType: format === 'csv' ? 'text/csv' : 'application/json',
             dialogTitle: 'Экспорт данных',
             UTI: format === 'csv' ? 'public.comma-separated-values-text' : 'public.json',

@@ -75,6 +75,13 @@ This starts both the Expo dev server (port 8081) and Express backend (port 5000)
 - **Mobile:** Scan QR code with Expo Go app
 
 ## Recent Changes
+- **Deadline Icons & Export Fix (Dec 10, 2025):**
+  - Added "zap" icon for goals with deadlines (orange lightning bolt style)
+  - Goals with near/today deadlines show orange warning icon
+  - Overdue goals show red alert-circle icon
+  - Fixed export function for Expo Go - now uses new expo-file-system API (File/Paths classes)
+  - Added BOM for CSV files to properly display Cyrillic characters
+  - Removed duplicate "₽/день" info block from AddGoalModal (kept only shifts/week info)
 - **Smart Deadlines UX Improvements (Dec 10, 2025):**
   - Added manual average earnings input in AddGoalModal for users without shift history
   - Manual input shows info note explaining it's temporary until real data exists
